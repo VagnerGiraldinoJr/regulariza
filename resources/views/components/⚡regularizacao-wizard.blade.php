@@ -35,28 +35,22 @@ new class extends Component
 
     private function loadServices(): void
     {
-        $services = Service::query()
-            ->where('ativo', true)
-            ->orderBy('nome')
-            ->get();
+        Service::query()
+            ->where('slug', '!=', 'cpf-clean-brasil')
+            ->update(['ativo' => false]);
 
-        if ($services->isEmpty()) {
-            Service::query()->create([
-                'nome' => 'Serviço de Regulariza Plus',
-                'slug' => 'regulariza-plus',
-                'descricao' => 'Regularização completa com análise inicial de crédito e acompanhamento prioritário.',
-                'icone' => 'regulariza plus',
+        $service = Service::query()->updateOrCreate(
+            ['slug' => 'cpf-clean-brasil'],
+            [
+                'nome' => 'CPF CLEAN BRASIL',
+                'descricao' => 'Analise do seu CPF ou CNPJ com o time de analistas da CPF CLEAN BRASIL',
+                'icone' => 'cpf clean',
                 'preco' => 150.00,
                 'ativo' => true,
-            ]);
+            ]
+        );
 
-            $services = Service::query()
-                ->where('ativo', true)
-                ->orderBy('nome')
-                ->get();
-        }
-
-        $this->services = $services->toArray();
+        $this->services = [$service->toArray()];
     }
 
     public function getSelectedServiceProperty(): ?array
@@ -306,7 +300,7 @@ new class extends Component
                     <div class="space-y-4">
                         <div>
                             <h2 class="text-base font-bold text-slate-800">3. Confirmar pagamento</h2>
-                            <p class="mt-1 text-sm text-slate-500">Você será redirecionado para checkout seguro do Stripe.</p>
+                            <p class="mt-1 text-sm text-slate-500">Confirme para finalizar e gerar seu protocolo.</p>
                         </div>
 
                         @if ($this->selectedService)
@@ -320,7 +314,7 @@ new class extends Component
 
                         @error('service_id')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
 
-                        <button wire:click="iniciarPagamento" class="btn-primary w-full">Ir para pagamento</button>
+                        <button wire:click="iniciarPagamento" class="btn-primary w-full">Confirmar e continuar</button>
                     </div>
                 @endif
 

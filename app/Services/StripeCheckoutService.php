@@ -29,10 +29,10 @@ class StripeCheckoutService
             'pagamento_status' => 'aguardando',
         ]);
 
-        if (! $this->hasStripeConfigured() && app()->environment('local')) {
+        if (! $this->hasStripeConfigured()) {
             $lead->update(['etapa' => 'pagamento']);
 
-            // Fallback local para validar o fluxo sem credenciais reais do Stripe.
+            // Fallback para validar o fluxo sem credenciais reais do Stripe.
             return route('regularizacao.sucesso').'?order_id='.$order->id.'&mock_checkout=1';
         }
 
