@@ -19,11 +19,7 @@ new class extends Component
 
     public function mount(): void
     {
-        $this->services = Service::query()
-            ->where('ativo', true)
-            ->orderBy('nome')
-            ->get()
-            ->toArray();
+        $this->loadServices();
 
         $orderId = request()->integer('order_id');
 
@@ -35,6 +31,32 @@ new class extends Component
                 $this->protocolo = $order->protocolo;
             }
         }
+    }
+
+    private function loadServices(): void
+    {
+        $services = Service::query()
+            ->where('ativo', true)
+            ->orderBy('nome')
+            ->get();
+
+        if ($services->isEmpty()) {
+            Service::query()->create([
+                'nome' => 'Serviço de Regulariza Plus',
+                'slug' => 'regulariza-plus',
+                'descricao' => 'Regularização completa com análise inicial de crédito e acompanhamento prioritário.',
+                'icone' => 'regulariza plus',
+                'preco' => 150.00,
+                'ativo' => true,
+            ]);
+
+            $services = Service::query()
+                ->where('ativo', true)
+                ->orderBy('nome')
+                ->get();
+        }
+
+        $this->services = $services->toArray();
     }
 
     public function getSelectedServiceProperty(): ?array
