@@ -12,7 +12,9 @@
     @auth
         @php
             $authUser = auth()->user();
-            $showReferralNav = $authUser->role === 'cliente' && $authUser->orders()->where('pagamento_status', 'pago')->exists();
+            $hasPaidOrder = $authUser->orders()->where('pagamento_status', 'pago')->exists();
+            $isDemoCliente = $authUser->email === 'cliente@regulariza.local';
+            $showReferralNav = $authUser->role === 'cliente' && ($hasPaidOrder || $isDemoCliente);
             $referralCode = $showReferralNav ? $authUser->ensureReferralCode() : null;
             $referralLink = $referralCode ? route('regularizacao.index', ['indicacao' => $referralCode]) : null;
             $referralCredits = (float) $authUser->referral_credits;
