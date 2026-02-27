@@ -13,6 +13,10 @@ use RuntimeException;
 
 class StripeCheckoutService
 {
+    public function __construct(private readonly ReferralService $referralService)
+    {
+    }
+
     /**
      * Cria sessão de checkout no Stripe e retorna a URL para redirecionamento.
      */
@@ -30,7 +34,13 @@ class StripeCheckoutService
         ]);
 
         if (! $this->hasStripeConfigured()) {
-            $lead->update(['etapa' => 'pagamento']);
+            $order->update([
+                'pagamento_status' => 'pago',
+                'status' => 'em_andamento',
+                'pago_em' => now(),
+            ]);
+            $lead->update(['etapa' => 'concluido']);
+            $this->referralService->applyCreditForPaidOrder($order);
 
             // Fallback para validar o fluxo sem credenciais reais do Stripe.
             return route('regularizacao.sucesso').'?order_id='.$order->id.'&mock_checkout=1';
@@ -87,16 +97,23 @@ class StripeCheckoutService
     {
         $email = $lead->email ?: 'cliente+'.Str::lower(Str::random(12)).'@regulariza.local';
 
-        return User::firstOrCreate(
+        $user = User::firstOrCreate(
             ['email' => $email],
             [
                 'name' => $lead->nome ?: 'Cliente Regulariza',
                 'cpf_cnpj' => $lead->cpf_cnpj,
                 'whatsapp' => $lead->whatsapp,
+                'referred_by_user_id' => $lead->referred_by_user_id,
                 'role' => 'cliente',
                 'password' => Str::password(12),
             ]
         );
+
+        if (! $user->referred_by_user_id && $lead->referred_by_user_id && $user->id !== $lead->referred_by_user_id) {
+            $user->update(['referred_by_user_id' => $lead->referred_by_user_id]);
+        }
+
+        return $user;
     }
 
     protected function hasStripeConfigured(): bool

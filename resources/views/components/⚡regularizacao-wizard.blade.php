@@ -3,6 +3,7 @@
 use App\Models\Lead;
 use App\Models\Order;
 use App\Models\Service;
+use App\Models\User;
 use App\Services\StripeCheckoutService;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
@@ -15,11 +16,15 @@ new class extends Component
     public ?int $service_id = null;
     public ?int $lead_id = null;
     public ?string $protocolo = null;
+    public ?int $referred_by_user_id = null;
+    public ?string $referred_by_name = null;
+    public ?string $referred_by_code = null;
     public array $services = [];
 
     public function mount(): void
     {
         $this->loadServices();
+        $this->resolveReferralFromQuery();
 
         $orderId = request()->integer('order_id');
 
@@ -31,6 +36,28 @@ new class extends Component
                 $this->protocolo = $order->protocolo;
             }
         }
+    }
+
+    private function resolveReferralFromQuery(): void
+    {
+        $code = strtoupper(trim((string) request()->query('indicacao', '')));
+
+        if ($code === '') {
+            return;
+        }
+
+        $referrer = User::query()
+            ->where('role', 'cliente')
+            ->where('referral_code', $code)
+            ->first();
+
+        if (! $referrer) {
+            return;
+        }
+
+        $this->referred_by_user_id = $referrer->id;
+        $this->referred_by_name = $referrer->name;
+        $this->referred_by_code = $referrer->referral_code;
     }
 
     private function loadServices(): void
@@ -101,6 +128,7 @@ new class extends Component
             [
                 'tipo_documento' => $tipo,
                 'etapa' => 'identificacao',
+                'referred_by_user_id' => $this->referred_by_user_id,
             ]
         );
 
@@ -251,6 +279,15 @@ new class extends Component
             <div class="p-5 sm:p-6">
                 @if ($etapa === 1)
                     <div class="space-y-5">
+                        @if ($referred_by_user_id && $referred_by_name)
+                            <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                                Indicado por <strong>{{ $referred_by_name }}</strong>
+                                @if ($referred_by_code)
+                                    <span class="font-semibold">({{ $referred_by_code }})</span>
+                                @endif
+                            </div>
+                        @endif
+
                         <div>
                             <h2 class="text-base font-bold text-slate-800">1. Identificação do documento</h2>
                             <p class="mt-1 text-sm text-slate-500">Digite CPF ou CNPJ para continuar. A validação é feita automaticamente.</p>

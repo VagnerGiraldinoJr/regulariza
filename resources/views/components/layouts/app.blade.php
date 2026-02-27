@@ -10,6 +10,13 @@
 </head>
 <body>
     @auth
+        @php
+            $authUser = auth()->user();
+            $showReferralNav = $authUser->role === 'cliente' && $authUser->orders()->where('pagamento_status', 'pago')->exists();
+            $referralCode = $showReferralNav ? $authUser->ensureReferralCode() : null;
+            $referralLink = $referralCode ? route('regularizacao.index', ['indicacao' => $referralCode]) : null;
+            $referralCredits = (float) $authUser->referral_credits;
+        @endphp
         <div class="min-h-screen lg:grid lg:grid-cols-[250px_1fr]">
             <aside class="hidden lg:flex lg:flex-col" style="background: var(--sidebar-bg);">
                 <div class="border-b border-white/10 px-5 py-4">
@@ -49,6 +56,20 @@
                             <p class="text-sm font-semibold text-slate-700">Sistema CPF Clean Brasil</p>
                             <p class="text-xs text-slate-500">Recuperação de crédito e atendimento SAC</p>
                         </div>
+                        @if ($showReferralNav && $referralCode && $referralLink)
+                            <div class="hidden xl:flex items-center gap-2 rounded-lg border border-[#b7e9ee] bg-[#edf8fa] px-3 py-1.5 text-xs">
+                                <span class="font-bold text-[#0f4d57]">INDICAÇÃO:</span>
+                                <button type="button" class="rounded bg-white px-2 py-1 font-bold text-[#0f4d57] border border-[#b7e9ee]" data-copy-ref="{{ $referralLink }}">
+                                    {{ $referralCode }}
+                                </button>
+                                <a href="{{ $referralLink }}" class="font-semibold text-[#0f6c78] hover:text-[#0b4f58]" target="_blank" rel="noopener noreferrer">
+                                    INDIQUE E GANHE CRÉDITOS
+                                </a>
+                                <span class="rounded-md bg-[#d8f5e6] px-2 py-1 font-bold text-[#0f8f53]">
+                                    R$ {{ number_format($referralCredits, 2, ',', '.') }}
+                                </span>
+                            </div>
+                        @endif
                         <div class="flex items-center gap-2">
                             @if (in_array(auth()->user()->role, ['admin', 'atendente'], true))
                                 <a href="{{ route('regularizacao.index') }}" class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Funil</a>
@@ -78,5 +99,22 @@
         </main>
         @include('components.public-whatsapp-widget')
     @endauth
+    <script>
+        (function () {
+            document.querySelectorAll('[data-copy-ref]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const text = button.getAttribute('data-copy-ref') || '';
+                    if (!text) return;
+                    navigator.clipboard.writeText(text).then(function () {
+                        const original = button.textContent;
+                        button.textContent = 'COPIADO';
+                        setTimeout(function () {
+                            button.textContent = original;
+                        }, 1200);
+                    });
+                });
+            });
+        })();
+    </script>
 </body>
 </html>

@@ -21,17 +21,21 @@ class Order extends Model
         'lead_id',
         'status',
         'valor',
+        'referral_credit_amount',
         'stripe_payment_intent_id',
         'stripe_checkout_session_id',
         'pagamento_status',
         'pago_em',
+        'referral_credited_at',
     ];
 
     protected function casts(): array
     {
         return [
             'valor' => 'decimal:2',
+            'referral_credit_amount' => 'decimal:2',
             'pago_em' => 'datetime',
+            'referral_credited_at' => 'datetime',
         ];
     }
 

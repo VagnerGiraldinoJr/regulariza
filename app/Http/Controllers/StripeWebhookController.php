@@ -7,11 +7,16 @@ use App\Jobs\CriarUsuarioPortal;
 use App\Jobs\EnviarBoasVindasWhatsApp;
 use App\Jobs\NotificarEquipeInterna;
 use App\Models\Order;
+use App\Services\ReferralService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
 class StripeWebhookController extends Controller
 {
+    public function __construct(private readonly ReferralService $referralService)
+    {
+    }
+
     /**
      * Recebe eventos do Stripe e atualiza pedidos conforme status do pagamento.
      */
@@ -92,6 +97,8 @@ class StripeWebhookController extends Controller
             'status' => 'em_andamento',
             'pago_em' => now(),
         ]);
+
+        $this->referralService->applyCreditForPaidOrder($order);
 
         if ($order->lead) {
             $order->lead->update(['etapa' => 'concluido']);

@@ -20,6 +20,7 @@ class Lead extends Model
         'service_id',
         'etapa',
         'session_id',
+        'referred_by_user_id',
     ];
 
     public function service(): BelongsTo
@@ -30,5 +31,10 @@ class Lead extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function referredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'referred_by_user_id');
     }
 }
