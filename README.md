@@ -1,59 +1,127 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Projeto Regulariza
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Plataforma web para captacao, venda e acompanhamento de servicos de regularizacao, com fluxo guiado para o cliente, checkout online, notificacoes e operacao interna de SAC/Admin.
 
-## About Laravel
+## Proposito do projeto
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+O objetivo do Regulariza e concentrar em um unico sistema:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- Entrada de leads e solicitacoes de regularizacao
+- Jornada de compra com wizard em etapas
+- Pagamento online e atualizacao de pedidos
+- Comunicacao automatizada com cliente por WhatsApp
+- Atendimento SAC com historico de mensagens
+- Area administrativa para operacao e acompanhamento
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## O que ja foi implementado
 
-## Learning Laravel
+### Core de negocio
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- Estrutura de dados com migrations para `users`, `services`, `leads`, `orders`, `sac_tickets`, `sac_messages` e `whatsapp_logs`
+- Models e relacionamentos principais
+- Scopes de negocio para pedidos e tickets
+- Geracao automatica de protocolo no `OrderObserver` no formato `REG-YYYYMMDD-NNNNN`
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Jornada do cliente
 
-## Laravel Sponsors
+- Componente Livewire `RegularizacaoWizard` com 4 etapas
+- Mascara e validacao de CPF/CNPJ
+- Selecionador de servicos com feedback visual
+- Barra de progresso do fluxo
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Pagamentos e pos-pagamento
 
-### Premium Partners
+- Integracao Stripe via `StripeCheckoutService`
+- Webhook com tratamento de:
+- `checkout.session.completed`
+- `payment_intent.payment_failed`
+- Jobs assincronos apos pagamento:
+- `CriarUsuarioPortal`
+- `EnviarBoasVindasWhatsApp`
+- `NotificarEquipeInterna`
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### Comunicacao e SAC
 
-## Contributing
+- Integracao `ZApiService` para envio de WhatsApp com log automatico
+- Templates centralizados em `config/zapi.php`
+- Portal do cliente com tickets e chat em tempo real (polling de 3s)
+- Painel admin/atendente para tickets e atribuicao
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Seguranca e padroes
 
-## Code of Conduct
+- Middleware de papel (`role`)
+- Policies para `Order` e `SacTicket`
+- Form Requests para validacoes de entrada
+- API Resources para padronizacao de resposta
+- Horizon restrito a perfil admin
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Rotas principais
 
-## Security Vulnerabilities
+- Publico:
+- `/regularizacao`
+- Cliente autenticado:
+- `/portal/dashboard`
+- `/portal/tickets`
+- `/portal/tickets/{id}`
+- Admin/Atendente:
+- `/admin/orders`
+- `/admin/tickets`
+- `/admin/tickets/{id}`
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Stack tecnica
 
-## License
+- PHP 8.2+
+- Laravel 12
+- Livewire 4
+- MySQL
+- Redis/Horizon (filas)
+- Stripe (checkout e webhooks)
+- Z-API (WhatsApp)
+- Vite (build frontend)
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Estado atual
+
+- Fases 1 a 6 do checklist interno concluidas
+- Ambiente local validado com migracoes e seeders
+- Build de frontend validado com `npm run build`
+- Suite de testes atual (basica) passando
+
+## Como rodar localmente
+
+1. Instale dependencias:
+
+```bash
+composer install
+npm install
+```
+
+2. Configure ambiente:
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+3. Suba banco/infra (se usar Sail):
+
+```bash
+./vendor/bin/sail up -d
+```
+
+4. Rode migracoes e seeders:
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+5. Inicie app e assets:
+
+```bash
+composer run dev
+```
+
+## Proximos passos sugeridos
+
+- Ampliar cobertura de testes (Feature e integracao de pagamentos/webhooks)
+- Definir pipeline de deploy automatizado para VPS
+- Criar monitoramento operacional (fila, falhas de webhook e alertas)
