@@ -1,4 +1,4 @@
-FROM php:8.3-cli AS vendor
+FROM php:8.4-cli AS vendor
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
@@ -33,7 +33,7 @@ COPY public ./public
 COPY vite.config.js ./
 RUN npm run build
 
-FROM php:8.3-cli
+FROM php:8.4-cli
 WORKDIR /var/www/html
 
 RUN apt-get update && apt-get install -y \
