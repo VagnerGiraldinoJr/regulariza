@@ -200,18 +200,36 @@
                     </ul>
                 </div>
 
-                <form class="panel-card space-y-3 p-5" method="POST" action="#">
+                <form class="panel-card space-y-3 p-5" method="POST" action="{{ route('public.whatsapp.store') }}">
+                    @csrf
+                    <input type="hidden" name="origem" value="welcome">
+
+                    @if (session('public_whatsapp_success'))
+                        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
+                            {{ session('public_whatsapp_success') }}
+                        </div>
+                    @endif
+
                     <label class="block text-sm font-semibold text-slate-700">Nome completo *</label>
-                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" type="text" placeholder="Seu nome" required>
+                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" type="text" name="nome" value="{{ old('nome') }}" placeholder="Seu nome" required>
 
                     <label class="block text-sm font-semibold text-slate-700">E-mail corporativo *</label>
-                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" type="email" placeholder="nome@empresa.com" required>
+                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" type="email" name="email" value="{{ old('email') }}" placeholder="nome@empresa.com" required>
+                    @error('email')
+                        <p class="text-xs text-red-600">{{ $message }}</p>
+                    @enderror
 
                     <label class="block text-sm font-semibold text-slate-700">Celular *</label>
-                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" type="tel" placeholder="(00) 00000-0000" required>
+                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" type="tel" name="whatsapp" value="{{ old('whatsapp') }}" maxlength="15" placeholder="(00) 00000-0000" required data-contact-whatsapp-mask>
+                    @error('whatsapp')
+                        <p class="text-xs text-red-600">{{ $message }}</p>
+                    @enderror
 
                     <label class="block text-sm font-semibold text-slate-700">CNPJ *</label>
-                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" type="text" placeholder="00.000.000/0000-00" required>
+                    <input class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" type="text" name="cnpj" value="{{ old('cnpj') }}" maxlength="18" placeholder="00.000.000/0000-00" required data-cnpj-mask>
+                    @error('cnpj')
+                        <p class="text-xs text-red-600">{{ $message }}</p>
+                    @enderror
 
                     <label class="mt-2 flex items-start gap-2 text-xs text-slate-600">
                         <input type="checkbox" class="mt-0.5" required>
@@ -280,5 +298,36 @@
         </div>
     </footer>
     @include('components.public-whatsapp-widget')
+    <script>
+        (function () {
+            const whatsappInput = document.querySelector('[data-contact-whatsapp-mask]');
+            if (whatsappInput) {
+                whatsappInput.addEventListener('input', function (event) {
+                    const digits = event.target.value.replace(/\D/g, '').slice(0, 11);
+                    if (digits.length <= 10) {
+                        event.target.value = digits
+                            .replace(/(\d{2})(\d)/, '($1) $2')
+                            .replace(/(\d{4})(\d)/, '$1-$2');
+                    } else {
+                        event.target.value = digits
+                            .replace(/(\d{2})(\d)/, '($1) $2')
+                            .replace(/(\d{5})(\d)/, '$1-$2');
+                    }
+                });
+            }
+
+            const cnpjInput = document.querySelector('[data-cnpj-mask]');
+            if (cnpjInput) {
+                cnpjInput.addEventListener('input', function (event) {
+                    const digits = event.target.value.replace(/\D/g, '').slice(0, 14);
+                    event.target.value = digits
+                        .replace(/^(\d{2})(\d)/, '$1.$2')
+                        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+                        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+                        .replace(/(\d{4})(\d)/, '$1-$2');
+                });
+            }
+        })();
+    </script>
 </body>
 </html>
