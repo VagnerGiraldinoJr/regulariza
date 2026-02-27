@@ -10,15 +10,15 @@
 }
 
 :root {
-    --app-bg: #f4f6f9;
+    --app-bg: #eef4f7;
     --panel-bg: #ffffff;
-    --panel-border: #d7dee7;
-    --sidebar-bg: #2f3542;
-    --sidebar-muted: #a8b3c7;
-    --sidebar-active: #3b82f6;
+    --panel-border: #cfe1e7;
+    --sidebar-bg: #061a2d;
+    --sidebar-muted: #9ac3cf;
+    --sidebar-active: #20b6c7;
     --topbar-bg: #ffffff;
-    --text-main: #2b3440;
-    --text-soft: #6b7a90;
+    --text-main: #102235;
+    --text-soft: #4f6f80;
 }
 
 body {
@@ -37,7 +37,7 @@ body {
     font-size: 1.125rem;
     line-height: 1.2;
     font-weight: 700;
-    color: #263142;
+    color: #102235;
 }
 
 .panel-subtitle {
@@ -48,9 +48,9 @@ body {
 .metric-card {
     border-radius: 0.75rem;
     padding: 1rem;
-    color: #1f2937;
+    color: #0f2a3a;
     min-height: 98px;
-    border: 1px solid rgba(148, 163, 184, 0.25);
+    border: 1px solid rgba(32, 182, 199, 0.28);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
@@ -63,27 +63,27 @@ body {
 .metric-card p {
     margin-top: 0.3rem;
     font-size: 0.85rem;
-    color: #475569;
+    color: #355869;
 }
 
 .metric-soft-blue {
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    background: linear-gradient(135deg, #d8f7fb 0%, #bceef5 100%);
 }
 
 .metric-soft-green {
-    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    background: linear-gradient(135deg, #d9f4ef 0%, #c0ebe2 100%);
 }
 
 .metric-soft-red {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    background: linear-gradient(135deg, #f7e7ef 0%, #f0d9e5 100%);
 }
 
 .metric-soft-amber {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    background: linear-gradient(135deg, #e7f8fb 0%, #ccf2f8 100%);
 }
 
 .btn-primary {
-    background: #2563eb;
+    background: #20b6c7;
     color: #fff;
     border-radius: 0.5rem;
     padding: 0.55rem 0.9rem;
@@ -91,11 +91,11 @@ body {
 }
 
 .btn-primary:hover {
-    background: #1d4ed8;
+    background: #1599a8;
 }
 
 .btn-dark {
-    background: #111827;
+    background: #071a2f;
     color: #fff;
     border-radius: 0.5rem;
     padding: 0.55rem 0.9rem;
@@ -103,5 +103,5 @@ body {
 }
 
 .btn-dark:hover {
-    background: #030712;
+    background: #030e1f;
 }
