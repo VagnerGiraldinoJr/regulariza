@@ -8,7 +8,7 @@
     <button
         type="button"
         id="toggle-whatsapp-widget"
-        class="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-[0_12px_24px_rgba(0,0,0,0.28)] transition hover:scale-105"
+        class="whatsapp-pulse inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-[0_12px_24px_rgba(0,0,0,0.28)] transition hover:scale-105"
         aria-label="Abrir contato WhatsApp"
     >
         <svg class="h-7 w-7" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
@@ -84,6 +84,27 @@
     </div>
 </div>
 
+<style>
+    .whatsapp-pulse {
+        animation: whatsappPulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes whatsappPulse {
+        0% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55), 0 12px 24px rgba(0, 0, 0, 0.28);
+        }
+        65% {
+            transform: scale(1.06);
+            box-shadow: 0 0 0 14px rgba(37, 211, 102, 0), 0 12px 24px rgba(0, 0, 0, 0.28);
+        }
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(37, 211, 102, 0), 0 12px 24px rgba(0, 0, 0, 0.28);
+        }
+    }
+</style>
+
 <script>
     (function () {
         const toggle = document.getElementById('toggle-whatsapp-widget');
@@ -116,4 +137,3 @@
         });
     })();
 </script>
-
