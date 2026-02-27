@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Regulariza</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <title>CPF Clean Brasil</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('assets/branding/cpfclean-logo.svg') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -12,8 +12,8 @@
     <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 lg:px-6">
             <div class="flex items-center gap-3">
-                <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 font-black text-white">R</div>
-                <span class="text-lg font-black text-slate-900">Regulariza</span>
+                <img src="{{ asset('assets/branding/cpfclean-logo.svg') }}" alt="CPF Clean Brasil" class="h-9 w-9 rounded-lg">
+                <span class="text-lg font-black text-slate-900">CPF Clean Brasil</span>
             </div>
 
             <nav class="hidden items-center gap-6 text-sm font-semibold text-slate-600 lg:flex">
@@ -37,11 +37,10 @@
                 <div>
                     <p class="text-xs font-bold uppercase tracking-[0.2em] text-blue-700">Plataforma</p>
                     <h1 class="mt-3 text-4xl font-black leading-tight text-slate-900 lg:text-5xl">
-                        Uma plataforma completa e a inteligência de dados que seu negócio precisa.
+                        Soluções para limpar CPF/CNPJ e aumentar score com atendimento em todo Brasil.
                     </h1>
                     <p class="mt-5 max-w-2xl text-base text-slate-600">
-                        A Regulariza apoia operações de validação cadastral, análise de risco, cobrança e relacionamento.
-                        Soluções integradas para reduzir risco, ganhar eficiência operacional e aumentar conversão.
+                        A CPF Clean Brasil já atendeu mais de 1.000 clientes e atua com processos de regularização, análise cadastral e recuperação de crédito com foco em resultado.
                     </p>
 
                     <div class="mt-7 flex flex-wrap gap-3">
@@ -240,9 +239,9 @@
 
         <div class="border-t border-slate-800">
             <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-4 text-xs text-slate-400 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-                <p>Copyright © 2012-2026 Regulariza. Todos os direitos reservados.</p>
+                <p>Copyright © 2012-2026 CPF Clean Brasil. Todos os direitos reservados.</p>
                 <div class="flex items-center gap-4">
-                    <p>Regulariza Tecnologia da Informação Ltda - CNPJ 00.000.000/0001-00</p>
+                    <p>CPF Clean Brasil - Atendimento nacional</p>
                     <img src="{{ asset('assets/selos-seguranca/siteblindado.svg') }}" alt="Site Blindado" class="h-8 w-auto object-contain" />
                 </div>
             </div>

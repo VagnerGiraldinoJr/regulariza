@@ -6,23 +6,28 @@
                     <section class="relative min-h-[380px] bg-[radial-gradient(circle_at_20%_20%,#0f172a_0%,#0b1220_40%,#05070f_100%)] p-8 text-white sm:p-10">
                         <div class="absolute inset-0 bg-[linear-gradient(130deg,rgba(59,130,246,.34),rgba(14,165,233,.10)_45%,transparent_68%)]"></div>
                         <div class="relative z-10">
-                            <p class="text-xs font-bold uppercase tracking-[0.2em] text-sky-300">Regulariza Plataforma</p>
+                            <img src="{{ asset('assets/branding/cpfclean-logo.svg') }}" alt="CPF Clean Brasil" class="h-14 w-14 rounded-xl border border-white/20">
+                            <p class="mt-4 text-xs font-bold uppercase tracking-[0.2em] text-sky-300">CPF Clean Brasil</p>
                             <h1 class="mt-4 text-4xl font-black leading-[0.98] text-blue-400 sm:text-5xl">
-                                A nova experiência Regulariza chegou.
+                                Limpe seu CPF ou CNPJ com segurança.
                             </h1>
-                            <p class="mt-4 max-w-md text-lg text-slate-200">
-                                A inteligência no nível que você precisa para validação de dados, análise de risco e cobrança.
-                            </p>
+                            <div class="mt-4 space-y-1 text-base text-slate-200">
+                                <p>Limpe seu CPF ou CNPJ</p>
+                                <p>Aumente seu Score</p>
+                                <p>Mais de 1.000 clientes atendidos</p>
+                                <p>Atendemos em todo Brasil</p>
+                            </div>
 
                             <div class="mt-8 inline-flex rounded-lg border border-sky-300/60 bg-sky-500/20 px-4 py-2 text-sm font-bold text-sky-100">
-                                Conheça o novo portal
+                                @cpfclean.brasil
                             </div>
                         </div>
                     </section>
 
                     <section class="bg-[#f8f9fb] p-6 sm:p-8">
                         <div class="mx-auto max-w-xs">
-                            <h2 class="text-center text-4xl font-black tracking-tight text-[#1d4ed8]">REGULARIZA</h2>
+                            <h2 class="text-center text-4xl font-black tracking-tight text-[#1d4ed8]">CPF CLEAN</h2>
+                            <p class="mt-1 text-center text-sm font-semibold text-slate-500">Área do Cliente</p>
 
                             <form method="POST" action="{{ route('login.attempt') }}" class="mt-8 space-y-3">
                                 @csrf
@@ -72,9 +77,13 @@
                             </div>
 
                             <div class="mt-5 text-center text-xs text-slate-500">
-                                <p>©2026 - Regulariza</p>
+                                <p>©2026 - CPF Clean Brasil</p>
                                 <p>0800 878 1179 | (11) 3197-0719</p>
                                 <p>atendimento@regulariza.com.br</p>
+                            </div>
+
+                            <div class="mt-3 text-center text-xs">
+                                <a class="font-semibold text-blue-600 hover:text-blue-700" href="https://www.instagram.com/cpfclean.brasil/" target="_blank" rel="noopener noreferrer">Instagram: @cpfclean.brasil</a>
                             </div>
 
                             <div class="mt-5 flex justify-center">

@@ -3,8 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Regulariza</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <title>CPF Clean Brasil</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('assets/branding/cpfclean-logo.svg') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -13,7 +13,7 @@
         <div class="min-h-screen lg:grid lg:grid-cols-[250px_1fr]">
             <aside class="hidden lg:flex lg:flex-col" style="background: var(--sidebar-bg);">
                 <div class="border-b border-white/10 px-5 py-4">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/90">Regulariza</p>
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/90">CPF Clean Brasil</p>
                     <h1 class="mt-1 text-lg font-bold text-white">Painel Interno</h1>
                 </div>
 
@@ -46,7 +46,7 @@
                 <header class="border-b border-slate-200 bg-[var(--topbar-bg)]">
                     <div class="flex items-center justify-between px-4 py-3 lg:px-6">
                         <div>
-                            <p class="text-sm font-semibold text-slate-700">Sistema Regulariza</p>
+                            <p class="text-sm font-semibold text-slate-700">Sistema CPF Clean Brasil</p>
                             <p class="text-xs text-slate-500">Recuperação de crédito e atendimento SAC</p>
                         </div>
                         <div class="flex items-center gap-2">
