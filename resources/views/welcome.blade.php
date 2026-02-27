@@ -93,9 +93,9 @@
                         </a>
                     </div>
                 </div>
-                <div class="panel-card border border-[#164161]/80 bg-[#0d2a41]/80 p-5">
+                <div class="rounded-xl border border-[#2a5a7a] bg-[#0d2a41] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
                     <p class="text-xs font-bold uppercase tracking-wide text-[#53e0ef]">Destaques</p>
-                    <ul class="mt-3 space-y-2 text-sm text-slate-100">
+                    <ul class="mt-3 space-y-2 text-sm text-slate-200">
                         <li>• Limpe seu CPF ou CNPJ</li>
                         <li>• Aumente seu score com orientação especializada</li>
                         <li>• Mais de 1.000 clientes atendidos</li>
