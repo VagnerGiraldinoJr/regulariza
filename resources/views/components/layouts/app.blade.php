@@ -50,7 +50,9 @@
                             <p class="text-xs text-slate-500">Recuperação de crédito e atendimento SAC</p>
                         </div>
                         <div class="flex items-center gap-2">
-                            <a href="{{ route('regularizacao.index') }}" class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Funil</a>
+                            @if (in_array(auth()->user()->role, ['admin', 'atendente'], true))
+                                <a href="{{ route('regularizacao.index') }}" class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Funil</a>
+                            @endif
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button class="btn-dark text-xs">Sair</button>
