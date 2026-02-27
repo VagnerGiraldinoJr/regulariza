@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\OrdersController;
+use App\Http\Controllers\PublicContactController;
 use App\Http\Controllers\SacTicketController;
 use App\Models\SacTicket;
 use Illuminate\Http\Request;
@@ -12,6 +13,9 @@ Route::view('/', 'welcome');
 Route::view('/regularizacao', 'regularizacao.index')->name('regularizacao.index');
 Route::view('/regularizacao/sucesso', 'regularizacao.index')->name('regularizacao.sucesso');
 Route::view('/regularizacao/cancelado', 'regularizacao.index')->name('regularizacao.cancelado');
+Route::post('/contato/whatsapp', [PublicContactController::class, 'store'])
+    ->middleware('throttle:20,1')
+    ->name('public.whatsapp.store');
 
 Route::get('/dashboard', function (Request $request) {
     return match ($request->user()?->role) {

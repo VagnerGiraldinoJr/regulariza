@@ -279,5 +279,6 @@
             </div>
         </div>
     </footer>
+    @include('components.public-whatsapp-widget')
 </body>
 </html>

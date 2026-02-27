@@ -22,4 +22,8 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    'cpfclean' => [
+        'whatsapp_number' => env('CPFCLEAN_WHATSAPP_NUMBER', '5531998428448'),
+    ],
+
 ];

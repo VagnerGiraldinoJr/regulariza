@@ -74,6 +74,7 @@
         <main>
             {{ $slot }}
         </main>
+        @include('components.public-whatsapp-widget')
     @endauth
 </body>
 </html>
