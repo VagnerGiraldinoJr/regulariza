@@ -7,5 +7,4 @@ storage/framework/cache
 storage/framework/sessions
 storage/framework/views
 .env
-.env.*
 compose.sail.yaml

@@ -2,7 +2,11 @@
 set -e
 
 if [ ! -f .env ]; then
-  cp .env.example .env
+  if [ -f .env.example ]; then
+    cp .env.example .env
+  else
+    touch .env
+  fi
 fi
 
 if [ -z "${APP_KEY}" ]; then
@@ -25,6 +29,10 @@ if [ "${APP_ENV}" = "production" ]; then
   php artisan config:cache || true
   php artisan route:cache || true
   php artisan view:cache || true
+fi
+
+if [ "$#" -gt 0 ]; then
+  exec "$@"
 fi
 
 exec php artisan serve --host=0.0.0.0 --port=8000
