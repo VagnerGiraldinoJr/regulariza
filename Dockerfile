@@ -1,5 +1,20 @@
-FROM composer:2 AS vendor
+FROM php:8.3-cli AS vendor
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    unzip \
+    libzip-dev \
+    libicu-dev \
+    libonig-dev \
+    libxml2-dev \
+    libpq-dev \
+    && docker-php-ext-install pdo_mysql bcmath pcntl mbstring intl zip \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 COPY composer.json composer.lock ./
 RUN composer install \
     --no-dev \
