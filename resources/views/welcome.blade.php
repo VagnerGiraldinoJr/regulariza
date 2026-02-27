@@ -73,6 +73,38 @@
             </div>
         </section>
 
+        <section class="border-y border-slate-200 bg-slate-900">
+            <div class="mx-auto grid max-w-7xl gap-6 px-4 py-10 lg:grid-cols-[1.2fr_0.8fr] lg:px-6">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">Instagram Oficial</p>
+                    <h2 class="mt-2 text-2xl font-black text-white">Acompanhe a CPF Clean Brasil nas redes</h2>
+                    <p class="mt-3 max-w-2xl text-sm text-slate-300">
+                        Conteúdos com dicas para limpar nome, aumentar score e entender o processo de regularização de CPF e CNPJ.
+                    </p>
+                    <div class="mt-5 flex flex-wrap gap-3">
+                        <a href="https://www.instagram.com/cpfclean.brasil/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 text-sm font-bold text-slate-900 hover:bg-cyan-400">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2Zm0 1.8A3.95 3.95 0 0 0 3.8 7.75v8.5a3.95 3.95 0 0 0 3.95 3.95h8.5a3.95 3.95 0 0 0 3.95-3.95v-8.5a3.95 3.95 0 0 0-3.95-3.95h-8.5Zm8.95 1.35a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 1.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 0 0 12 8.8Z"/>
+                            </svg>
+                            @cpfclean.brasil
+                        </a>
+                        <a href="https://www.instagram.com/cpfclean.brasil/reels/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center rounded-lg border border-slate-600 px-4 py-2 text-sm font-semibold text-slate-200 hover:border-slate-400 hover:text-white">
+                            Ver publicações
+                        </a>
+                    </div>
+                </div>
+                <div class="panel-card border border-slate-700/80 bg-slate-800/80 p-5">
+                    <p class="text-xs font-bold uppercase tracking-wide text-cyan-300">Destaques</p>
+                    <ul class="mt-3 space-y-2 text-sm text-slate-100">
+                        <li>• Limpe seu CPF ou CNPJ</li>
+                        <li>• Aumente seu score com orientação especializada</li>
+                        <li>• Mais de 1.000 clientes atendidos</li>
+                        <li>• Atendimento em todo Brasil</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
         <section id="solucoes" class="mx-auto max-w-7xl space-y-10 px-4 py-14 lg:px-6">
             <div>
                 <h2 class="text-2xl font-black text-slate-900">Validação de Dados e Consulta de Documentos</h2>

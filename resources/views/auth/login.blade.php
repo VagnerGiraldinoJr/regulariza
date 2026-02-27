@@ -18,9 +18,17 @@
                                 <p>Atendemos em todo Brasil</p>
                             </div>
 
-                            <div class="mt-8 inline-flex rounded-lg border border-sky-300/60 bg-sky-500/20 px-4 py-2 text-sm font-bold text-sky-100">
-                                @cpfclean.brasil
-                            </div>
+                            <a
+                                href="https://www.instagram.com/cpfclean.brasil/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="mt-8 inline-flex items-center gap-2 rounded-lg border border-sky-300/60 bg-sky-500/20 px-4 py-2 text-sm font-bold text-sky-100 transition hover:bg-sky-500/30"
+                            >
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M7.75 2h8.5A5.75 5.75 0 0 1 22 7.75v8.5A5.75 5.75 0 0 1 16.25 22h-8.5A5.75 5.75 0 0 1 2 16.25v-8.5A5.75 5.75 0 0 1 7.75 2Zm0 1.8A3.95 3.95 0 0 0 3.8 7.75v8.5a3.95 3.95 0 0 0 3.95 3.95h8.5a3.95 3.95 0 0 0 3.95-3.95v-8.5a3.95 3.95 0 0 0-3.95-3.95h-8.5Zm8.95 1.35a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2ZM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 1.8A3.2 3.2 0 1 0 12 15.2 3.2 3.2 0 0 0 12 8.8Z"/>
+                                </svg>
+                                <span>@cpfclean.brasil</span>
+                            </a>
                         </div>
                     </section>
 
