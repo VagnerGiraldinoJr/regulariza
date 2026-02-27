@@ -12,6 +12,9 @@ class OrdersController extends Controller
     {
         $this->authorize('viewAny', Order::class);
 
+        $documento = preg_replace('/\D/', '', (string) $request->user()->cpf_cnpj);
+        $tipoDocumento = strlen($documento) === 14 ? 'cnpj' : 'cpf';
+
         $ordersQuery = $request->user()
             ->orders()
             ->with('service');
@@ -30,6 +33,80 @@ class OrdersController extends Controller
         return view('portal.dashboard', [
             'orders' => $orders,
             'stats' => $stats,
+            'creditReport' => $this->sampleCreditReport($tipoDocumento, $request),
+        ]);
+    }
+
+    private function sampleCreditReport(string $tipoDocumento, Request $request): array
+    {
+        $base = [
+            'data_consulta' => now()->format('d/m/Y H:i'),
+            'diagnostico' => [
+                'risco' => 'Moderado',
+                'rating' => 'B',
+                'conclusao' => 'Negociação cautelosa',
+            ],
+            'indicadores' => [
+                'prob_inadimplencia' => 30.0,
+                'limite_sugerido' => 10695.00,
+                'renda_estimada' => 35650.00,
+                'score' => 686,
+                'pontualidade_pagamento' => 95.22,
+            ],
+            'resumo' => [
+                'saude_financeira' => 'Regular',
+                'capacidade_mensal' => 3208.50,
+                'limite_credito_mensal' => 10695.00,
+                'comprometimento_renda' => '30%',
+                'busca_credito_12m' => 'Moderada',
+                'endividamento_credito' => 'Baixo',
+            ],
+            'ocorrencias' => [
+                ['item' => 'RGI - Registro Geral de Inadimplentes', 'status' => 'Nada consta'],
+                ['item' => 'Cheque sem fundo Bacen', 'status' => 'Nada consta'],
+                ['item' => 'Protesto nacional', 'status' => 'Nada consta'],
+                ['item' => 'Total de pendências', 'status' => 'Nada consta'],
+            ],
+            'enderecos' => [
+                'Rui Barbosa, 169, Centro, Montes Claros - MG, CEP: 39400-051',
+                'João Anastácio, 207, Chácaras do Paiva, Sete Lagoas - MG, CEP: 35700-165',
+                'Atlântica, 1551, Centro, Alcobaça - BA, CEP: 04591-001',
+            ],
+        ];
+
+        if ($tipoDocumento === 'cnpj') {
+            return array_merge($base, [
+                'tipo' => 'CNPJ',
+                'dados_cadastrais' => [
+                    'razao_social' => $request->user()->name ?: 'EMPRESA EXEMPLO LTDA',
+                    'cnpj' => $request->user()->cpf_cnpj ?: '00.000.000/0001-00',
+                    'situacao_cnpj' => 'ATIVA',
+                    'porte' => 'Médio porte',
+                    'fundacao' => '12/08/2010',
+                    'quadro_social' => '3 sócios e 1 administrador',
+                    'cliente_premium' => 'SIM',
+                ],
+                'participacoes' => [],
+            ]);
+        }
+
+        return array_merge($base, [
+            'tipo' => 'CPF',
+            'dados_cadastrais' => [
+                'nome' => $request->user()->name ?: 'Cliente Regulariza',
+                'cpf' => $request->user()->cpf_cnpj ?: '000.000.000-00',
+                'data_nascimento' => '23/11/1958 - Domingo',
+                'situacao_cpf' => 'REGULAR',
+                'nome_mae' => 'EMILIA BOUQUARD BASTOS',
+                'classe_social' => 'A1',
+                'cliente_premium' => 'SIM',
+                'telefones' => '98245-5932, 99813-3051',
+            ],
+            'participacoes' => [
+                ['empresa' => 'PAIOL DE MINAS COMERCIO DE ALIMENTOS LTDA', 'cnpj' => '01.493.955/0001-90', 'participacao' => '100%'],
+                ['empresa' => 'EMPRESA BRASILEIRA DE HOTELARIA E INCORPORADORA LTDA', 'cnpj' => '03.566.041/0002-19', 'participacao' => '100%'],
+                ['empresa' => 'C.H.B. BASTOS LTDA', 'cnpj' => '46.626.329/0001-63', 'participacao' => '100%'],
+            ],
         ]);
     }
 
