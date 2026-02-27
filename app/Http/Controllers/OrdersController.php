@@ -12,14 +12,24 @@ class OrdersController extends Controller
     {
         $this->authorize('viewAny', Order::class);
 
-        $orders = $request->user()
+        $ordersQuery = $request->user()
             ->orders()
-            ->with('service')
+            ->with('service');
+
+        $orders = (clone $ordersQuery)
             ->latest()
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
+
+        $stats = [
+            'total' => (clone $ordersQuery)->count(),
+            'pagos' => (clone $ordersQuery)->where('pagamento_status', 'pago')->count(),
+            'em_andamento' => (clone $ordersQuery)->where('status', 'em_andamento')->count(),
+        ];
 
         return view('portal.dashboard', [
             'orders' => $orders,
+            'stats' => $stats,
         ]);
     }
 
@@ -27,15 +37,35 @@ class OrdersController extends Controller
     {
         $this->authorize('viewAny', Order::class);
 
-        $orders = Order::query()
+        $status = (string) $request->query('status', '');
+        $pagamentoStatus = (string) $request->query('pagamento_status', '');
+
+        $allowedStatus = ['pendente', 'em_andamento', 'concluido', 'cancelado'];
+        $allowedPagamentoStatus = ['aguardando', 'pago', 'falhou', 'reembolsado'];
+
+        $ordersQuery = Order::query()
             ->with(['user', 'service'])
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
-            ->when($request->filled('pagamento_status'), fn ($query) => $query->where('pagamento_status', $request->string('pagamento_status')))
+            ->when(in_array($status, $allowedStatus, true), fn ($query) => $query->where('status', $status))
+            ->when(in_array($pagamentoStatus, $allowedPagamentoStatus, true), fn ($query) => $query->where('pagamento_status', $pagamentoStatus));
+
+        $orders = (clone $ordersQuery)
             ->latest()
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
+
+        $stats = [
+            'total' => (clone $ordersQuery)->count(),
+            'pagos' => (clone $ordersQuery)->where('pagamento_status', 'pago')->count(),
+            'pendentes' => (clone $ordersQuery)->where('status', 'pendente')->count(),
+        ];
 
         return view('admin.orders.index', [
             'orders' => $orders,
+            'stats' => $stats,
+            'filters' => [
+                'status' => $status,
+                'pagamento_status' => $pagamentoStatus,
+            ],
         ]);
     }
 

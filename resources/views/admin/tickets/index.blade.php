@@ -71,6 +71,10 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="border-t border-slate-200 px-4 py-3">
+                {{ $tickets->links() }}
+            </div>
         </section>
     </div>
 </x-layouts.app>

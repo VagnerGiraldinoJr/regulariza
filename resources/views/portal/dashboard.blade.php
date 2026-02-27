@@ -7,15 +7,15 @@
 
         <section class="grid gap-3 sm:grid-cols-3">
             <div class="metric-card metric-soft-blue">
-                <h3>{{ $orders->count() }}</h3>
+                <h3>{{ $stats['total'] }}</h3>
                 <p>Total de pedidos</p>
             </div>
             <div class="metric-card metric-soft-green">
-                <h3>{{ $orders->where('pagamento_status', 'pago')->count() }}</h3>
+                <h3>{{ $stats['pagos'] }}</h3>
                 <p>Pagos</p>
             </div>
             <div class="metric-card metric-soft-amber">
-                <h3>{{ $orders->where('status', 'em_andamento')->count() }}</h3>
+                <h3>{{ $stats['em_andamento'] }}</h3>
                 <p>Em andamento</p>
             </div>
         </section>
@@ -50,6 +50,10 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            <div class="border-t border-slate-200 px-4 py-3">
+                {{ $orders->links() }}
             </div>
         </section>
     </div>

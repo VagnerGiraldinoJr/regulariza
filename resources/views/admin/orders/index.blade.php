@@ -7,22 +7,42 @@
 
         <section class="grid gap-3 sm:grid-cols-3">
             <div class="metric-card metric-soft-blue">
-                <h3>{{ $orders->total() }}</h3>
+                <h3>{{ $stats['total'] }}</h3>
                 <p>Pedidos listados</p>
             </div>
             <div class="metric-card metric-soft-green">
-                <h3>{{ $orders->where('pagamento_status', 'pago')->count() }}</h3>
-                <p>Pagos nesta página</p>
+                <h3>{{ $stats['pagos'] }}</h3>
+                <p>Pagos</p>
             </div>
             <div class="metric-card metric-soft-red">
-                <h3>{{ $orders->where('status', 'pendente')->count() }}</h3>
-                <p>Pendentes nesta página</p>
+                <h3>{{ $stats['pendentes'] }}</h3>
+                <p>Pendentes</p>
             </div>
         </section>
 
         <section class="panel-card overflow-hidden">
-            <div class="border-b border-slate-200 px-4 py-3">
+            <div class="space-y-3 border-b border-slate-200 px-4 py-3">
                 <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Pedidos</h2>
+                <form method="GET" class="grid gap-2 sm:grid-cols-3">
+                    <select name="status" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        <option value="">Todos os status</option>
+                        @foreach (['pendente', 'em_andamento', 'concluido', 'cancelado'] as $status)
+                            <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ $status }}</option>
+                        @endforeach
+                    </select>
+
+                    <select name="pagamento_status" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        <option value="">Todos os pagamentos</option>
+                        @foreach (['aguardando', 'pago', 'falhou', 'reembolsado'] as $pagamentoStatus)
+                            <option value="{{ $pagamentoStatus }}" @selected(($filters['pagamento_status'] ?? '') === $pagamentoStatus)>{{ $pagamentoStatus }}</option>
+                        @endforeach
+                    </select>
+
+                    <div class="flex gap-2">
+                        <button class="btn-primary text-sm">Filtrar</button>
+                        <a href="{{ route('admin.orders.index') }}" class="btn-dark text-sm">Limpar</a>
+                    </div>
+                </form>
             </div>
 
             <div class="overflow-x-auto">
@@ -52,6 +72,10 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            <div class="border-t border-slate-200 px-4 py-3">
+                {{ $orders->links() }}
             </div>
         </section>
     </div>

@@ -40,7 +40,7 @@ class StripeWebhookController extends Controller
      */
     protected function isValidSignature(string $payload, string $header): bool
     {
-        $secret = (string) env('STRIPE_WEBHOOK_SECRET');
+        $secret = (string) config('services.stripe.webhook_secret');
 
         if ($secret === '' || $header === '') {
             return app()->environment('local');

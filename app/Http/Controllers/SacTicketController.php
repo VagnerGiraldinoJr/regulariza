@@ -28,25 +28,28 @@ class SacTicketController extends Controller
     public function store(StoreSacTicketRequest $request): RedirectResponse
     {
         $this->authorize('create', SacTicket::class);
+        $validated = $request->validated();
 
         $ticket = SacTicket::create([
-            'order_id' => $request->integer('order_id') ?: null,
+            'order_id' => $validated['order_id'] ?? null,
             'user_id' => $request->user()->id,
-            'assunto' => (string) $request->input('assunto'),
-            'prioridade' => (string) $request->input('prioridade', 'nova'),
+            'assunto' => (string) $validated['assunto'],
+            'prioridade' => (string) ($validated['prioridade'] ?? 'nova'),
             'status' => 'aberto',
         ]);
 
-        if ($request->filled('mensagem')) {
+        if (! empty($validated['mensagem'])) {
             SacMessage::create([
                 'sac_ticket_id' => $ticket->id,
                 'user_id' => $request->user()->id,
-                'mensagem' => (string) $request->input('mensagem'),
+                'mensagem' => (string) $validated['mensagem'],
                 'tipo' => 'texto',
             ]);
         }
 
-        return redirect()->route('portal.tickets.show', $ticket->id);
+        return redirect()
+            ->route('portal.tickets.show', $ticket->id)
+            ->with('success', 'Chamado aberto com sucesso.');
     }
 
     public function adminIndex(Request $request)

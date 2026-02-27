@@ -2,6 +2,7 @@
 
 use App\Models\SacMessage;
 use App\Models\SacTicket;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
 
 new class extends Component
@@ -11,6 +12,9 @@ new class extends Component
 
     public function mount(int $ticketId): void
     {
+        $ticket = SacTicket::findOrFail($ticketId);
+        Gate::authorize('view', $ticket);
+
         $this->ticketId = $ticketId;
     }
 
@@ -18,15 +22,20 @@ new class extends Component
     {
         $data = validator(
             ['mensagem' => $this->mensagem],
-            ['mensagem' => ['required', 'string']]
+            ['mensagem' => ['required', 'string', 'max:5000']]
         )->validate();
 
         $ticket = SacTicket::findOrFail($this->ticketId);
+        Gate::authorize('view', $ticket);
+
+        if (! auth()->check()) {
+            abort(403);
+        }
 
         SacMessage::create([
             'sac_ticket_id' => $ticket->id,
             'user_id' => auth()->id(),
-            'mensagem' => $data['mensagem'],
+            'mensagem' => trim($data['mensagem']),
             'tipo' => 'texto',
         ]);
 
@@ -35,7 +44,12 @@ new class extends Component
 
     public function getTicketProperty(): SacTicket
     {
-        return SacTicket::with(['messages.user', 'user', 'atendente', 'order'])->findOrFail($this->ticketId);
+        $ticket = SacTicket::with(['messages.user', 'user', 'atendente', 'order'])
+            ->findOrFail($this->ticketId);
+
+        Gate::authorize('view', $ticket);
+
+        return $ticket;
     }
 };
 ?>
