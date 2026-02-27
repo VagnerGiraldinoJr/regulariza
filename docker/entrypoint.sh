@@ -9,6 +9,15 @@ if [ ! -f .env ]; then
   fi
 fi
 
+# Guarantee Laravel writable/cache directories exist in runtime container.
+mkdir -p \
+  storage/framework/cache \
+  storage/framework/sessions \
+  storage/framework/views \
+  storage/logs \
+  bootstrap/cache
+chmod -R ug+rwx storage bootstrap/cache
+
 if [ -z "${APP_KEY}" ]; then
   php artisan key:generate --force || true
 fi
