@@ -58,8 +58,19 @@
                             <p class="text-sm font-semibold text-slate-700">Sistema CPF Clean Brasil</p>
                             <p class="text-xs text-slate-500">Recuperação de crédito e atendimento SAC</p>
                         </div>
-                        @if ($showReferralNav && $referralCode && $referralLink)
-                            <div class="hidden xl:flex items-center gap-2 rounded-lg border border-[#b7e9ee] bg-[#edf8fa] px-3 py-1.5 text-xs">
+                        <div class="flex items-center gap-2">
+                            @if (in_array(auth()->user()->role, ['admin', 'atendente'], true))
+                                <a href="{{ route('regularizacao.index') }}" class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Funil</a>
+                            @endif
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button class="btn-dark text-xs">Sair</button>
+                            </form>
+                        </div>
+                    </div>
+                    @if ($showReferralNav && $referralCode && $referralLink)
+                        <div class="border-t border-slate-200 bg-[#f7fdff] px-4 py-2 lg:px-6">
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
                                 <span class="font-bold text-[#0f4d57]">INDICAÇÃO:</span>
                                 <button type="button" class="rounded bg-white px-2 py-1 font-bold text-[#0f4d57] border border-[#b7e9ee]" data-copy-ref="{{ $referralLink }}">
                                     {{ $referralCode }}
@@ -71,17 +82,8 @@
                                     R$ {{ number_format($referralCredits, 2, ',', '.') }}
                                 </span>
                             </div>
-                        @endif
-                        <div class="flex items-center gap-2">
-                            @if (in_array(auth()->user()->role, ['admin', 'atendente'], true))
-                                <a href="{{ route('regularizacao.index') }}" class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Funil</a>
-                            @endif
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button class="btn-dark text-xs">Sair</button>
-                            </form>
                         </div>
-                    </div>
+                    @endif
                 </header>
 
                 @if (session('access_error'))
