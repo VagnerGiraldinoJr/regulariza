@@ -1,72 +1,62 @@
 # Projeto Regulariza
 
-Plataforma web para captacao, venda e acompanhamento de servicos de regularizacao, com fluxo guiado para o cliente, checkout online, notificacoes e operacao interna de SAC/Admin.
+Plataforma web para captacao de leads, contratacao de consultoria CPF/CNPJ, acompanhamento de pedidos, indicacoes (afiliados) e operacao interna (Admin/SAC).
 
-## Proposito do projeto
+## Visao geral
 
-O objetivo do Regulariza e concentrar em um unico sistema:
+O sistema centraliza:
 
-- Entrada de leads e solicitacoes de regularizacao
-- Jornada de compra com wizard em etapas
-- Pagamento online e atualizacao de pedidos
-- Comunicacao automatizada com cliente por WhatsApp
-- Atendimento SAC com historico de mensagens
-- Area administrativa para operacao e acompanhamento
+- Entrada de leads e solicitacoes de consultoria
+- Wizard de contratacao com 4 etapas
+- Checkout online e atualizacao de status de pagamento
+- Fluxo de indicacoes por link/codigo de vendedor
+- Portal do cliente com pedidos, indicacoes e SAC
+- Painel administrativo para pedidos, financeiro, vendedores e tickets
 
-## O que ja foi implementado
+## Principais features
 
-### Core de negocio
+### 1) Wizard de consultoria (Publico)
 
-- Estrutura de dados com migrations para `users`, `services`, `leads`, `orders`, `sac_tickets`, `sac_messages` e `whatsapp_logs`
-- Models e relacionamentos principais
-- Scopes de negocio para pedidos e tickets
-- Geracao automatica de protocolo no `OrderObserver` no formato `REG-YYYYMMDD-NNNNN`
+- Rota: `/regularizacao`
+- Fluxo de 4 etapas: Identificacao -> Consultoria -> Investimento -> Sucesso
+- Validacao de CPF/CNPJ com mascara
+- Posicionamento comercial ajustado para consultoria (nao venda de "servico avulso")
+- Integracao com checkout Stripe (fallback local sem credenciais)
 
-### Jornada do cliente
+### 2) Indicacoes e afiliados
 
-- Componente Livewire `RegularizacaoWizard` com 4 etapas
-- Mascara e validacao de CPF/CNPJ
-- Selecionador de servicos com feedback visual
-- Barra de progresso do fluxo
+- Captura de indicacao por query string: `?indicacao=CODIGO`
+- Vinculo de lead/cliente ao indicador (`referred_by_user_id`)
+- Credito de indicacao aplicado em pedidos pagos (`ReferralService`)
+- Dashboard do cliente com:
+- contratos indicados
+- total vendido
+- validos x pendentes
+- Admin com tela de vendedores e contratos indicados:
+- rota: `/admin/vendedores`
 
-### Pagamentos e pos-pagamento
+### 3) Reenvio de link de pagamento (novo)
 
-- Integracao Stripe via `StripeCheckoutService`
-- Webhook com tratamento de:
-- `checkout.session.completed`
-- `payment_intent.payment_failed`
-- Jobs assincronos apos pagamento:
-- `CriarUsuarioPortal`
-- `EnviarBoasVindasWhatsApp`
-- `NotificarEquipeInterna`
+- Disponivel no portal do cliente para pedidos com `pagamento_status != pago`
+- Funciona para:
+- dono do pedido
+- indicador daquele pedido
+- Comportamento:
+- dono do pedido: redireciona para checkout
+- indicador: abre WhatsApp com mensagem e link para enviar ao indicado
 
-### Comunicacao e SAC
+### 4) Operacao interna
 
-- Integracao `ZApiService` para envio de WhatsApp com log automatico
-- Templates centralizados em `config/zapi.php`
-- Portal do cliente com tickets e chat em tempo real (polling de 3s)
-- Painel admin/atendente para tickets e atribuicao
-
-### Seguranca e padroes
-
-- Middleware de papel (`role`)
-- Policies para `Order` e `SacTicket`
-- Form Requests para validacoes de entrada
-- API Resources para padronizacao de resposta
-- Horizon restrito a perfil admin
-
-## Rotas principais
-
-- Publico:
-- `/regularizacao`
-- Cliente autenticado:
-- `/portal/dashboard`
-- `/portal/tickets`
-- `/portal/tickets/{id}`
-- Admin/Atendente:
-- `/admin/orders`
-- `/admin/tickets`
-- `/admin/tickets/{id}`
+- Admin:
+- pedidos (`/admin/orders`)
+- vendedores (`/admin/vendedores`)
+- financeiro (`/admin/financeiro`)
+- tickets (`/admin/tickets`)
+- SAC/Atendente:
+- tickets e chat de atendimento
+- Cliente:
+- dashboard (`/portal/dashboard`)
+- tickets (`/portal/tickets`)
 
 ## Stack tecnica
 
@@ -74,54 +64,84 @@ O objetivo do Regulariza e concentrar em um unico sistema:
 - Laravel 12
 - Livewire 4
 - MySQL
-- Redis/Horizon (filas)
-- Stripe (checkout e webhooks)
+- Redis / Queue worker
+- Stripe (Checkout + webhook)
 - Z-API (WhatsApp)
-- Vite (build frontend)
+- Vite
+- Docker Compose
 
-## Estado atual
+## Estrutura de seeders (atual)
 
-- Fases 1 a 6 do checklist interno concluidas
-- Ambiente local validado com migracoes e seeders
-- Build de frontend validado com `npm run build`
-- Suite de testes atual (basica) passando
+Seeders principais:
 
-## Como rodar localmente
+- `ServiceSeeder`
+- `UsersSeeder`
+- `ProtocolsSeeder`
 
-1. Instale dependencias:
+`DatabaseSeeder` chama esses 3.
 
-```bash
-composer install
-npm install
-```
+### Usuarios demo criados
 
-2. Configure ambiente:
+- Administrator: `admin@regulariza.br` / `Admin@123`
+- Suporte: `sac@regulariza.br` / `Sac@123`
+- Cliente: `cliente@regulariza.br` / `Cliente@123`
+- Vendedor: `lucas.bahia@regulariza.br` / `Lucas@123`
 
-```bash
-cp .env.example .env
-php artisan key:generate
-```
+### Dados demo de protocolos
 
-3. Suba banco/infra (se usar Sail):
+- Vendedor Lucas: 10 contratos indicados
+- 3 pendentes
+- 7 pagos
+- Cliente teste: 3 protocolos pagos
 
-```bash
-./vendor/bin/sail up -d
-```
+## Rodando local com Docker
 
-4. Rode migracoes e seeders:
+1. Subir containers:
 
 ```bash
-php artisan migrate:fresh --seed
+docker compose up -d --build --remove-orphans
 ```
 
-5. Inicie app e assets:
+2. Migrar e popular base:
 
 ```bash
-composer run dev
+docker compose exec -T app php artisan migrate --force
+docker compose exec -T app php artisan db:seed --force
 ```
+
+3. Limpar caches:
+
+```bash
+docker compose exec -T app php artisan optimize:clear
+```
+
+Aplicacao local: `http://localhost:8082`
+
+## Reset completo do ambiente
+
+Para recriar tudo do zero:
+
+```bash
+docker compose exec -T app php artisan migrate:fresh --seed --force
+```
+
+## Webhook Stripe
+
+- Endpoint: `POST /api/stripe/webhook`
+- Eventos tratados:
+- `checkout.session.completed`
+- `payment_intent.payment_failed`
+
+## Observacoes de deploy
+
+- O `entrypoint.sh` sincroniza variaveis criticas no `.env` interno do container para evitar divergencia entre CLI e requests web.
+- Em deploy, sempre executar build + migrate + seed (quando necessario) + `optimize:clear`.
 
 ## Proximos passos sugeridos
 
-- Ampliar cobertura de testes (Feature e integracao de pagamentos/webhooks)
-- Definir pipeline de deploy automatizado para VPS
-- Criar monitoramento operacional (fila, falhas de webhook e alertas)
+- Adicionar testes de feature para:
+- fluxo de indicacao
+- reenvio de link de pagamento
+- regras de permissao (dono x indicador)
+- Criar auditoria de eventos comerciais (quem reenviou link, quando, para qual protocolo)
+- Adicionar metricas de conversao por vendedor no painel admin
