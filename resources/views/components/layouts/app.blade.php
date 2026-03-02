@@ -40,6 +40,7 @@
                     @endif
 
                     @if (auth()->user()->role === 'admin')
+                        <a href="{{ route('admin.vendors.index') }}" class="block rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('admin.vendors.*') ? 'bg-[var(--sidebar-active)] text-white' : 'text-[var(--sidebar-muted)] hover:bg-white/10 hover:text-white' }}">Vendedores</a>
                         <a href="{{ route('admin.finance.dashboard') }}" class="block rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('admin.finance.*') ? 'bg-[var(--sidebar-active)] text-white' : 'text-[var(--sidebar-muted)] hover:bg-white/10 hover:text-white' }}">Financeiro</a>
                         <a href="/horizon" class="block rounded-md px-3 py-2 text-sm font-medium text-[var(--sidebar-muted)] hover:bg-white/10 hover:text-white">Horizon</a>
                     @endif

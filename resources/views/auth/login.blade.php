@@ -95,7 +95,7 @@
                             </div>
 
                             <div class="mt-5 flex justify-center">
-                                <img src="{{ asset('assets/selos-seguranca/siteblindado.svg') }}" alt="Site Blindado" class="h-10 w-auto object-contain" />
+                                <img src="{{ route('assets.siteblindado.svg') }}" alt="Site Blindado" class="h-10 w-auto object-contain" />
                             </div>
                         </div>
                     </section>

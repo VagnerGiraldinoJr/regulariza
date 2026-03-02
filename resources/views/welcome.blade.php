@@ -239,7 +239,7 @@
                     <button class="btn-primary w-full" type="submit">Receber demonstração gratuita</button>
                     <p class="text-xs text-slate-500">Serviço exclusivo para pessoa jurídica.</p>
                     <div class="pt-2">
-                        <img src="{{ asset('assets/selos-seguranca/siteblindado.svg') }}" alt="Site Blindado" class="h-10 w-auto object-contain" />
+                        <img src="{{ route('assets.siteblindado.svg') }}" alt="Site Blindado" class="h-10 w-auto object-contain" />
                     </div>
                 </form>
             </div>
@@ -292,7 +292,7 @@
                 <p>Copyright © 2012-2026 CPF Clean Brasil. Todos os direitos reservados.</p>
                 <div class="flex items-center gap-4">
                     <p>CPF Clean Brasil - Atendimento nacional</p>
-                    <img src="{{ asset('assets/selos-seguranca/siteblindado.svg') }}" alt="Site Blindado" class="h-8 w-auto object-contain" />
+                    <img src="{{ route('assets.siteblindado.svg') }}" alt="Site Blindado" class="h-8 w-auto object-contain" />
                 </div>
             </div>
         </div>
