@@ -10,7 +10,7 @@ class UsersSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate(
-            ['email' => 'admin@regulariza.br'],
+            ['email' => 'admin@cpfclean.com.br'],
             [
                 'name' => 'Administrator',
                 'role' => 'admin',
@@ -19,7 +19,7 @@ class UsersSeeder extends Seeder
         );
 
         User::updateOrCreate(
-            ['email' => 'sac@regulariza.br'],
+            ['email' => 'sac@cpfclean.com.br'],
             [
                 'name' => 'Suporte',
                 'role' => 'atendente',
@@ -28,7 +28,7 @@ class UsersSeeder extends Seeder
         );
 
         $cliente = User::updateOrCreate(
-            ['email' => 'cliente@regulariza.br'],
+            ['email' => 'cliente@cpfclean.com.br'],
             [
                 'name' => 'Cliente Teste',
                 'role' => 'cliente',
@@ -39,7 +39,7 @@ class UsersSeeder extends Seeder
         );
 
         $seller = User::updateOrCreate(
-            ['email' => 'lucas.bahia@regulariza.br'],
+            ['email' => 'lucas.bahia@cpfclean.com.br'],
             [
                 'name' => 'Lucas-Bahia',
                 'role' => 'cliente',
@@ -58,7 +58,7 @@ class UsersSeeder extends Seeder
             $index = str_pad((string) $i, 2, '0', STR_PAD_LEFT);
 
             User::updateOrCreate(
-                ['email' => "afiliado{$index}@regulariza.br"],
+                ['email' => "afiliado{$index}@cpfclean.com.br"],
                 [
                     'name' => "Afiliado {$index} - Lucas",
                     'role' => 'cliente',
