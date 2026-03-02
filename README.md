@@ -1,4 +1,4 @@
-# Projeto Regulariza
+# Projeto CPFClean BR
 
 Plataforma web para captacao de leads, contratacao de consultoria CPF/CNPJ, acompanhamento de pedidos, indicacoes (afiliados) e operacao interna (Admin/SAC).
 
