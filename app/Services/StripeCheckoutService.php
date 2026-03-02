@@ -91,6 +91,69 @@ class StripeCheckoutService
     }
 
     /**
+     * Gera um novo link de pagamento para um pedido existente.
+     */
+    public function createCheckoutSessionForOrder(Order $order): string
+    {
+        $order->loadMissing(['user', 'service', 'lead']);
+
+        $service = $order->service;
+
+        if (! $service) {
+            throw new RuntimeException('Pedido sem serviço vinculado.');
+        }
+
+        if (! $this->hasStripeConfigured()) {
+            return route('regularizacao.sucesso').'?order_id='.$order->id.'&mock_checkout=1&resend=1';
+        }
+
+        $response = Http::asForm()
+            ->withToken((string) config('services.stripe.secret'))
+            ->post('https://api.stripe.com/v1/checkout/sessions', [
+                'mode' => 'payment',
+                'success_url' => route('regularizacao.sucesso').'?session_id={CHECKOUT_SESSION_ID}&order_id='.$order->id,
+                'cancel_url' => route('regularizacao.cancelado').'?order_id='.$order->id,
+                'customer_email' => (string) ($order->user?->email ?? ''),
+                'metadata[lead_id]' => (string) ($order->lead_id ?? ''),
+                'metadata[order_id]' => (string) $order->id,
+                'line_items[0][quantity]' => 1,
+                'line_items[0][price_data][currency]' => 'brl',
+                'line_items[0][price_data][unit_amount]' => (int) round(((float) $order->valor) * 100),
+                'line_items[0][price_data][product_data][name]' => $service->nome,
+                'line_items[0][price_data][product_data][description]' => $service->descricao ?? 'Serviço de regularização',
+            ]);
+
+        if (! $response->successful()) {
+            Log::error('Falha ao recriar sessão Stripe Checkout.', [
+                'order_id' => $order->id,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            throw new RuntimeException('Não foi possível gerar novo link de pagamento.');
+        }
+
+        $payload = $response->json();
+        $checkoutUrl = (string) ($payload['url'] ?? '');
+
+        if ($checkoutUrl === '') {
+            throw new RuntimeException('Stripe retornou resposta sem URL de checkout.');
+        }
+
+        $order->update([
+            'stripe_checkout_session_id' => $payload['id'] ?? null,
+            'stripe_payment_intent_id' => $payload['payment_intent'] ?? null,
+            'pagamento_status' => 'aguardando',
+        ]);
+
+        if ($order->lead) {
+            $order->lead->update(['etapa' => 'pagamento']);
+        }
+
+        return $checkoutUrl;
+    }
+
+    /**
      * Resolve/cria usuário do portal com base no lead antes do pagamento.
      */
     protected function resolveUserFromLead(Lead $lead): User

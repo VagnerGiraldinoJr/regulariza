@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Services\StripeCheckoutService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Throwable;
 
 class OrdersController extends Controller
 {
@@ -30,10 +32,27 @@ class OrdersController extends Controller
             'em_andamento' => (clone $ordersQuery)->where('status', 'em_andamento')->count(),
         ];
 
+        $referralOrdersQuery = $this->referralOrdersQueryForUser((int) $request->user()->id);
+
+        $referralOrders = (clone $referralOrdersQuery)
+            ->with(['service', 'lead', 'user'])
+            ->latest()
+            ->paginate(10, ['*'], 'indicacoes_page')
+            ->withQueryString();
+
+        $referralStats = [
+            'total_contratos' => (clone $referralOrdersQuery)->count(),
+            'valor_total' => (float) (clone $referralOrdersQuery)->sum('valor'),
+            'validos' => (clone $referralOrdersQuery)->where('pagamento_status', 'pago')->count(),
+            'pendentes' => (clone $referralOrdersQuery)->where('pagamento_status', '!=', 'pago')->count(),
+        ];
+
         return view('portal.dashboard', [
             'orders' => $orders,
             'stats' => $stats,
             'creditReport' => $this->sampleCreditReport($tipoDocumento, $request),
+            'referralOrders' => $referralOrders,
+            'referralStats' => $referralStats,
         ]);
     }
 
@@ -198,5 +217,123 @@ class OrdersController extends Controller
             'receitaPorServico' => $receitaPorServico,
             'seriesMensal' => $seriesMensal,
         ]);
+    }
+
+    public function adminSellers(Request $request)
+    {
+        $this->authorize('viewAny', Order::class);
+
+        $orders = Order::query()
+            ->with(['service', 'lead', 'user', 'lead.referredBy', 'user.referredBy'])
+            ->latest()
+            ->get();
+
+        $sellerMap = [];
+
+        foreach ($orders as $order) {
+            $seller = $order->lead?->referredBy ?? $order->user?->referredBy;
+
+            if (! $seller) {
+                continue;
+            }
+
+            $sellerId = (int) $seller->id;
+
+            if (! isset($sellerMap[$sellerId])) {
+                $sellerMap[$sellerId] = [
+                    'id' => $sellerId,
+                    'name' => $seller->name,
+                    'email' => $seller->email,
+                    'referral_code' => $seller->referral_code,
+                    'total_contratos' => 0,
+                    'total_valor' => 0.0,
+                    'contratos' => [],
+                ];
+            }
+
+            $documento = (string) ($order->lead?->cpf_cnpj ?: $order->user?->cpf_cnpj ?: '-');
+            $tipoDocumento = strlen(preg_replace('/\D+/', '', $documento)) > 11 ? 'CNPJ' : 'CPF';
+            $whatsappDigits = preg_replace('/\D+/', '', (string) ($order->lead?->whatsapp ?: $order->user?->whatsapp ?: ''));
+            $whatsappDigits = $whatsappDigits !== '' && strlen($whatsappDigits) <= 11 ? '55'.$whatsappDigits : $whatsappDigits;
+            $whatsappLink = $whatsappDigits !== '' ? 'https://wa.me/'.$whatsappDigits : null;
+
+            $sellerMap[$sellerId]['contratos'][] = [
+                'protocolo' => $order->protocolo,
+                'documento' => $documento,
+                'tipo_documento' => $tipoDocumento,
+                'valor' => (float) $order->valor,
+                'status' => $order->status,
+                'pagamento_status' => $order->pagamento_status,
+                'cliente_nome' => $order->user?->name ?: '-',
+                'whatsapp_link' => $whatsappLink,
+            ];
+
+            $sellerMap[$sellerId]['total_contratos']++;
+            $sellerMap[$sellerId]['total_valor'] += (float) $order->valor;
+        }
+
+        $sellers = collect($sellerMap)
+            ->sortByDesc('total_valor')
+            ->values();
+
+        return view('admin.vendors.index', [
+            'sellers' => $sellers,
+            'totalSellers' => $sellers->count(),
+            'totalContracts' => (int) $sellers->sum('total_contratos'),
+            'totalValue' => (float) $sellers->sum('total_valor'),
+        ]);
+    }
+
+    public function resendPaymentLink(Request $request, Order $order, StripeCheckoutService $stripeCheckoutService)
+    {
+        $this->authorize('viewAny', Order::class);
+
+        $order->loadMissing(['user', 'lead']);
+
+        $actor = $request->user();
+        $actorId = (int) $actor->id;
+        $isOwner = (int) $order->user_id === $actorId;
+        $isReferrer = (int) ($order->lead?->referred_by_user_id ?? 0) === $actorId
+            || (int) ($order->user?->referred_by_user_id ?? 0) === $actorId;
+
+        if (! $isOwner && ! $isReferrer) {
+            abort(403);
+        }
+
+        if ($order->pagamento_status === 'pago') {
+            return back()->with('payment_link_error', 'Este pedido já está com pagamento confirmado.');
+        }
+
+        try {
+            $checkoutUrl = $stripeCheckoutService->createCheckoutSessionForOrder($order);
+        } catch (Throwable $e) {
+            report($e);
+
+            return back()->with('payment_link_error', 'Não foi possível gerar o novo link de pagamento agora.');
+        }
+
+        if ($isReferrer) {
+            $phoneDigits = preg_replace('/\D+/', '', (string) ($order->lead?->whatsapp ?: $order->user?->whatsapp ?: ''));
+            $phoneDigits = $phoneDigits !== '' && strlen($phoneDigits) <= 11 ? '55'.$phoneDigits : $phoneDigits;
+
+            if ($phoneDigits !== '') {
+                $customerName = (string) ($order->user?->name ?: 'cliente');
+                $message = "Oi {$customerName}, segue seu link para concluir o pagamento da regularização: {$checkoutUrl}";
+                $whatsappUrl = 'https://wa.me/'.$phoneDigits.'?text='.rawurlencode($message);
+
+                return redirect()->away($whatsappUrl);
+            }
+        }
+
+        return redirect()->away($checkoutUrl);
+    }
+
+    private function referralOrdersQueryForUser(int $userId)
+    {
+        return Order::query()
+            ->where(function ($query) use ($userId): void {
+                $query->whereHas('lead', fn ($leadQuery) => $leadQuery->where('referred_by_user_id', $userId))
+                    ->orWhereHas('user', fn ($userQuery) => $userQuery->where('referred_by_user_id', $userId));
+            });
     }
 }

@@ -5,6 +5,12 @@
             <p class="panel-subtitle mt-1">Acompanhe pedidos, pagamentos e andamento da regularização.</p>
         </section>
 
+        @if (session('payment_link_error'))
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {{ session('payment_link_error') }}
+            </div>
+        @endif
+
         <section class="grid gap-3 sm:grid-cols-3">
             <div class="metric-card metric-soft-blue">
                 <h3>{{ $stats['total'] }}</h3>
@@ -17,6 +23,102 @@
             <div class="metric-card metric-soft-amber">
                 <h3>{{ $stats['em_andamento'] }}</h3>
                 <p>Em andamento</p>
+            </div>
+        </section>
+
+        <section class="panel-card overflow-hidden">
+            <div class="border-b border-slate-200 px-4 py-3">
+                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Minhas indicações (vendas)</h2>
+                <p class="mt-1 text-xs text-slate-500">Contratos vendidos com seu código de referência.</p>
+            </div>
+
+            <div class="grid gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:grid-cols-4">
+                <div>
+                    <p class="text-[11px] uppercase tracking-wide text-slate-500">Contratos</p>
+                    <p class="text-base font-extrabold text-slate-800">{{ $referralStats['total_contratos'] }}</p>
+                </div>
+                <div>
+                    <p class="text-[11px] uppercase tracking-wide text-slate-500">Total vendido</p>
+                    <p class="text-base font-extrabold text-emerald-700">R$ {{ number_format($referralStats['valor_total'], 2, ',', '.') }}</p>
+                </div>
+                <div>
+                    <p class="text-[11px] uppercase tracking-wide text-slate-500">Válidos</p>
+                    <p class="text-base font-extrabold text-emerald-700">{{ $referralStats['validos'] }}</p>
+                </div>
+                <div>
+                    <p class="text-[11px] uppercase tracking-wide text-slate-500">Pendentes</p>
+                    <p class="text-base font-extrabold text-amber-700">{{ $referralStats['pendentes'] }}</p>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-white text-left text-xs uppercase tracking-wide text-slate-600">
+                        <tr>
+                            <th class="px-4 py-3">Protocolo</th>
+                            <th class="px-4 py-3">Cliente</th>
+                            <th class="px-4 py-3">Documento</th>
+                            <th class="px-4 py-3">Serviço</th>
+                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">WhatsApp</th>
+                            <th class="px-4 py-3">Pagamento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($referralOrders as $refOrder)
+                            @php
+                                $doc = $refOrder->lead?->cpf_cnpj ?: $refOrder->user?->cpf_cnpj;
+                                $docDigits = preg_replace('/\D+/', '', (string) $doc);
+                                $docType = strlen($docDigits) > 11 ? 'CNPJ' : 'CPF';
+                                $phoneDigits = preg_replace('/\D+/', '', (string) ($refOrder->lead?->whatsapp ?: $refOrder->user?->whatsapp));
+                                $phoneDigits = $phoneDigits !== '' && strlen($phoneDigits) <= 11 ? '55'.$phoneDigits : $phoneDigits;
+                                $phoneLink = $phoneDigits !== '' ? 'https://wa.me/'.$phoneDigits : null;
+                            @endphp
+                            <tr class="border-t border-slate-100">
+                                <td class="px-4 py-3 font-semibold text-slate-800">{{ $refOrder->protocolo }}</td>
+                                <td class="px-4 py-3 text-slate-700">{{ $refOrder->user?->name }}</td>
+                                <td class="px-4 py-3 text-slate-700">{{ $docType }} {{ $doc ?: '-' }}</td>
+                                <td class="px-4 py-3 text-slate-700">{{ $refOrder->service?->nome }}</td>
+                                <td class="px-4 py-3">
+                                    @if ($refOrder->pagamento_status === 'pago')
+                                        <span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-700">Válido</span>
+                                    @else
+                                        <span class="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">Pendente</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3">
+                                    @if ($phoneLink)
+                                        <a href="{{ $phoneLink }}" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-blue-700 hover:text-blue-900">
+                                            Abrir WhatsApp
+                                        </a>
+                                    @else
+                                        <span class="text-xs text-slate-400">Sem número</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3">
+                                    @if ($refOrder->pagamento_status !== 'pago')
+                                        <form method="POST" action="{{ route('portal.orders.resend-payment-link', $refOrder) }}">
+                                            @csrf
+                                            <button type="submit" class="rounded-md bg-[#20b6c7] px-2 py-1 text-xs font-semibold text-white hover:bg-[#1599a8]">
+                                                Reenviar link
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="text-xs text-slate-400">Pago</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="px-4 py-5 text-center text-slate-500">Você ainda não possui contratos vendidos por indicação.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="border-t border-slate-200 px-4 py-3">
+                {{ $referralOrders->links() }}
             </div>
         </section>
 
@@ -165,6 +267,7 @@
                             <th class="px-4 py-3">Serviço</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Pagamento</th>
+                            <th class="px-4 py-3">Ação</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -174,10 +277,22 @@
                                 <td class="px-4 py-3 text-slate-600">{{ $order->service?->nome }}</td>
                                 <td class="px-4 py-3 text-slate-700">{{ $order->status }}</td>
                                 <td class="px-4 py-3 text-slate-700">{{ $order->pagamento_status }}</td>
+                                <td class="px-4 py-3">
+                                    @if ($order->pagamento_status !== 'pago')
+                                        <form method="POST" action="{{ route('portal.orders.resend-payment-link', $order) }}">
+                                            @csrf
+                                            <button type="submit" class="rounded-md bg-[#20b6c7] px-2 py-1 text-xs font-semibold text-white hover:bg-[#1599a8]">
+                                                Pagar agora
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="text-xs text-slate-400">-</span>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-4 py-6 text-center text-slate-500">Nenhum pedido encontrado.</td>
+                                <td colspan="5" class="px-4 py-6 text-center text-slate-500">Nenhum pedido encontrado.</td>
                             </tr>
                         @endforelse
                     </tbody>
