@@ -69,8 +69,8 @@ new class extends Component
         $service = Service::query()->updateOrCreate(
             ['slug' => 'cpf-clean-brasil'],
             [
-                'nome' => 'CPF CLEAN BRASIL',
-                'descricao' => 'Analise do seu CPF ou CNPJ com o time de analistas da CPF CLEAN BRASIL',
+                'nome' => 'Consultoria CPF CLEAN BRASIL',
+                'descricao' => 'Diagnóstico consultivo do CPF ou CNPJ com análise especializada e plano de direcionamento.',
                 'icone' => 'cpf clean',
                 'preco' => 150.00,
                 'ativo' => true,
@@ -143,7 +143,7 @@ new class extends Component
         $service = Service::query()->where('ativo', true)->findOrFail($serviceId);
 
         if (! $this->lead_id) {
-            $this->addError('service_id', 'Lead não encontrado. Volte para a etapa 1.');
+            $this->addError('service_id', 'Cadastro não encontrado. Volte para a etapa 1.');
 
             return;
         }
@@ -160,7 +160,7 @@ new class extends Component
     public function iniciarPagamento(StripeCheckoutService $stripeCheckoutService)
     {
         if (! $this->lead_id || ! $this->service_id) {
-            $this->addError('service_id', 'Selecione um serviço para continuar.');
+            $this->addError('service_id', 'Selecione a consultoria para continuar.');
 
             return null;
         }
@@ -256,7 +256,7 @@ new class extends Component
                 <div class="flex items-center justify-between gap-3">
                     <div>
                         <h1 class="text-lg font-black text-slate-800">Regularização CPF/CNPJ</h1>
-                        <p class="mt-1 text-sm text-slate-500">Fluxo guiado para contratação e pagamento.</p>
+                        <p class="mt-1 text-sm text-slate-500">Fluxo guiado para contratação da consultoria e envio seguro dos dados.</p>
                     </div>
                     <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
                         Etapa {{ $etapa }} / 4
@@ -269,8 +269,8 @@ new class extends Component
                     </div>
                     <div class="mt-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         <span>Identificação</span>
-                        <span>Serviço</span>
-                        <span>Pagamento</span>
+                        <span>Consultoria</span>
+                        <span>Investimento</span>
                         <span>Sucesso</span>
                     </div>
                 </div>
@@ -290,7 +290,7 @@ new class extends Component
 
                         <div>
                             <h2 class="text-base font-bold text-slate-800">1. Identificação do documento</h2>
-                            <p class="mt-1 text-sm text-slate-500">Digite CPF ou CNPJ para continuar. A validação é feita automaticamente.</p>
+                            <p class="mt-1 text-sm text-slate-500">Digite CPF ou CNPJ para iniciarmos sua análise consultiva. A validação é automática.</p>
                         </div>
 
                         <div>
@@ -306,15 +306,15 @@ new class extends Component
                             @error('cpf_cnpj')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
-                        <button wire:click="avancarIdentificacao" class="btn-primary w-full">Continuar para serviços</button>
+                        <button wire:click="avancarIdentificacao" class="btn-primary w-full">Continuar para consultoria</button>
                     </div>
                 @endif
 
                 @if ($etapa === 2)
                     <div class="space-y-4">
                         <div>
-                            <h2 class="text-base font-bold text-slate-800">2. Escolha o serviço</h2>
-                            <p class="mt-1 text-sm text-slate-500">Selecione o tipo de regularização desejada.</p>
+                            <h2 class="text-base font-bold text-slate-800">2. Contratação da consultoria</h2>
+                            <p class="mt-1 text-sm text-slate-500">Selecione a consultoria para análise do seu caso e direcionamento estratégico.</p>
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-2">
@@ -326,7 +326,7 @@ new class extends Component
                                     <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">{{ $service['icone'] ?: 'serviço' }}</p>
                                     <h3 class="mt-1 text-sm font-bold text-slate-800">{{ $service['nome'] }}</h3>
                                     <p class="mt-1 text-xs text-slate-500">{{ $service['descricao'] }}</p>
-                                    <p class="mt-3 text-sm font-extrabold text-slate-800">R$ {{ number_format((float) $service['preco'], 2, ',', '.') }}</p>
+                                    <p class="mt-3 text-sm font-extrabold text-slate-800">Investimento da consultoria: R$ {{ number_format((float) $service['preco'], 2, ',', '.') }}</p>
                                 </button>
                             @endforeach
                         </div>
@@ -336,22 +336,22 @@ new class extends Component
                 @if ($etapa === 3)
                     <div class="space-y-4">
                         <div>
-                            <h2 class="text-base font-bold text-slate-800">3. Confirmar pagamento</h2>
-                            <p class="mt-1 text-sm text-slate-500">Confirme para finalizar e gerar seu protocolo.</p>
+                            <h2 class="text-base font-bold text-slate-800">3. Confirmar investimento da consultoria</h2>
+                            <p class="mt-1 text-sm text-slate-500">Ao confirmar, você contrata a consultoria para análise interna e plano de direcionamento.</p>
                         </div>
 
                         @if ($this->selectedService)
                             <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Serviço selecionado</p>
+                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Consultoria selecionada</p>
                                 <p class="mt-1 text-sm font-bold text-slate-800">{{ $this->selectedService['nome'] }}</p>
                                 <p class="mt-1 text-xs text-slate-500">{{ $this->selectedService['descricao'] }}</p>
-                                <p class="mt-3 text-base font-extrabold text-slate-900">R$ {{ number_format((float) $this->selectedService['preco'], 2, ',', '.') }}</p>
+                                <p class="mt-3 text-base font-extrabold text-slate-900">Investimento da consultoria: R$ {{ number_format((float) $this->selectedService['preco'], 2, ',', '.') }}</p>
                             </div>
                         @endif
 
                         @error('service_id')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
 
-                        <button wire:click="iniciarPagamento" class="btn-primary w-full">Confirmar e continuar</button>
+                        <button wire:click="iniciarPagamento" class="btn-primary w-full">Contratar consultoria e continuar</button>
                     </div>
                 @endif
 
@@ -383,18 +383,18 @@ new class extends Component
                 <h3 class="text-sm font-bold uppercase tracking-wide text-slate-700">Como funciona</h3>
                 <ol class="mt-3 space-y-3 text-sm text-slate-600">
                     <li><span class="font-semibold text-slate-800">1.</span> Valide CPF/CNPJ.</li>
-                    <li><span class="font-semibold text-slate-800">2.</span> Escolha o serviço ideal.</li>
-                    <li><span class="font-semibold text-slate-800">3.</span> Faça o pagamento com segurança.</li>
-                    <li><span class="font-semibold text-slate-800">4.</span> Receba protocolo e acompanhe no portal.</li>
+                    <li><span class="font-semibold text-slate-800">2.</span> Contrate a consultoria de análise.</li>
+                    <li><span class="font-semibold text-slate-800">3.</span> Nossa equipe recebe e analisa seu caso.</li>
+                    <li><span class="font-semibold text-slate-800">4.</span> Receba protocolo, direcionamento e acompanhamento.</li>
                 </ol>
             </div>
 
             <div class="panel-card p-4">
                 <h3 class="text-sm font-bold uppercase tracking-wide text-slate-700">Diferenciais</h3>
                 <ul class="mt-3 space-y-2 text-sm text-slate-600">
-                    <li>Atendimento SAC com histórico de mensagens.</li>
-                    <li>Protocolo automático para rastreabilidade.</li>
-                    <li>Integração com pagamento e notificações.</li>
+                    <li>Análise interna com time especializado.</li>
+                    <li>Direcionamento estratégico para pessoa física ou jurídica.</li>
+                    <li>Acompanhamento consultivo com protocolo e histórico.</li>
                 </ul>
             </div>
         </aside>
