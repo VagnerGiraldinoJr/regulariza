@@ -9,6 +9,10 @@ services:
       APP_ENV: ${APP_ENV:-production}
       APP_DEBUG: ${APP_DEBUG:-false}
       APP_URL: ${APP_URL:-http://localhost:${APP_PORT:-8082}}
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Sao_Paulo}
+      SERVER_CITY: ${SERVER_CITY:-Ponta Grossa}
+      SERVER_UF: ${SERVER_UF:-PR}
+      SERVER_COUNTRY: ${SERVER_COUNTRY:-Brasil}
 
       LOG_CHANNEL: ${LOG_CHANNEL:-stack}
       LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -29,13 +33,26 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
 
-      STRIPE_KEY: ${STRIPE_KEY:-}
-      STRIPE_SECRET: ${STRIPE_SECRET:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-asaas}
+      ASAAS_BASE_URL: ${ASAAS_BASE_URL:-https://sandbox.asaas.com/api/v3}
+      ASAAS_API_KEY: ${ASAAS_API_KEY:-}
+      ASAAS_WEBHOOK_TOKEN: ${ASAAS_WEBHOOK_TOKEN:-}
+      DEFAULT_ANALYST_EMAIL: ${DEFAULT_ANALYST_EMAIL:-analista@cpfclean.com.br}
+      RESEARCH_COMMISSION_RATE: ${RESEARCH_COMMISSION_RATE:-0.30}
+      INSTALLMENT_COMMISSION_RATE: ${INSTALLMENT_COMMISSION_RATE:-0.40}
+      COMMISSION_HOLD_HOURS: ${COMMISSION_HOLD_HOURS:-24}
 
       ZAPI_INSTANCE: ${ZAPI_INSTANCE:-}
       ZAPI_TOKEN: ${ZAPI_TOKEN:-}
       ZAPI_CLIENT_TOKEN: ${ZAPI_CLIENT_TOKEN:-}
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_SCHEME: ${MAIL_SCHEME:-smtps}
+      MAIL_HOST: ${MAIL_HOST:-smtp.hostinger.com}
+      MAIL_PORT: ${MAIL_PORT:-465}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-contato@cpfclean.com.br}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-CPF Clean Brasil}
 
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
     depends_on:
@@ -57,6 +74,10 @@ services:
       APP_ENV: ${APP_ENV:-production}
       APP_DEBUG: ${APP_DEBUG:-false}
       APP_URL: ${APP_URL:-http://localhost:${APP_PORT:-8082}}
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Sao_Paulo}
+      SERVER_CITY: ${SERVER_CITY:-Ponta Grossa}
+      SERVER_UF: ${SERVER_UF:-PR}
+      SERVER_COUNTRY: ${SERVER_COUNTRY:-Brasil}
       LOG_CHANNEL: ${LOG_CHANNEL:-stack}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DB_CONNECTION: mysql
@@ -71,12 +92,25 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-null}
-      STRIPE_KEY: ${STRIPE_KEY:-}
-      STRIPE_SECRET: ${STRIPE_SECRET:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-asaas}
+      ASAAS_BASE_URL: ${ASAAS_BASE_URL:-https://sandbox.asaas.com/api/v3}
+      ASAAS_API_KEY: ${ASAAS_API_KEY:-}
+      ASAAS_WEBHOOK_TOKEN: ${ASAAS_WEBHOOK_TOKEN:-}
+      DEFAULT_ANALYST_EMAIL: ${DEFAULT_ANALYST_EMAIL:-analista@cpfclean.com.br}
+      RESEARCH_COMMISSION_RATE: ${RESEARCH_COMMISSION_RATE:-0.30}
+      INSTALLMENT_COMMISSION_RATE: ${INSTALLMENT_COMMISSION_RATE:-0.40}
+      COMMISSION_HOLD_HOURS: ${COMMISSION_HOLD_HOURS:-24}
       ZAPI_INSTANCE: ${ZAPI_INSTANCE:-}
       ZAPI_TOKEN: ${ZAPI_TOKEN:-}
       ZAPI_CLIENT_TOKEN: ${ZAPI_CLIENT_TOKEN:-}
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_SCHEME: ${MAIL_SCHEME:-smtps}
+      MAIL_HOST: ${MAIL_HOST:-smtp.hostinger.com}
+      MAIL_PORT: ${MAIL_PORT:-465}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-contato@cpfclean.com.br}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-CPF Clean Brasil}
       RUN_MIGRATIONS: 'false'
     depends_on:
       mysql:

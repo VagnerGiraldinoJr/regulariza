@@ -23,6 +23,11 @@ class User extends Authenticatable
         'role',
         'cpf_cnpj',
         'whatsapp',
+        'avatar_path',
+        'pix_key',
+        'pix_key_type',
+        'pix_holder_name',
+        'pix_holder_document',
         'referral_code',
         'referred_by_user_id',
         'referral_credits',
@@ -68,6 +73,21 @@ class User extends Authenticatable
     public function whatsappLogs(): HasMany
     {
         return $this->hasMany(WhatsappLog::class);
+    }
+
+    public function sellerCommissions(): HasMany
+    {
+        return $this->hasMany(SellerCommission::class, 'seller_id');
+    }
+
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(Contract::class);
+    }
+
+    public function analystContracts(): HasMany
+    {
+        return $this->hasMany(Contract::class, 'analyst_id');
     }
 
     public function referredBy(): BelongsTo

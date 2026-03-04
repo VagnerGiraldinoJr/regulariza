@@ -2,22 +2,21 @@
     $whatsappNumber = preg_replace('/\D+/', '', (string) config('services.cpfclean.whatsapp_number'));
     $defaultMessage = rawurlencode('Olá! Quero informações sobre limpeza de CPF/CNPJ.');
     $whatsappLink = "https://wa.me/{$whatsappNumber}?text={$defaultMessage}";
+    $publicWhatsappErrors = $errors->getBag('publicWhatsapp');
+    $hasPublicWhatsappErrors = $publicWhatsappErrors->any();
 @endphp
 
 <div class="fixed bottom-5 right-5 z-50" id="public-whatsapp-widget">
     <button
         type="button"
         id="toggle-whatsapp-widget"
-        class="whatsapp-pulse inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-[0_12px_24px_rgba(0,0,0,0.28)] transition hover:scale-105"
+        class="whatsapp-pulse inline-flex h-16 w-16 items-center justify-center rounded-full border border-white/25 bg-[#25d366] text-white shadow-[0_12px_24px_rgba(0,0,0,0.28)] transition hover:scale-105"
         aria-label="Abrir contato WhatsApp"
     >
-        <svg class="h-7 w-7" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
-            <path d="M19.1 17.3c-.3-.2-1.8-.9-2.1-1-.3-.1-.5-.2-.7.2-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.2-1.3-.8-.7-1.3-1.6-1.4-1.9-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.4.1-.1.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.7-1-2.4-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.2 3.4 5.4 4.8.8.3 1.4.5 1.9.7.8.2 1.5.2 2 .1.6-.1 1.8-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.2-.3-.2-.6-.4Z"/>
-            <path d="M16 3C8.8 3 3 8.7 3 15.8c0 2.3.6 4.5 1.8 6.4L3 29l7-1.8c1.8 1 3.9 1.5 6 1.5 7.2 0 13-5.7 13-12.8S23.2 3 16 3Zm0 23.5c-2 0-3.9-.6-5.4-1.6l-.4-.2-4.1 1.1 1.1-4-.3-.4c-1.1-1.6-1.7-3.4-1.7-5.5C5.2 9.9 10 5.2 16 5.2c6 0 10.8 4.7 10.8 10.6S22 26.5 16 26.5Z"/>
-        </svg>
+        <img src="{{ asset('assets/icons/whatsapp-color-icon.svg') }}" alt="WhatsApp" class="h-9 w-9 object-contain">
     </button>
 
-    <div id="whatsapp-panel" class="mt-3 hidden w-[320px] max-w-[calc(100vw-2.5rem)] rounded-xl border border-[#d1e4d7] bg-white p-4 shadow-2xl">
+    <div id="whatsapp-panel" class="mt-3 hidden w-[320px] max-w-[calc(100vw-2.5rem)] rounded-xl border border-[#d1e4d7] bg-white p-4 shadow-2xl" data-has-errors="{{ $hasPublicWhatsappErrors ? '1' : '0' }}">
         <p class="text-sm font-bold text-slate-800">Fale com nosso SAC</p>
         <p class="mt-1 text-xs text-slate-500">Deixe e-mail e WhatsApp para entrarmos em contato.</p>
 
@@ -59,12 +58,15 @@
                 data-whatsapp-mask
             />
 
-            @error('email')
-                <p class="text-xs text-red-600">{{ $message }}</p>
-            @enderror
-            @error('whatsapp')
-                <p class="text-xs text-red-600">{{ $message }}</p>
-            @enderror
+            @if ($publicWhatsappErrors->has('email'))
+                <p class="text-xs text-red-600">{{ $publicWhatsappErrors->first('email') }}</p>
+            @endif
+            @if ($publicWhatsappErrors->has('whatsapp'))
+                <p class="text-xs text-red-600">{{ $publicWhatsappErrors->first('whatsapp') }}</p>
+            @endif
+            @if ($publicWhatsappErrors->has('cnpj'))
+                <p class="text-xs text-red-600">{{ $publicWhatsappErrors->first('cnpj') }}</p>
+            @endif
 
             <textarea
                 name="mensagem"
@@ -116,7 +118,7 @@
             panel.classList.toggle('hidden');
         });
 
-        if (document.querySelector('#whatsapp-panel .text-red-600') || document.querySelector('#whatsapp-panel .text-emerald-700')) {
+        if (panel.dataset.hasErrors === '1' || document.querySelector('#whatsapp-panel .text-emerald-700')) {
             panel.classList.remove('hidden');
         }
 

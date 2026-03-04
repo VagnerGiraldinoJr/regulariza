@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
@@ -21,9 +22,11 @@ class Order extends Model
         'lead_id',
         'status',
         'valor',
+        'payment_provider',
         'referral_credit_amount',
-        'stripe_payment_intent_id',
-        'stripe_checkout_session_id',
+        'asaas_customer_id',
+        'asaas_payment_id',
+        'payment_link_url',
         'pagamento_status',
         'pago_em',
         'referral_credited_at',
@@ -62,6 +65,16 @@ class Order extends Model
     public function whatsappLogs(): HasMany
     {
         return $this->hasMany(WhatsappLog::class);
+    }
+
+    public function sellerCommissions(): HasMany
+    {
+        return $this->hasMany(SellerCommission::class);
+    }
+
+    public function contract(): HasOne
+    {
+        return $this->hasOne(Contract::class);
     }
 
     public function scopePendentes(Builder $query): Builder

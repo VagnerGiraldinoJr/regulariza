@@ -73,7 +73,7 @@
                             </form>
 
                             <div class="mt-6 text-center text-xs text-slate-500">
-                                <a href="#" class="hover:text-slate-700">Esqueci minha senha?</a>
+                                <a href="{{ route('password.request') }}" class="hover:text-slate-700">Esqueci minha senha?</a>
                             </div>
 
                             <div class="mt-10 space-y-1 text-center text-xs font-semibold text-[#118ea0]">
@@ -94,9 +94,6 @@
                                 <a class="font-semibold text-[#118ea0] hover:text-[#0e7d8d]" href="https://www.instagram.com/cpfclean.brasil/" target="_blank" rel="noopener noreferrer">Instagram: @cpfclean.brasil</a>
                             </div>
 
-                            <div class="mt-5 flex justify-center">
-                                <img src="{{ route('assets.siteblindado.svg') }}" alt="Site Blindado" class="h-10 w-auto object-contain" />
-                            </div>
                         </div>
                     </section>
                 </div>

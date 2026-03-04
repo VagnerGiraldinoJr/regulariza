@@ -4,7 +4,7 @@ use App\Models\Lead;
 use App\Models\Order;
 use App\Models\Service;
 use App\Models\User;
-use App\Services\StripeCheckoutService;
+use App\Services\CheckoutService;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
 
@@ -12,6 +12,7 @@ new class extends Component
 {
     public int $etapa = 1;
     public string $cpf_cnpj = '';
+    public string $whatsapp = '';
     public string $tipo_documento = '';
     public ?int $service_id = null;
     public ?int $lead_id = null;
@@ -42,14 +43,26 @@ new class extends Component
     {
         $code = strtoupper(trim((string) request()->query('indicacao', '')));
 
-        if ($code === '') {
-            return;
+        $referrer = null;
+
+        if ($code !== '') {
+            $referrer = User::query()
+                ->whereIn('role', ['cliente', 'analista', 'vendedor'])
+                ->where('referral_code', $code)
+                ->first();
         }
 
-        $referrer = User::query()
-            ->where('role', 'cliente')
-            ->where('referral_code', $code)
-            ->first();
+        if (! $referrer) {
+            $defaultAnalystEmail = (string) config('services.sales.default_analyst_email');
+            $referrer = User::query()
+                ->whereIn('role', ['analista', 'vendedor'])
+                ->where('email', $defaultAnalystEmail)
+                ->first()
+                ?? User::query()
+                    ->whereIn('role', ['analista', 'vendedor'])
+                    ->orderBy('id')
+                    ->first();
+        }
 
         if (! $referrer) {
             return;
@@ -69,10 +82,10 @@ new class extends Component
         $service = Service::query()->updateOrCreate(
             ['slug' => 'cpf-clean-brasil'],
             [
-                'nome' => 'Consultoria CPF CLEAN BRASIL',
+                'nome' => 'pesquisa CPF CLEAN BRASIL',
                 'descricao' => 'Diagnóstico consultivo do CPF ou CNPJ com análise especializada e plano de direcionamento.',
                 'icone' => 'cpf clean',
-                'preco' => 150.00,
+                'preco' => 200.00,
                 'ativo' => true,
             ]
         );
@@ -104,15 +117,20 @@ new class extends Component
     public function avancarIdentificacao(): void
     {
         $digits = preg_replace('/\D+/', '', $this->cpf_cnpj);
+        $whatsappDigits = $this->normalizeWhatsapp($this->whatsapp);
         $tipo = strlen($digits) === 14 ? 'cnpj' : 'cpf';
 
         Validator::make(
-            ['cpf_cnpj' => $digits, 'tipo_documento' => $tipo],
+            ['cpf_cnpj' => $digits, 'tipo_documento' => $tipo, 'whatsapp' => $whatsappDigits],
             [
                 'cpf_cnpj' => ['required', 'string'],
                 'tipo_documento' => ['required', 'in:cpf,cnpj'],
+                'whatsapp' => ['required', 'string', 'digits_between:10,11'],
             ]
-        )->validate();
+        )->validate([], [
+            'whatsapp.required' => 'Informe seu celular com DDD.',
+            'whatsapp.digits_between' => 'Informe um celular válido com DDD.',
+        ]);
 
         if (($tipo === 'cpf' && ! $this->isValidCpf($digits)) || ($tipo === 'cnpj' && ! $this->isValidCnpj($digits))) {
             $this->addError('cpf_cnpj', 'Documento inválido.');
@@ -127,6 +145,7 @@ new class extends Component
             ],
             [
                 'tipo_documento' => $tipo,
+                'whatsapp' => $whatsappDigits,
                 'etapa' => 'identificacao',
                 'referred_by_user_id' => $this->referred_by_user_id,
             ]
@@ -134,6 +153,7 @@ new class extends Component
 
         $this->lead_id = $lead->id;
         $this->cpf_cnpj = $digits;
+        $this->whatsapp = $this->formatWhatsapp($whatsappDigits);
         $this->tipo_documento = $tipo;
         $this->etapa = 2;
     }
@@ -157,10 +177,10 @@ new class extends Component
         $this->etapa = 3;
     }
 
-    public function iniciarPagamento(StripeCheckoutService $stripeCheckoutService)
+    public function iniciarPagamento(CheckoutService $checkoutService)
     {
         if (! $this->lead_id || ! $this->service_id) {
-            $this->addError('service_id', 'Selecione a consultoria para continuar.');
+            $this->addError('service_id', 'Selecione a pesquisa para continuar.');
 
             return null;
         }
@@ -169,7 +189,7 @@ new class extends Component
         $service = Service::query()->where('ativo', true)->findOrFail($this->service_id);
 
         try {
-            $checkoutUrl = $stripeCheckoutService->createCheckoutSession($lead, $service);
+            $checkoutUrl = $checkoutService->createCheckoutSession($lead, $service);
         } catch (\RuntimeException $exception) {
             $this->addError('service_id', $exception->getMessage());
 
@@ -226,6 +246,30 @@ new class extends Component
 
         return (int) $cnpj[12] === $digit1 && (int) $cnpj[13] === $digit2;
     }
+
+    protected function normalizeWhatsapp(string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+
+        if (str_starts_with($digits, '55') && strlen($digits) > 11) {
+            $digits = substr($digits, 2);
+        }
+
+        return $digits;
+    }
+
+    protected function formatWhatsapp(string $digits): string
+    {
+        if (strlen($digits) === 10) {
+            return preg_replace('/(\d{2})(\d{4})(\d{4})/', '($1) $2-$3', $digits) ?? $digits;
+        }
+
+        if (strlen($digits) === 11) {
+            return preg_replace('/(\d{2})(\d{5})(\d{4})/', '($1) $2-$3', $digits) ?? $digits;
+        }
+
+        return $digits;
+    }
 };
 ?>
 
@@ -233,6 +277,7 @@ new class extends Component
     class="mx-auto max-w-6xl px-4 py-8"
     x-data="{
         masked: @entangle('cpf_cnpj'),
+        whatsappMasked: @entangle('whatsapp'),
         formatDocument(value) {
             const digits = value.replace(/\D/g, '').slice(0, 14);
             if (digits.length <= 11) {
@@ -247,6 +292,18 @@ new class extends Component
                 .replace(/(\d{3})(\d)/, '$1.$2')
                 .replace(/(\d{3})(\d)/, '$1/$2')
                 .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+        },
+        formatWhatsapp(value) {
+            const digits = value.replace(/\D/g, '').slice(0, 11);
+            if (digits.length <= 10) {
+                return digits
+                    .replace(/(\d{2})(\d)/, '($1) $2')
+                    .replace(/(\d{4})(\d)/, '$1-$2');
+            }
+
+            return digits
+                .replace(/(\d{2})(\d)/, '($1) $2')
+                .replace(/(\d{5})(\d)/, '$1-$2');
         }
     }"
 >
@@ -256,7 +313,7 @@ new class extends Component
                 <div class="flex items-center justify-between gap-3">
                     <div>
                         <h1 class="text-lg font-black text-slate-800">Regularização CPF/CNPJ</h1>
-                        <p class="mt-1 text-sm text-slate-500">Fluxo guiado para contratação da consultoria e envio seguro dos dados.</p>
+                        <p class="mt-1 text-sm text-slate-500">Fluxo guiado para contratação da pesquisa e envio seguro dos dados.</p>
                     </div>
                     <span class="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
                         Etapa {{ $etapa }} / 4
@@ -269,8 +326,8 @@ new class extends Component
                     </div>
                     <div class="mt-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         <span>Identificação</span>
-                        <span>Consultoria</span>
-                        <span>Investimento</span>
+                        <span>Pesquisa</span>
+                        <span>Pagamento</span>
                         <span>Sucesso</span>
                     </div>
                 </div>
@@ -306,15 +363,30 @@ new class extends Component
                             @error('cpf_cnpj')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
 
-                        <button wire:click="avancarIdentificacao" class="btn-primary w-full">Continuar para consultoria</button>
+                        <div>
+                            <label class="mb-1 block text-sm font-semibold text-slate-700">Celular (WhatsApp)</label>
+                            <input
+                                type="tel"
+                                x-model="whatsappMasked"
+                                @input="whatsappMasked = formatWhatsapp($event.target.value)"
+                                wire:model.live="whatsapp"
+                                class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                                placeholder="(11) 99999-9999"
+                                maxlength="15"
+                                required
+                            />
+                            @error('whatsapp')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+                        </div>
+
+                        <button wire:click="avancarIdentificacao" class="btn-primary w-full">Continuar para pesquisa</button>
                     </div>
                 @endif
 
                 @if ($etapa === 2)
                     <div class="space-y-4">
                         <div>
-                            <h2 class="text-base font-bold text-slate-800">2. Contratação da consultoria</h2>
-                            <p class="mt-1 text-sm text-slate-500">Selecione a consultoria para análise do seu caso e direcionamento estratégico.</p>
+                            <h2 class="text-base font-bold text-slate-800">2. Contratação da pesquisa</h2>
+                            <p class="mt-1 text-sm text-slate-500">Selecione a pesquisa para análise do seu caso e direcionamento estratégico.</p>
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-2">
@@ -326,7 +398,7 @@ new class extends Component
                                     <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">{{ $service['icone'] ?: 'serviço' }}</p>
                                     <h3 class="mt-1 text-sm font-bold text-slate-800">{{ $service['nome'] }}</h3>
                                     <p class="mt-1 text-xs text-slate-500">{{ $service['descricao'] }}</p>
-                                    <p class="mt-3 text-sm font-extrabold text-slate-800">Investimento da consultoria: R$ {{ number_format((float) $service['preco'], 2, ',', '.') }}</p>
+                                    <p class="mt-3 text-sm font-extrabold text-slate-800">Pagamento da pesquisa: R$ {{ number_format((float) $service['preco'], 2, ',', '.') }}</p>
                                 </button>
                             @endforeach
                         </div>
@@ -336,22 +408,22 @@ new class extends Component
                 @if ($etapa === 3)
                     <div class="space-y-4">
                         <div>
-                            <h2 class="text-base font-bold text-slate-800">3. Confirmar investimento da consultoria</h2>
-                            <p class="mt-1 text-sm text-slate-500">Ao confirmar, você contrata a consultoria para análise interna e plano de direcionamento.</p>
+                            <h2 class="text-base font-bold text-slate-800">3. Confirmar pagamento da pesquisa</h2>
+                            <p class="mt-1 text-sm text-slate-500">Ao confirmar, você contrata a pesquisa para análise interna e plano de direcionamento.</p>
                         </div>
 
                         @if ($this->selectedService)
                             <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">Consultoria selecionada</p>
+                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-600">pesquisa selecionada</p>
                                 <p class="mt-1 text-sm font-bold text-slate-800">{{ $this->selectedService['nome'] }}</p>
                                 <p class="mt-1 text-xs text-slate-500">{{ $this->selectedService['descricao'] }}</p>
-                                <p class="mt-3 text-base font-extrabold text-slate-900">Investimento da consultoria: R$ {{ number_format((float) $this->selectedService['preco'], 2, ',', '.') }}</p>
+                                <p class="mt-3 text-base font-extrabold text-slate-900">Pagamento da pesquisa: R$ {{ number_format((float) $this->selectedService['preco'], 2, ',', '.') }}</p>
                             </div>
                         @endif
 
                         @error('service_id')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
 
-                        <button wire:click="iniciarPagamento" class="btn-primary w-full">Contratar consultoria e continuar</button>
+                        <button wire:click="iniciarPagamento" class="btn-primary w-full">Contratar pesquisa e continuar</button>
                     </div>
                 @endif
 
@@ -364,6 +436,7 @@ new class extends Component
                         <div>
                             <h2 class="text-base font-bold text-slate-800">4. Pedido finalizado</h2>
                             <p class="mt-1 text-sm text-slate-500">Seu protocolo foi gerado com sucesso.</p>
+                            <p class="mt-1 text-sm text-slate-500">Um dos nossos analistas entrará em contato no numero WhatsApp que você informou em instantes.</p>
                         </div>
 
                         <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -371,7 +444,7 @@ new class extends Component
                             <p class="mt-1 text-lg font-black text-slate-900">{{ $protocolo }}</p>
                         </div>
 
-                        <a href="{{ route('portal.dashboard') }}" class="btn-dark inline-block">Acessar portal do cliente</a>
+                        <a href="{{ route('portal.welcome') }}" class="btn-dark inline-block">Fechar Janela</a>
                     </div>
                 @endif
 
@@ -383,7 +456,7 @@ new class extends Component
                 <h3 class="text-sm font-bold uppercase tracking-wide text-slate-700">Como funciona</h3>
                 <ol class="mt-3 space-y-3 text-sm text-slate-600">
                     <li><span class="font-semibold text-slate-800">1.</span> Valide CPF/CNPJ.</li>
-                    <li><span class="font-semibold text-slate-800">2.</span> Contrate a consultoria de análise.</li>
+                    <li><span class="font-semibold text-slate-800">2.</span> Contrate a pesquisa de análise.</li>
                     <li><span class="font-semibold text-slate-800">3.</span> Nossa equipe recebe e analisa seu caso.</li>
                     <li><span class="font-semibold text-slate-800">4.</span> Receba protocolo, direcionamento e acompanhamento.</li>
                 </ol>
@@ -414,7 +487,7 @@ new class extends Component
             <img src="{{ asset('assets/selos-seguranca/site-protegido.svg') }}" alt="Site protegido" class="h-7 w-full object-contain" />
         </div>
         <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
-            <img src="{{ asset('assets/selos-seguranca/stripe.svg') }}" alt="Stripe" class="h-7 w-full object-contain" />
+            <img src="{{ asset('assets/selos-seguranca/site-protegido.svg') }}" alt="Asaas" class="h-7 w-full object-contain" />
         </div>
     </div>
 </div>

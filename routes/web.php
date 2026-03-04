@@ -1,15 +1,22 @@
 <?php
 
 use App\Http\Controllers\OrdersController;
+use App\Http\Controllers\AdminManagementController;
+use App\Http\Controllers\AnalystPanelController;
+use App\Http\Controllers\ClientExperienceController;
+use App\Http\Controllers\ContractController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicContactController;
 use App\Http\Controllers\SacTicketController;
 use App\Models\User;
 use App\Models\SacTicket;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 Route::view('/', 'welcome');
 
@@ -58,6 +65,7 @@ Route::post('/contato/whatsapp', [PublicContactController::class, 'store'])
 Route::get('/dashboard', function (Request $request) {
     return match ($request->user()?->role) {
         'admin', 'atendente' => redirect()->route('admin.orders.index'),
+        'analista', 'vendedor' => redirect()->route('analyst.dashboard'),
         default => redirect()->route('portal.dashboard'),
     };
 })->middleware('auth')->name('dashboard');
@@ -95,9 +103,87 @@ Route::middleware('guest')->group(function (): void {
 
         return match ($request->user()?->role) {
             'admin', 'atendente' => redirect()->intended(route('admin.orders.index')),
+            'analista', 'vendedor' => redirect()->intended(route('analyst.dashboard')),
             default => redirect()->intended(route('portal.dashboard')),
         };
     })->name('login.attempt');
+
+    Route::view('/esqueci-senha', 'auth.forgot-password')->name('password.request');
+
+    Route::post('/esqueci-senha', function (Request $request) {
+        $request->validate([
+            'email' => ['required', 'email'],
+        ], [
+            'email.required' => 'Informe o e-mail.',
+            'email.email' => 'Informe um e-mail válido.',
+        ]);
+
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
+
+        if ($status === Password::RESET_LINK_SENT) {
+            return back()->with('status', 'Enviamos o link de redefinição para o seu e-mail.');
+        }
+
+        if ($status === Password::INVALID_USER) {
+            return back()->withErrors(['email' => 'Não encontramos usuário com este e-mail.']);
+        }
+
+        if ($status === Password::RESET_THROTTLED) {
+            return back()->withErrors(['email' => 'Aguarde alguns instantes antes de tentar novamente.']);
+        }
+
+        return back()->withErrors(['email' => 'Não foi possível enviar o link de redefinição agora.']);
+    })->name('password.email');
+
+    Route::get('/resetar-senha/{token}', function (Request $request, string $token) {
+        return view('auth.reset-password', [
+            'token' => $token,
+            'email' => (string) $request->query('email', ''),
+        ]);
+    })->name('password.reset');
+
+    Route::post('/resetar-senha', function (Request $request) {
+        $request->validate([
+            'token' => ['required'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ], [
+            'email.required' => 'Informe o e-mail.',
+            'email.email' => 'Informe um e-mail válido.',
+            'password.required' => 'Informe a nova senha.',
+            'password.min' => 'A nova senha deve ter no mínimo 8 caracteres.',
+            'password.confirmed' => 'A confirmação da senha não confere.',
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return redirect()->route('login')->with('status', 'Senha redefinida com sucesso. Faça login com a nova senha.');
+        }
+
+        if ($status === Password::INVALID_TOKEN) {
+            return back()->withErrors(['email' => ['Link de redefinição inválido ou expirado.']])
+                ->withInput($request->only('email'));
+        }
+
+        if ($status === Password::INVALID_USER) {
+            return back()->withErrors(['email' => ['Não encontramos usuário com este e-mail.']])
+                ->withInput($request->only('email'));
+        }
+
+        return back()->withErrors(['email' => ['Não foi possível redefinir a senha agora.']])
+            ->withInput($request->only('email'));
+    })->name('password.update');
 });
 
 Route::post('/logout', function (Request $request) {
@@ -108,8 +194,19 @@ Route::post('/logout', function (Request $request) {
     return redirect()->route('login');
 })->middleware('auth')->name('logout');
 
-Route::middleware(['auth', 'role:cliente'])->prefix('portal')->name('portal.')->group(function (): void {
+Route::middleware('auth')->group(function (): void {
+    Route::get('/perfil', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/perfil', [ProfileController::class, 'update'])->name('profile.update');
+});
+
+Route::middleware(['auth', 'role:cliente', 'client.portal'])->prefix('portal')->name('portal.')->group(function (): void {
     Route::get('/dashboard', [OrdersController::class, 'dashboard'])->name('dashboard');
+    Route::get('/contracts', [ContractController::class, 'clientIndex'])->name('contracts');
+    Route::get('/timeline', [ClientExperienceController::class, 'timeline'])->name('timeline');
+    Route::get('/perfil', fn () => redirect()->route('profile.edit'))->name('profile');
+    Route::patch('/perfil', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/analista/chat', [ClientExperienceController::class, 'analystChat'])->name('analyst-chat');
+    Route::post('/analista/chat', [ClientExperienceController::class, 'openAnalystChat'])->name('analyst-chat.open');
     Route::post('/orders/{order}/resend-payment-link', [OrdersController::class, 'resendPaymentLink'])
         ->name('orders.resend-payment-link');
 
@@ -121,8 +218,14 @@ Route::middleware(['auth', 'role:cliente'])->prefix('portal')->name('portal.')->
     })->can('view', 'ticket')->name('tickets.show');
 });
 
-Route::middleware(['auth', 'role:admin,atendente'])->prefix('admin')->name('admin.')->group(function (): void {
+Route::middleware(['auth', 'role:admin,atendente,analista,vendedor'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/orders', [OrdersController::class, 'adminIndex'])->name('orders.index');
+    Route::get('/contracts', [ContractController::class, 'adminIndex'])
+        ->middleware('role:admin')
+        ->name('contracts.index');
+    Route::post('/contracts', [ContractController::class, 'store'])
+        ->middleware('role:admin')
+        ->name('contracts.store');
     Route::get('/vendedores', [OrdersController::class, 'adminSellers'])
         ->middleware('role:admin')
         ->name('vendors.index');
@@ -136,4 +239,33 @@ Route::middleware(['auth', 'role:admin,atendente'])->prefix('admin')->name('admi
     Route::get('/tickets/{ticket}', function (SacTicket $ticket) {
         return view('admin.tickets.chat', ['ticket' => $ticket]);
     })->can('view', 'ticket')->name('tickets.show');
+});
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin/management')->name('admin.management.')->group(function (): void {
+    Route::get('/dashboard', [AdminManagementController::class, 'dashboard'])->name('dashboard');
+    Route::get('/contract-payments', [AdminManagementController::class, 'contractPayments'])->name('contract-payments');
+    Route::get('/commissions', [AdminManagementController::class, 'commissions'])->name('commissions');
+    Route::get('/payout-requests', [AdminManagementController::class, 'payoutRequests'])->name('payout-requests');
+    Route::get('/integrations', [AdminManagementController::class, 'integrations'])->name('integrations');
+    Route::get('/messages', [AdminManagementController::class, 'messages'])->name('messages');
+    Route::get('/orphan-leads', [AdminManagementController::class, 'orphanLeads'])->name('orphan-leads');
+    Route::post('/orphan-leads/{lead}/assign', [AdminManagementController::class, 'assignLead'])->name('orphan-leads.assign');
+    Route::get('/users', [AdminManagementController::class, 'users'])->name('users');
+    Route::post('/users', [AdminManagementController::class, 'storeUser'])->name('users.store');
+    Route::post('/users/{user}/send-reset-link', [AdminManagementController::class, 'sendResetLink'])->name('users.send-reset-link');
+    Route::get('/vendors', [AdminManagementController::class, 'vendors'])->name('vendors');
+    Route::post('/vendors', [AdminManagementController::class, 'storeVendor'])->name('vendors.store');
+    Route::get('/clients', [AdminManagementController::class, 'clients'])->name('clients');
+    Route::post('/clients', [AdminManagementController::class, 'storeClient'])->name('clients.store');
+    Route::get('/clients/{user}/history', [AdminManagementController::class, 'clientHistory'])->name('clients.history');
+    Route::post('/fake-data/generate', [AdminManagementController::class, 'generateFakeData'])->name('fake-data.generate');
+    Route::delete('/fake-data/clear', [AdminManagementController::class, 'clearFakeData'])->name('fake-data.clear');
+});
+
+Route::middleware(['auth', 'role:analista,vendedor'])->prefix('analyst')->name('analyst.')->group(function (): void {
+    Route::get('/dashboard', [AnalystPanelController::class, 'dashboard'])->name('dashboard');
+    Route::get('/contracts', [ContractController::class, 'analystIndex'])->name('contracts');
+    Route::get('/commissions', [AnalystPanelController::class, 'commissions'])->name('commissions');
+    Route::post('/commissions/{commission}/request-payout', [AnalystPanelController::class, 'requestPayout'])->name('commissions.request-payout');
+    Route::get('/clients', [AnalystPanelController::class, 'clients'])->name('clients');
 });

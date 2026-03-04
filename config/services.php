@@ -16,10 +16,21 @@ return [
         'key' => env('RESEND_KEY'),
     ],
 
-    'stripe' => [
-        'key' => env('STRIPE_KEY'),
-        'secret' => env('STRIPE_SECRET'),
-        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    'payments' => [
+        'provider' => env('PAYMENT_PROVIDER', 'asaas'),
+    ],
+
+    'sales' => [
+        'default_analyst_email' => env('DEFAULT_ANALYST_EMAIL', 'analista@cpfclean.com.br'),
+        'research_commission_rate' => (float) env('RESEARCH_COMMISSION_RATE', 0.30),
+        'installment_commission_rate' => (float) env('INSTALLMENT_COMMISSION_RATE', 0.40),
+        'commission_hold_hours' => (int) env('COMMISSION_HOLD_HOURS', 24),
+    ],
+
+    'asaas' => [
+        'base_url' => env('ASAAS_BASE_URL', 'https://sandbox.asaas.com/api/v3'),
+        'api_key' => env('ASAAS_API_KEY'),
+        'webhook_token' => env('ASAAS_WEBHOOK_TOKEN'),
     ],
 
     'cpfclean' => [

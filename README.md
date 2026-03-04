@@ -1,147 +1,159 @@
-# Projeto CPFClean BR
+# Projeto CPF Clean Brasil
 
-Plataforma web para captacao de leads, contratacao de consultoria CPF/CNPJ, acompanhamento de pedidos, indicacoes (afiliados) e operacao interna (Admin/SAC).
+Plataforma para captacao de leads, pagamento da pesquisa, operacao de contratos, SAC e paineis internos (Admin, Analista e Cliente).
 
 ## Visao geral
 
-O sistema centraliza:
+O sistema inclui:
 
-- Entrada de leads e solicitacoes de consultoria
-- Wizard de contratacao com 4 etapas
-- Checkout online e atualizacao de status de pagamento
-- Fluxo de indicacoes por link/codigo de vendedor
-- Portal do cliente com pedidos, indicacoes e SAC
-- Painel administrativo para pedidos, financeiro, vendedores e tickets
+- Funil de regularizacao (`/regularizacao`) com checkout Asaas (Pix)
+- Portal do cliente com pedidos, contratos, timeline e SAC
+- Painel do analista com carteira, contratos e comissoes
+- Painel admin com pedidos, contratos, financeiro, usuarios e integracoes
+- Comissoes por pesquisa e por parcelas pagas
+- Mensageria e notificacoes (WhatsApp e E-mail)
 
-## Principais features
+## Stack
 
-### 1) Wizard de consultoria (Publico)
-
-- Rota: `/regularizacao`
-- Fluxo de 4 etapas: Identificacao -> Consultoria -> Investimento -> Sucesso
-- Validacao de CPF/CNPJ com mascara
-- Posicionamento comercial ajustado para consultoria (nao venda de "servico avulso")
-- Integracao com checkout Stripe (fallback local sem credenciais)
-
-### 2) Indicacoes e afiliados
-
-- Captura de indicacao por query string: `?indicacao=CODIGO`
-- Vinculo de lead/cliente ao indicador (`referred_by_user_id`)
-- Credito de indicacao aplicado em pedidos pagos (`ReferralService`)
-- Dashboard do cliente com:
-- contratos indicados
-- total vendido
-- validos x pendentes
-- Admin com tela de vendedores e contratos indicados:
-- rota: `/admin/vendedores`
-
-### 3) Reenvio de link de pagamento (novo)
-
-- Disponivel no portal do cliente para pedidos com `pagamento_status != pago`
-- Funciona para:
-- dono do pedido
-- indicador daquele pedido
-- Comportamento:
-- dono do pedido: redireciona para checkout
-- indicador: abre WhatsApp com mensagem e link para enviar ao indicado
-
-### 4) Operacao interna
-
-- Admin:
-- pedidos (`/admin/orders`)
-- vendedores (`/admin/vendedores`)
-- financeiro (`/admin/financeiro`)
-- tickets (`/admin/tickets`)
-- SAC/Atendente:
-- tickets e chat de atendimento
-- Cliente:
-- dashboard (`/portal/dashboard`)
-- tickets (`/portal/tickets`)
-
-## Stack tecnica
-
-- PHP 8.2+
-- Laravel 12
-- Livewire 4
-- MySQL
-- Redis / Queue worker
-- Stripe (Checkout + webhook)
-- Z-API (WhatsApp)
-- Vite
+- PHP 8.4 / Laravel 12
+- MySQL 8.4
+- Redis
+- Queue worker
+- Vite / Tailwind
 - Docker Compose
+- Asaas (pagamentos)
+- Z-API (WhatsApp)
 
-## Estrutura de seeders (atual)
+## Modulos principais
 
-Seeders principais:
+### 1) Regularizacao (publico)
 
-- `ServiceSeeder`
-- `UsersSeeder`
-- `ProtocolsSeeder`
+- Rota: `GET /regularizacao`
+- Captura de lead (com ou sem indicacao)
+- Checkout Asaas para pagamento da pesquisa
+- Obrigatoriedade de celular com mascara
 
-`DatabaseSeeder` chama esses 3.
+### 2) Contratos (entrada + 3 parcelas)
 
-### Usuarios demo criados
+- Tela admin: `GET /admin/contracts`
+- Cria contrato com:
+- entrada (percentual configurado)
+- 3 parcelas (30/60/90 dias)
+- upload de documento (`doc`, `docx`, `pdf`)
+- Cobrancas no Asaas por parcela
 
-- Administrator: `admin@regulariza.br` / `Admin@123`
-- Suporte: `sac@regulariza.br` / `Sac@123`
-- Cliente: `cliente@regulariza.br` / `Cliente@123`
-- Vendedor: `lucas.bahia@regulariza.br` / `Lucas@123`
+### 3) Comissoes
 
-### Dados demo de protocolos
+- Pesquisa: percentual por `RESEARCH_COMMISSION_RATE`
+- Parcelas pagas: percentual por `INSTALLMENT_COMMISSION_RATE`
+- Janela de retencao: `COMMISSION_HOLD_HOURS` (padrao 24h)
 
-- Vendedor Lucas: 10 contratos indicados
-- 3 pendentes
-- 7 pagos
-- Cliente teste: 3 protocolos pagos
+### 4) Perfis e paineis
+
+- Admin: pedidos, SAC, contratos, financeiro, usuarios e gestao
+- Analista/Vendedor: dashboard, carteira, contratos, comissoes, perfil com PIX
+- Cliente: dashboard, contratos, timeline, SAC, perfil
+
+### 5) Reset de senha por e-mail
+
+Fluxo publico:
+
+- `GET /esqueci-senha`
+- `POST /esqueci-senha`
+- `GET /resetar-senha/{token}`
+- `POST /resetar-senha`
+
+Fluxo admin:
+
+- Botao de envio de reset em:
+- `GET /admin/management/users`
+- `GET /admin/management/clients`
+- Cadastro vendedor com envio automatico de reset:
+- `GET /admin/management/vendors`
+- `POST /admin/management/vendors`
+
+### 6) Paginas de erro customizadas
+
+Paginas no estilo institucional para:
+
+- 400, 401, 403, 404, 405, 419, 422, 429, 500 e 503
+
+Arquivos:
+
+- `resources/views/errors/error.blade.php`
+- `resources/views/errors/*.blade.php`
+
+## UI/UX recentes
+
+- Sidebar premium com recolhimento
+- Cards com transparencia
+- Badges em status/tipos
+- Fundo institucional com motion suave
+- Footer fixo com status + data/hora servidor
+- Selo Site Blindado e marca LetsEncrypt no layout
+- Icone Laravel discreto no footer
+- Widget WhatsApp corrigido com icone customizado e validacao isolada
+
+## E-mail (Hostinger SMTP)
+
+Variaveis usadas:
+
+- `MAIL_MAILER=smtp`
+- `MAIL_SCHEME=smtps`
+- `MAIL_HOST=smtp.hostinger.com`
+- `MAIL_PORT=465`
+- `MAIL_USERNAME=...`
+- `MAIL_PASSWORD=...`
+- `MAIL_FROM_ADDRESS=contato@cpfclean.com.br`
+- `MAIL_FROM_NAME="CPF Clean Brasil"`
 
 ## Rodando local com Docker
 
-1. Subir containers:
+1. Subir ambiente:
 
 ```bash
 docker compose up -d --build --remove-orphans
 ```
 
-2. Migrar e popular base:
+2. Migrar e semear:
 
 ```bash
 docker compose exec -T app php artisan migrate --force
 docker compose exec -T app php artisan db:seed --force
 ```
 
-3. Limpar caches:
+3. Limpar cache:
 
 ```bash
 docker compose exec -T app php artisan optimize:clear
 ```
 
-Aplicacao local: `http://localhost:8082`
+Aplicacao local:
 
-## Reset completo do ambiente
+- `http://localhost:8082`
 
-Para recriar tudo do zero:
+## Usuarios padrao
+
+- Admin: `admin@cpfclean.com.br` / `Admin@123`
+- Analista: `analista@cpfclean.com.br` / `Analista@123`
+- SAC: `sac@cpfclean.com.br` / `Sac@123`
+- Cliente: `cliente@cpfclean.com.br` / `Cliente@123`
+
+## Testes
+
+No host (com dependencias de dev):
 
 ```bash
-docker compose exec -T app php artisan migrate:fresh --seed --force
+php artisan test
 ```
-
-## Webhook Stripe
-
-- Endpoint: `POST /api/stripe/webhook`
-- Eventos tratados:
-- `checkout.session.completed`
-- `payment_intent.payment_failed`
 
 ## Observacoes de deploy
 
-- O `entrypoint.sh` sincroniza variaveis criticas no `.env` interno do container para evitar divergencia entre CLI e requests web.
-- Em deploy, sempre executar build + migrate + seed (quando necessario) + `optimize:clear`.
+- Este projeto sobe `app` e `queue` por imagem (sem bind mount de codigo em runtime).
+- Sempre que alterar views/css/controllers:
 
-## Proximos passos sugeridos
+```bash
+docker compose up -d --build app queue
+docker compose exec app php artisan optimize:clear
+```
 
-- Adicionar testes de feature para:
-- fluxo de indicacao
-- reenvio de link de pagamento
-- regras de permissao (dono x indicador)
-- Criar auditoria de eventos comerciais (quem reenviou link, quando, para qual protocolo)
-- Adicionar metricas de conversao por vendedor no painel admin

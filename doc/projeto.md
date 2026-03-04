@@ -20,8 +20,8 @@
 - [x] Barra de progresso visual
 
 ## Fase 3
-- [x] `StripeCheckoutService` com criação de sessão e `Order` pendente
-- [x] `StripeWebhookController` (`checkout.session.completed` e `payment_intent.payment_failed`)
+- [x] Checkout Asaas com criação de cobrança e `Order` pendente
+- [x] `AsaasWebhookController` para confirmação e falha de pagamento
 - [x] Jobs pós-pagamento (`CriarUsuarioPortal`, `EnviarBoasVindasWhatsApp`, `NotificarEquipeInterna`)
 
 ## Fase 4

@@ -50,6 +50,18 @@ class UsersSeeder extends Seeder
             ]
         );
 
+        User::updateOrCreate(
+            ['email' => 'analista@cpfclean.com.br'],
+            [
+                'name' => 'Analista CPFClean',
+                'role' => 'analista',
+                'password' => 'Analista@123',
+                'cpf_cnpj' => '11222333000199',
+                'whatsapp' => '31999990002',
+                'referral_code' => 'ANALISTA01',
+            ]
+        );
+
         if (empty($cliente->referral_code)) {
             $cliente->ensureReferralCode();
         }
@@ -71,4 +83,3 @@ class UsersSeeder extends Seeder
         }
     }
 }
-

@@ -1,4 +1,19 @@
 <x-layouts.app>
+    @php
+        $statusMap = [
+            'aberto' => ['label' => 'Aberto', 'class' => 'badge-warning'],
+            'em_atendimento' => ['label' => 'Em atendimento', 'class' => 'badge-info'],
+            'resolvido' => ['label' => 'Resolvido', 'class' => 'badge-success'],
+            'fechado' => ['label' => 'Fechado', 'class' => 'badge-neutral'],
+        ];
+        $priorityMap = [
+            'nova' => ['label' => 'Nova', 'class' => 'badge-neutral'],
+            'baixa' => ['label' => 'Baixa', 'class' => 'badge-success'],
+            'media' => ['label' => 'Média', 'class' => 'badge-info'],
+            'alta' => ['label' => 'Alta', 'class' => 'badge-warning'],
+            'critica' => ['label' => 'Crítica', 'class' => 'badge-danger'],
+        ];
+    @endphp
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">SAC do Cliente</h1>
@@ -19,19 +34,19 @@
                 <div class="mt-3 space-y-3">
                     <div>
                         <label class="mb-1 block text-sm font-semibold text-slate-700">Assunto</label>
-                        <input name="assunto" value="{{ old('assunto') }}" placeholder="Ex: Dúvida sobre documentação" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+                        <input name="assunto" value="{{ old('assunto') }}" placeholder="Ex: Dúvida sobre documentação" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
                         @error('assunto')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                     </div>
 
                     <div>
                         <label class="mb-1 block text-sm font-semibold text-slate-700">Mensagem inicial</label>
-                        <textarea name="mensagem" rows="4" placeholder="Descreva sua necessidade..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">{{ old('mensagem') }}</textarea>
+                        <textarea name="mensagem" rows="4" placeholder="Descreva sua necessidade..." class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm">{{ old('mensagem') }}</textarea>
                         @error('mensagem')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                     </div>
 
                     <div>
                         <label class="mb-1 block text-sm font-semibold text-slate-700">Prioridade</label>
-                        <select name="prioridade" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                        <select name="prioridade" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm">
                             @foreach (['nova', 'baixa', 'media', 'alta', 'critica'] as $prioridade)
                                 <option value="{{ $prioridade }}" @selected(old('prioridade', 'nova') === $prioridade)>{{ ucfirst($prioridade) }}</option>
                             @endforeach
@@ -43,22 +58,29 @@
             </form>
 
             <div class="panel-card overflow-hidden">
-                <div class="border-b border-slate-200 px-4 py-3">
+                <div class="border-b border-slate-300/50 bg-white/15 px-4 py-3">
                     <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Chamados abertos</h2>
                 </div>
 
                 <div class="divide-y divide-slate-100">
                     @forelse ($tickets as $ticket)
-                        <a href="{{ route('portal.tickets.show', $ticket->id) }}" class="block px-4 py-3 hover:bg-slate-50">
+                        @php
+                            $statusInfo = $statusMap[$ticket->status] ?? ['label' => ucfirst(str_replace('_', ' ', (string) $ticket->status)), 'class' => 'badge-neutral'];
+                            $priorityInfo = $priorityMap[$ticket->prioridade] ?? ['label' => ucfirst((string) $ticket->prioridade), 'class' => 'badge-neutral'];
+                        @endphp
+                        <a href="{{ route('portal.tickets.show', $ticket->id) }}" class="block px-4 py-3 hover:bg-white/45">
                             <p class="text-sm font-semibold text-slate-800">{{ $ticket->protocolo }} - {{ $ticket->assunto }}</p>
-                            <p class="mt-1 text-xs text-slate-500">Status: {{ $ticket->status }} | Prioridade: {{ $ticket->prioridade }}</p>
+                            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                                <span class="badge {{ $statusInfo['class'] }}">{{ $statusInfo['label'] }}</span>
+                                <span class="badge {{ $priorityInfo['class'] }}">{{ $priorityInfo['label'] }}</span>
+                            </div>
                         </a>
                     @empty
                         <div class="px-4 py-8 text-center text-sm text-slate-500">Nenhum ticket encontrado.</div>
                     @endforelse
                 </div>
 
-                <div class="border-t border-slate-200 px-4 py-3">
+                <div class="border-t border-slate-300/40 bg-white/10 px-4 py-3">
                     {{ $tickets->links() }}
                 </div>
             </div>

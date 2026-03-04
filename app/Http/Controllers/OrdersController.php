@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
-use App\Services\StripeCheckoutService;
+use App\Models\Lead;
+use App\Models\SacTicket;
+use App\Models\SellerCommission;
+use App\Models\WhatsappLog;
+use App\Services\CheckoutService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Throwable;
@@ -153,6 +157,10 @@ class OrdersController extends Controller
             'total' => (clone $ordersQuery)->count(),
             'pagos' => (clone $ordersQuery)->where('pagamento_status', 'pago')->count(),
             'pendentes' => (clone $ordersQuery)->where('status', 'pendente')->count(),
+            'commissions_pending' => (int) SellerCommission::query()->whereIn('status', ['pending', 'available'])->count(),
+            'sac_open' => (int) SacTicket::query()->whereIn('status', ['aberto', 'em_atendimento', 'aguardando_cliente'])->count(),
+            'leads_unassigned' => (int) Lead::query()->whereNull('referred_by_user_id')->count(),
+            'messages_pending' => (int) WhatsappLog::query()->where('status', 'pendente')->count(),
         ];
 
         return view('admin.orders.index', [
@@ -193,7 +201,7 @@ class OrdersController extends Controller
             ->limit(5)
             ->get();
 
-        $seriesMensal = collect(range(5, 0))
+        $seriesMensal = collect(range(5, 1))
             ->map(function (int $i) {
                 $mes = now()->subMonths($i);
                 $inicio = $mes->copy()->startOfMonth();
@@ -284,7 +292,7 @@ class OrdersController extends Controller
         ]);
     }
 
-    public function resendPaymentLink(Request $request, Order $order, StripeCheckoutService $stripeCheckoutService)
+    public function resendPaymentLink(Request $request, Order $order, CheckoutService $checkoutService)
     {
         $this->authorize('viewAny', Order::class);
 
@@ -305,7 +313,7 @@ class OrdersController extends Controller
         }
 
         try {
-            $checkoutUrl = $stripeCheckoutService->createCheckoutSessionForOrder($order);
+            $checkoutUrl = $checkoutService->createCheckoutSessionForOrder($order);
         } catch (Throwable $e) {
             report($e);
 

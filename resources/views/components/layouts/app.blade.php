@@ -18,49 +18,144 @@
             $referralCode = $showReferralNav ? $authUser->ensureReferralCode() : null;
             $referralLink = $referralCode ? route('regularizacao.index', ['indicacao' => $referralCode]) : null;
             $referralCredits = (float) $authUser->referral_credits;
+            $isAnalystRole = in_array($authUser->role, ['analista', 'vendedor'], true);
+            $isBackofficeRole = in_array($authUser->role, ['admin', 'atendente'], true);
+            $serverNow = now();
+            $serverCity = (string) config('app.server_city', 'São Paulo');
+            $serverUf = (string) config('app.server_uf', 'SP');
+            $serverCountry = (string) config('app.server_country', 'Brasil');
         @endphp
-        <div class="min-h-screen lg:grid lg:grid-cols-[250px_1fr]">
-            <aside class="hidden lg:flex lg:flex-col" style="background: var(--sidebar-bg);">
-                <div class="border-b border-white/10 px-5 py-4">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200/90">CPF Clean Brasil</p>
-                    <h1 class="mt-1 text-lg font-bold text-white">Painel Interno</h1>
+
+        <div id="app-shell" class="app-shell">
+            <aside id="app-sidebar" class="hidden lg:flex lg:flex-col app-sidebar">
+                <div class="app-brand border-b border-white/10 px-5 py-4">
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-200/90 sidebar-label">CPF Clean Brasil</p>
+                    <h1 class="mt-1 text-2xl font-black text-white sidebar-label">Central de Controle</h1>
+                    <p class="mt-1 text-xs text-cyan-200/80 sidebar-label">___________</p>
                 </div>
 
-                <div class="flex-1 space-y-1 px-3 py-4">
-                    <a href="{{ route('dashboard') }}" class="block rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('dashboard') ? 'bg-white/15 text-white' : 'text-[var(--sidebar-muted)] hover:bg-white/10 hover:text-white' }}">Dashboard</a>
-
-                    @if (auth()->user()->role === 'cliente')
-                        <a href="{{ route('portal.dashboard') }}" class="block rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('portal.dashboard') ? 'bg-[var(--sidebar-active)] text-white' : 'text-[var(--sidebar-muted)] hover:bg-white/10 hover:text-white' }}">Meus Pedidos</a>
-                        <a href="{{ route('portal.tickets.index') }}" class="block rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('portal.tickets.*') ? 'bg-[var(--sidebar-active)] text-white' : 'text-[var(--sidebar-muted)] hover:bg-white/10 hover:text-white' }}">Suporte (SAC)</a>
+                <nav class="flex-1 space-y-1 px-3 py-4">
+                    @if ($authUser->role === 'cliente')
+                        <a href="{{ route('portal.dashboard') }}" class="app-nav-link {{ request()->routeIs('portal.dashboard') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12 12 4l9 8"/><path d="M5 10v10h14V10"/></svg>
+                            <span class="sidebar-label">Dashboard</span>
+                        </a>
+                        <a href="{{ route('portal.contracts') }}" class="app-nav-link {{ request()->routeIs('portal.contracts') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10l3 3v13H4V4h3z"/><path d="M14 4v4h4"/></svg>
+                            <span class="sidebar-label">Meus Contratos</span>
+                        </a>
+                        <a href="{{ route('portal.timeline') }}" class="app-nav-link {{ request()->routeIs('portal.timeline') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5v14"/><path d="M12 5v14"/><path d="M19 5v14"/><circle cx="5" cy="9" r="2"/><circle cx="12" cy="15" r="2"/><circle cx="19" cy="11" r="2"/></svg>
+                            <span class="sidebar-label">Timeline</span>
+                        </a>
+                        <a href="{{ route('portal.analyst-chat') }}" class="app-nav-link {{ request()->routeIs('portal.analyst-chat*') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 18H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-9l-5 3v-3z"/></svg>
+                            <span class="sidebar-label">Mensageria Analista</span>
+                        </a>
+                        <a href="{{ route('profile.edit') }}" class="app-nav-link {{ request()->routeIs('profile.*') || request()->routeIs('portal.profile*') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4-5 8-5s6.5 1.5 8 5"/></svg>
+                            <span class="sidebar-label">Meus Dados</span>
+                        </a>
+                        <a href="{{ route('portal.tickets.index') }}" class="app-nav-link {{ request()->routeIs('portal.tickets.*') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16v12H4z"/><path d="M9 10h6M9 14h4"/></svg>
+                            <span class="sidebar-label">SAC</span>
+                        </a>
                     @endif
 
-                    @if (in_array(auth()->user()->role, ['admin', 'atendente'], true))
-                        <a href="{{ route('admin.orders.index') }}" class="block rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('admin.orders.*') ? 'bg-[var(--sidebar-active)] text-white' : 'text-[var(--sidebar-muted)] hover:bg-white/10 hover:text-white' }}">Pedidos</a>
-                        <a href="{{ route('admin.tickets.index') }}" class="block rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('admin.tickets.*') ? 'bg-[var(--sidebar-active)] text-white' : 'text-[var(--sidebar-muted)] hover:bg-white/10 hover:text-white' }}">SAC</a>
+                    @if ($isAnalystRole)
+                        <a href="{{ route('analyst.dashboard') }}" class="app-nav-link {{ request()->routeIs('analyst.dashboard') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12 12 4l9 8"/><path d="M5 10v10h14V10"/></svg>
+                            <span class="sidebar-label">Dashboard</span>
+                        </a>
+                        <a href="{{ route('admin.orders.index') }}" class="app-nav-link {{ request()->routeIs('admin.orders.*') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h10"/></svg>
+                            <span class="sidebar-label">Pedidos</span>
+                        </a>
+                        <a href="{{ route('admin.tickets.index') }}" class="app-nav-link {{ request()->routeIs('admin.tickets.*') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16v12H4z"/><path d="M9 10h6M9 14h4"/></svg>
+                            <span class="sidebar-label">SAC</span>
+                        </a>
+                        <a href="{{ route('analyst.contracts') }}" class="app-nav-link {{ request()->routeIs('analyst.contracts') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10l3 3v13H4V4h3z"/><path d="M14 4v4h4"/></svg>
+                            <span class="sidebar-label">Contratos</span>
+                        </a>
+                        <a href="{{ route('analyst.clients') }}" class="app-nav-link {{ request()->routeIs('analyst.clients') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M3 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/><path d="M11 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/></svg>
+                            <span class="sidebar-label">Carteira</span>
+                        </a>
+                        <a href="{{ route('analyst.commissions') }}" class="app-nav-link {{ request()->routeIs('analyst.commissions') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M9 10h6a2 2 0 1 1 0 4H9"/><path d="M12 8v8"/></svg>
+                            <span class="sidebar-label">Comissões</span>
+                        </a>
+                        <a href="{{ route('profile.edit') }}" class="app-nav-link {{ request()->routeIs('profile.*') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4-5 8-5s6.5 1.5 8 5"/></svg>
+                            <span class="sidebar-label">Meu Perfil</span>
+                        </a>
                     @endif
 
-                    @if (auth()->user()->role === 'admin')
-                        <a href="{{ route('admin.vendors.index') }}" class="block rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('admin.vendors.*') ? 'bg-[var(--sidebar-active)] text-white' : 'text-[var(--sidebar-muted)] hover:bg-white/10 hover:text-white' }}">Vendedores</a>
-                        <a href="{{ route('admin.finance.dashboard') }}" class="block rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('admin.finance.*') ? 'bg-[var(--sidebar-active)] text-white' : 'text-[var(--sidebar-muted)] hover:bg-white/10 hover:text-white' }}">Financeiro</a>
-                        <a href="/horizon" class="block rounded-md px-3 py-2 text-sm font-medium text-[var(--sidebar-muted)] hover:bg-white/10 hover:text-white">Horizon</a>
+                    @if ($isBackofficeRole)
+                        <a href="{{ route('admin.orders.index') }}" class="app-nav-link {{ request()->routeIs('admin.orders.*') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h10"/></svg>
+                            <span class="sidebar-label">Pedidos</span>
+                        </a>
+                        <a href="{{ route('admin.tickets.index') }}" class="app-nav-link {{ request()->routeIs('admin.tickets.*') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16v12H4z"/><path d="M9 10h6M9 14h4"/></svg>
+                            <span class="sidebar-label">SAC</span>
+                        </a>
+                        <a href="{{ route('profile.edit') }}" class="app-nav-link {{ request()->routeIs('profile.*') ? 'is-active' : '' }}">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-3.5 4-5 8-5s6.5 1.5 8 5"/></svg>
+                            <span class="sidebar-label">Meu Perfil</span>
+                        </a>
+
+                        @if ($authUser->role === 'admin')
+                            <a href="{{ route('admin.management.dashboard') }}" class="app-nav-link {{ request()->routeIs('admin.management.*') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h4v8H4zM10 4h4v16h-4zM16 9h4v11h-4z"/></svg>
+                                <span class="sidebar-label">Admin Básico</span>
+                            </a>
+                            <a href="{{ route('admin.contracts.index') }}" class="app-nav-link {{ request()->routeIs('admin.contracts.*') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10l3 3v13H4V4h3z"/><path d="M14 4v4h4"/></svg>
+                                <span class="sidebar-label">Contratos</span>
+                            </a>
+                            <a href="{{ route('admin.vendors.index') }}" class="app-nav-link {{ request()->routeIs('admin.vendors.*') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 20h18"/><path d="M6 20V8l6-4 6 4v12"/></svg>
+                                <span class="sidebar-label">Vendedores</span>
+                            </a>
+                            <a href="{{ route('admin.management.vendors') }}" class="app-nav-link {{ request()->routeIs('admin.management.vendors*') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M3 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/><path d="M11 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/></svg>
+                                <span class="sidebar-label">Cadastrar Vendedor</span>
+                            </a>
+                            <a href="{{ route('admin.finance.dashboard') }}" class="app-nav-link {{ request()->routeIs('admin.finance.*') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5"/><path d="M20 19H4"/><path d="M7 15l3-3 3 2 4-5"/></svg>
+                                <span class="sidebar-label">Financeiro</span>
+                            </a>
+                            <a href="/horizon" class="app-nav-link">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                <span class="sidebar-label">Horizon</span>
+                            </a>
+                        @endif
                     @endif
-                </div>
+                </nav>
 
                 <div class="border-t border-white/10 px-4 py-4">
-                    <p class="text-xs text-[var(--sidebar-muted)]">{{ auth()->user()->name }}</p>
-                    <p class="text-xs uppercase tracking-wide text-blue-200">{{ auth()->user()->role }}</p>
+                    <p class="text-xs text-[var(--sidebar-muted)] sidebar-label">{{ $authUser->name }}</p>
+                    <p class="text-xs uppercase tracking-wide text-cyan-200 sidebar-label">{{ $authUser->role }}</p>
                 </div>
             </aside>
 
-            <div class="min-w-0">
-                <header class="border-b border-slate-200 bg-[var(--topbar-bg)]">
+            <div class="min-w-0 app-main-zone">
+                <header class="app-topbar">
                     <div class="flex items-center justify-between px-4 py-3 lg:px-6">
-                        <div>
-                            <p class="text-sm font-semibold text-slate-700">Sistema CPF Clean Brasil</p>
-                            <p class="text-xs text-slate-500">Recuperação de crédito e atendimento SAC</p>
+                        <div class="flex items-center gap-3">
+                            <button type="button" id="sidebar-toggle" class="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-cyan-300 hover:text-cyan-700" aria-label="Recolher menu">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 6l-6 6 6 6"/></svg>
+                            </button>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-700">Sistema CPF Clean Brasil</p>
+                                <p class="text-xs text-slate-500">Operação comercial e atendimento premium</p>
+                            </div>
                         </div>
                         <div class="flex items-center gap-2">
-                            @if (in_array(auth()->user()->role, ['admin', 'atendente'], true))
+                            @if (in_array($authUser->role, ['admin', 'atendente', 'analista', 'vendedor'], true))
                                 <a href="{{ route('regularizacao.index') }}" class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Funil</a>
                             @endif
                             <form method="POST" action="{{ route('logout') }}">
@@ -93,9 +188,25 @@
                     </div>
                 @endif
 
-                <main class="px-4 py-5 lg:px-6">
+                <main class="flex-1 px-4 py-5 lg:px-6">
                     {{ $slot }}
                 </main>
+
+                <footer class="app-footer-wrap px-4 pb-3 lg:px-6">
+                    <div class="app-footer">
+                        <div class="space-y-1">
+                            <div class="app-footer-line">
+                                <span class="status-dot-online"></span>
+                                <span>Status do sistema: Ativo</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500">Servidor: {{ $serverNow->format('d/m/Y H:i:s') }} • {{ $serverCity }} - {{ $serverUf }} • {{ $serverCountry }}</p>
+                        </div>
+                        <div class="app-footer-line app-footer-copy">
+                            <span>© {{ now()->format('Y') }} Desenvolvido por 27.674.876/0001-70</span>
+                            <a href="https://vgit.com.br/" target="_blank" rel="noopener noreferrer">vgit.com.br</a>
+                        </div>
+                    </div>
+                </footer>
             </div>
         </div>
     @else
@@ -104,12 +215,32 @@
         </main>
         @include('components.public-whatsapp-widget')
     @endauth
+
     <script>
         (function () {
+            const shell = document.getElementById('app-shell');
+            const toggle = document.getElementById('sidebar-toggle');
+            const storageKey = 'cpfclean.sidebar.collapsed';
+
+            if (shell && toggle && window.innerWidth >= 1024) {
+                if (window.localStorage.getItem(storageKey) === '1') {
+                    shell.classList.add('sidebar-collapsed');
+                }
+
+                toggle.addEventListener('click', function () {
+                    shell.classList.toggle('sidebar-collapsed');
+                    const collapsed = shell.classList.contains('sidebar-collapsed');
+                    window.localStorage.setItem(storageKey, collapsed ? '1' : '0');
+                });
+            }
+
             document.querySelectorAll('[data-copy-ref]').forEach(function (button) {
                 button.addEventListener('click', function () {
                     const text = button.getAttribute('data-copy-ref') || '';
-                    if (!text) return;
+                    if (!text) {
+                        return;
+                    }
+
                     navigator.clipboard.writeText(text).then(function () {
                         const original = button.textContent;
                         button.textContent = 'COPIADO';

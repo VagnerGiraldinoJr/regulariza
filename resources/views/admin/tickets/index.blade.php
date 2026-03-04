@@ -1,4 +1,19 @@
 <x-layouts.app>
+    @php
+        $statusMap = [
+            'aberto' => ['label' => 'Aberto', 'class' => 'badge-warning'],
+            'em_atendimento' => ['label' => 'Em atendimento', 'class' => 'badge-info'],
+            'resolvido' => ['label' => 'Resolvido', 'class' => 'badge-success'],
+            'fechado' => ['label' => 'Fechado', 'class' => 'badge-neutral'],
+        ];
+        $priorityMap = [
+            'nova' => ['label' => 'Nova', 'class' => 'badge-neutral'],
+            'baixa' => ['label' => 'Baixa', 'class' => 'badge-success'],
+            'media' => ['label' => 'Média', 'class' => 'badge-info'],
+            'alta' => ['label' => 'Alta', 'class' => 'badge-warning'],
+            'critica' => ['label' => 'Crítica', 'class' => 'badge-danger'],
+        ];
+    @endphp
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">Dashboard SAC</h1>
@@ -25,13 +40,13 @@
         </section>
 
         <section class="panel-card overflow-hidden">
-            <div class="border-b border-slate-200 px-4 py-3">
+            <div class="border-b border-slate-300/50 bg-white/15 px-4 py-3">
                 <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Tickets pendentes de atribuição</h2>
             </div>
 
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
-                    <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
+                    <thead class="bg-white/45 text-left text-xs uppercase tracking-wide text-slate-700">
                         <tr>
                             <th class="px-4 py-3">Protocolo</th>
                             <th class="px-4 py-3">Cliente</th>
@@ -43,15 +58,23 @@
                     </thead>
                     <tbody>
                 @forelse ($tickets as $ticket)
-                    <tr class="border-t border-slate-100">
+                    @php
+                        $statusInfo = $statusMap[$ticket->status] ?? ['label' => ucfirst(str_replace('_', ' ', (string) $ticket->status)), 'class' => 'badge-neutral'];
+                        $priorityInfo = $priorityMap[$ticket->prioridade] ?? ['label' => ucfirst((string) $ticket->prioridade), 'class' => 'badge-neutral'];
+                    @endphp
+                    <tr class="border-t border-slate-200/60">
                         <td class="px-4 py-3">
                             <p class="font-semibold text-slate-800">{{ $ticket->protocolo }}</p>
                             <p class="text-xs text-slate-500">{{ $ticket->assunto }}</p>
                         </td>
                         <td class="px-4 py-3 text-slate-700">{{ $ticket->user?->name }}</td>
                         <td class="px-4 py-3 text-slate-600">{{ $ticket->order?->protocolo ?? '-' }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ $ticket->status }}</td>
-                        <td class="px-4 py-3 text-slate-700">{{ $ticket->prioridade }}</td>
+                        <td class="px-4 py-3 text-slate-700">
+                            <span class="badge {{ $statusInfo['class'] }}">{{ $statusInfo['label'] }}</span>
+                        </td>
+                        <td class="px-4 py-3 text-slate-700">
+                            <span class="badge {{ $priorityInfo['class'] }}">{{ $priorityInfo['label'] }}</span>
+                        </td>
                         <td class="px-4 py-3">
                             <div class="flex justify-end gap-2">
                                 <form method="POST" action="{{ route('admin.tickets.assign', $ticket->id) }}">
@@ -72,7 +95,7 @@
                 </table>
             </div>
 
-            <div class="border-t border-slate-200 px-4 py-3">
+            <div class="border-t border-slate-300/40 bg-white/10 px-4 py-3">
                 {{ $tickets->links() }}
             </div>
         </section>

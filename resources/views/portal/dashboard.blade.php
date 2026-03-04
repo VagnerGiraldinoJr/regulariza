@@ -1,4 +1,18 @@
 <x-layouts.app>
+    @php
+        $orderStatusMap = [
+            'pendente' => ['label' => 'Pendente', 'class' => 'badge-warning'],
+            'em_andamento' => ['label' => 'Em andamento', 'class' => 'badge-info'],
+            'concluido' => ['label' => 'Concluído', 'class' => 'badge-success'],
+            'cancelado' => ['label' => 'Cancelado', 'class' => 'badge-danger'],
+        ];
+        $paymentMap = [
+            'aguardando' => ['label' => 'Aguardando', 'class' => 'badge-warning'],
+            'pago' => ['label' => 'Pago', 'class' => 'badge-success'],
+            'falhou' => ['label' => 'Falhou', 'class' => 'badge-danger'],
+            'reembolsado' => ['label' => 'Reembolsado', 'class' => 'badge-neutral'],
+        ];
+    @endphp
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">Portal do Cliente</h1>
@@ -32,7 +46,7 @@
                 <p class="mt-1 text-xs text-slate-500">Contratos vendidos com seu código de referência.</p>
             </div>
 
-            <div class="grid gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:grid-cols-4">
+            <div class="grid gap-3 border-b border-slate-200/60 bg-white/25 px-4 py-3 sm:grid-cols-4">
                 <div>
                     <p class="text-[11px] uppercase tracking-wide text-slate-500">Contratos</p>
                     <p class="text-base font-extrabold text-slate-800">{{ $referralStats['total_contratos'] }}</p>
@@ -53,7 +67,7 @@
 
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
-                    <thead class="bg-white text-left text-xs uppercase tracking-wide text-slate-600">
+                    <thead class="bg-white/45 text-left text-xs uppercase tracking-wide text-slate-700">
                         <tr>
                             <th class="px-4 py-3">Protocolo</th>
                             <th class="px-4 py-3">Cliente</th>
@@ -74,16 +88,16 @@
                                 $phoneDigits = $phoneDigits !== '' && strlen($phoneDigits) <= 11 ? '55'.$phoneDigits : $phoneDigits;
                                 $phoneLink = $phoneDigits !== '' ? 'https://wa.me/'.$phoneDigits : null;
                             @endphp
-                            <tr class="border-t border-slate-100">
+                            <tr class="border-t border-slate-200/60">
                                 <td class="px-4 py-3 font-semibold text-slate-800">{{ $refOrder->protocolo }}</td>
                                 <td class="px-4 py-3 text-slate-700">{{ $refOrder->user?->name }}</td>
                                 <td class="px-4 py-3 text-slate-700">{{ $docType }} {{ $doc ?: '-' }}</td>
                                 <td class="px-4 py-3 text-slate-700">{{ $refOrder->service?->nome }}</td>
                                 <td class="px-4 py-3">
                                     @if ($refOrder->pagamento_status === 'pago')
-                                        <span class="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-700">Válido</span>
+                                        <span class="badge badge-success">Válido</span>
                                     @else
-                                        <span class="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">Pendente</span>
+                                        <span class="badge badge-warning">Pendente</span>
                                     @endif
                                 </td>
                                 <td class="px-4 py-3">
@@ -261,7 +275,7 @@
 
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
-                    <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-600">
+                    <thead class="bg-white/45 text-left text-xs uppercase tracking-wide text-slate-700">
                         <tr>
                             <th class="px-4 py-3">Protocolo</th>
                             <th class="px-4 py-3">Serviço</th>
@@ -272,11 +286,15 @@
                     </thead>
                     <tbody>
                         @forelse ($orders as $order)
-                            <tr class="border-t border-slate-100">
+                            @php
+                                $statusInfo = $orderStatusMap[$order->status] ?? ['label' => ucfirst(str_replace('_', ' ', (string) $order->status)), 'class' => 'badge-neutral'];
+                                $paymentInfo = $paymentMap[$order->pagamento_status] ?? ['label' => ucfirst((string) $order->pagamento_status), 'class' => 'badge-neutral'];
+                            @endphp
+                            <tr class="border-t border-slate-200/60">
                                 <td class="px-4 py-3 font-semibold text-slate-800">{{ $order->protocolo }}</td>
-                                <td class="px-4 py-3 text-slate-600">{{ $order->service?->nome }}</td>
-                                <td class="px-4 py-3 text-slate-700">{{ $order->status }}</td>
-                                <td class="px-4 py-3 text-slate-700">{{ $order->pagamento_status }}</td>
+                                <td class="px-4 py-3 text-slate-700"><span class="badge badge-info">{{ $order->service?->nome }}</span></td>
+                                <td class="px-4 py-3 text-slate-700"><span class="badge {{ $statusInfo['class'] }}">{{ $statusInfo['label'] }}</span></td>
+                                <td class="px-4 py-3 text-slate-700"><span class="badge {{ $paymentInfo['class'] }}">{{ $paymentInfo['label'] }}</span></td>
                                 <td class="px-4 py-3">
                                     @if ($order->pagamento_status !== 'pago')
                                         <form method="POST" action="{{ route('portal.orders.resend-payment-link', $order) }}">

@@ -37,7 +37,7 @@ class ReferralService
 
             $referrer = User::query()->lockForUpdate()->find($referrerId);
 
-            if (! $referrer) {
+            if (! $referrer || $referrer->role !== 'cliente') {
                 return;
             }
 
@@ -52,4 +52,3 @@ class ReferralService
         });
     }
 }
-

@@ -65,7 +65,11 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'America/Sao_Paulo'),
+
+    'server_city' => env('SERVER_CITY', 'Ponta Grossa'),
+    'server_uf' => env('SERVER_UF', 'PR'),
+    'server_country' => env('SERVER_COUNTRY', 'Brasil'),
 
     /*
     |--------------------------------------------------------------------------

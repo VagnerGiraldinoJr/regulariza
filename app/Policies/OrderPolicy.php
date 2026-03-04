@@ -9,12 +9,12 @@ class OrderPolicy
 {
     public function viewAny(User $user): bool
     {
-        return in_array($user->role, ['admin', 'atendente', 'cliente'], true);
+        return in_array($user->role, ['admin', 'atendente', 'analista', 'vendedor', 'cliente'], true);
     }
 
     public function view(User $user, Order $order): bool
     {
-        if (in_array($user->role, ['admin', 'atendente'], true)) {
+        if (in_array($user->role, ['admin', 'atendente', 'analista', 'vendedor'], true)) {
             return true;
         }
 

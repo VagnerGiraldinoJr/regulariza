@@ -7,20 +7,34 @@ use App\Models\SacTicket;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class PublicContactController extends Controller
 {
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'nome' => ['nullable', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:150'],
             'whatsapp' => ['required', 'string', 'max:20'],
             'cnpj' => ['nullable', 'string', 'max:18'],
             'mensagem' => ['nullable', 'string', 'max:1000'],
             'origem' => ['nullable', 'string', 'max:120'],
+        ], [
+            'email.required' => 'Informe o e-mail.',
+            'email.email' => 'Informe um e-mail válido.',
+            'whatsapp.required' => 'Informe o WhatsApp com DDD.',
+            'whatsapp.max' => 'WhatsApp inválido.',
         ]);
+
+        if ($validator->fails()) {
+            return back()
+                ->withErrors($validator, 'publicWhatsapp')
+                ->withInput();
+        }
+
+        $validated = $validator->validated();
 
         $whatsappDigits = preg_replace('/\D+/', '', (string) $validated['whatsapp']);
         $cnpjDigits = preg_replace('/\D+/', '', (string) ($validated['cnpj'] ?? ''));
@@ -28,13 +42,13 @@ class PublicContactController extends Controller
 
         if (strlen($whatsappDigits) < 10 || strlen($whatsappDigits) > 13) {
             return back()
-                ->withErrors(['whatsapp' => 'Informe um WhatsApp válido com DDD.'])
+                ->withErrors(['whatsapp' => 'Informe um WhatsApp válido com DDD.'], 'publicWhatsapp')
                 ->withInput();
         }
 
         if (($origem === '/' || $origem === 'welcome') && strlen($cnpjDigits) !== 14) {
             return back()
-                ->withErrors(['cnpj' => 'Informe um CNPJ válido com 14 dígitos.'])
+                ->withErrors(['cnpj' => 'Informe um CNPJ válido com 14 dígitos.'], 'publicWhatsapp')
                 ->withInput();
         }
 

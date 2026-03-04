@@ -16,11 +16,16 @@ upsert_env() {
     return 0
   fi
 
-  escaped_value=$(printf '%s' "$value" | sed 's/[\/&]/\\&/g')
+  write_value="$value"
+  if printf '%s' "$write_value" | grep -q ' '; then
+    write_value="\"$write_value\""
+  fi
+
+  escaped_value=$(printf '%s' "$write_value" | sed 's/[\/&]/\\&/g')
   if grep -qE "^${key}=" .env; then
     sed -i "s/^${key}=.*/${key}=${escaped_value}/" .env
   else
-    printf '\n%s=%s\n' "$key" "$value" >> .env
+    printf '\n%s=%s\n' "$key" "$write_value" >> .env
   fi
 }
 
@@ -28,6 +33,10 @@ upsert_env() {
 upsert_env APP_ENV "${APP_ENV:-}"
 upsert_env APP_DEBUG "${APP_DEBUG:-}"
 upsert_env APP_URL "${APP_URL:-}"
+upsert_env APP_TIMEZONE "${APP_TIMEZONE:-}"
+upsert_env SERVER_CITY "${SERVER_CITY:-}"
+upsert_env SERVER_UF "${SERVER_UF:-}"
+upsert_env SERVER_COUNTRY "${SERVER_COUNTRY:-}"
 upsert_env DB_CONNECTION "${DB_CONNECTION:-}"
 upsert_env DB_HOST "${DB_HOST:-}"
 upsert_env DB_PORT "${DB_PORT:-}"

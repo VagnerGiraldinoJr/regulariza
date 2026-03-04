@@ -25,7 +25,7 @@ class RoleMiddleware
             }
 
             $target = match ($user->role) {
-                'admin', 'atendente' => route('admin.orders.index'),
+                'admin', 'atendente', 'analista', 'vendedor' => route('admin.orders.index'),
                 default => route('portal.dashboard'),
             };
 
