@@ -8,6 +8,15 @@
         @if (session('success'))
             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
         @endif
+        @if (session('reset_preview'))
+            <div class="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                <p class="font-semibold">Ambiente local: link de redefinição gerado para {{ session('reset_preview.email') }}.</p>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                    <code class="rounded bg-white px-2 py-1 text-xs text-slate-700">{{ session('reset_preview.url') }}</code>
+                    <button type="button" class="rounded-md border border-sky-300 bg-white px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100" data-copy-ref="{{ session('reset_preview.url') }}">Copiar link</button>
+                </div>
+            </div>
+        @endif
         @error('reset_link')
             <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $message }}</div>
         @enderror

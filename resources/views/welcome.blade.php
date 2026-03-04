@@ -280,9 +280,8 @@
             <div>
                 <h3 class="text-sm font-bold uppercase tracking-[0.16em] text-white">Fale Conosco</h3>
                 <ul class="mt-3 space-y-2 text-sm">
-                    <li>São Paulo: (11) 3197-0719</li>
-                    <li>Demais regiões: 0800 878 1179</li>
-                    <li>atendimento@regulariza.com.br</li>
+                    <li>27 99973-2699</li>
+                    <li>contato@cpfclean.com</li>
                 </ul>
             </div>
         </div>

@@ -49,17 +49,6 @@
                 <div class="metric-card metric-soft-green"><h3>{{ $stats['messages_pending'] }}</h3><p>WhatsApp pendentes</p></div>
             </section>
 
-            <section class="panel-card p-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                <a class="btn-primary text-center" href="{{ route('admin.contracts.index') }}">Módulo de contratos</a>
-                <a class="btn-primary text-center" href="{{ route('admin.management.contract-payments') }}">Controle de pagamentos</a>
-                <a class="btn-primary text-center" href="{{ route('admin.management.commissions') }}">Controle de comissões</a>
-                <a class="btn-primary text-center" href="{{ route('admin.management.payout-requests') }}">Solicitações PIX</a>
-                <a class="btn-dark text-center" href="{{ route('admin.finance.dashboard') }}">Dashboard financeiro</a>
-                <a class="btn-dark text-center" href="{{ route('admin.management.integrations') }}">Integrações</a>
-                <a class="btn-dark text-center" href="{{ route('admin.management.messages') }}">Mensagens enviadas</a>
-                <a class="btn-dark text-center" href="{{ route('admin.management.users') }}">Usuários</a>
-                <a class="btn-dark text-center" href="{{ route('admin.management.vendors') }}">Cadastrar vendedor</a>
-            </section>
         @endif
 
         <section class="panel-card overflow-hidden">

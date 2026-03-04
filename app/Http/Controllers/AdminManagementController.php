@@ -10,6 +10,7 @@ use App\Models\SacMessage;
 use App\Models\SacTicket;
 use App\Models\Service;
 use App\Models\SellerCommission;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\WhatsappLog;
 use Illuminate\Http\RedirectResponse;
@@ -17,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -96,15 +98,51 @@ class AdminManagementController extends Controller
             'asaas' => [
                 'enabled' => filled(config('services.asaas.api_key')),
                 'base_url' => (string) config('services.asaas.base_url'),
+                'api_key' => (string) config('services.asaas.api_key'),
+                'webhook_token' => (string) config('services.asaas.webhook_token'),
                 'webhook' => route('api.asaas.webhook'),
             ],
             'zapi' => [
-                'enabled' => filled(config('services.cpfclean.whatsapp_number')),
-                'instance' => (string) config('services.cpfclean.whatsapp_number'),
+                'enabled' => filled(config('zapi.instance')) && filled(config('zapi.token')),
+                'instance' => (string) config('zapi.instance'),
+                'token' => (string) config('zapi.token'),
+                'client_token' => (string) config('zapi.client_token'),
+                'whatsapp_number' => (string) config('services.cpfclean.whatsapp_number'),
             ],
         ];
 
         return view('admin/management/integrations', compact('integrations'));
+    }
+
+    public function updateIntegrations(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'asaas_base_url' => ['required', 'url', 'max:255'],
+            'asaas_api_key' => ['required', 'string', 'max:255'],
+            'asaas_webhook_token' => ['nullable', 'string', 'max:255'],
+            'zapi_instance' => ['nullable', 'string', 'max:255'],
+            'zapi_token' => ['nullable', 'string', 'max:255'],
+            'zapi_client_token' => ['nullable', 'string', 'max:255'],
+            'cpfclean_whatsapp_number' => ['nullable', 'string', 'max:25'],
+        ]);
+
+        $map = [
+            'asaas.base_url' => trim((string) $data['asaas_base_url']),
+            'asaas.api_key' => trim((string) $data['asaas_api_key']),
+            'asaas.webhook_token' => trim((string) ($data['asaas_webhook_token'] ?? '')),
+            'zapi.instance' => trim((string) ($data['zapi_instance'] ?? '')),
+            'zapi.token' => trim((string) ($data['zapi_token'] ?? '')),
+            'zapi.client_token' => trim((string) ($data['zapi_client_token'] ?? '')),
+            'cpfclean.whatsapp_number' => preg_replace('/\D+/', '', (string) ($data['cpfclean_whatsapp_number'] ?? '')),
+        ];
+
+        foreach ($map as $key => $value) {
+            SystemSetting::setValue($key, $value !== '' ? $value : null);
+        }
+
+        SystemSetting::applyRuntimeConfig();
+
+        return back()->with('success', 'Integrações atualizadas com sucesso.');
     }
 
     public function messages(Request $request): View
@@ -241,7 +279,16 @@ class AdminManagementController extends Controller
         $status = Password::sendResetLink(['email' => (string) $vendor->email]);
 
         if ($status === Password::RESET_LINK_SENT) {
-            return back()->with('success', "Vendedor criado e e-mail de definição de senha enviado para {$vendor->email}.");
+            $response = back()->with('success', "Vendedor criado e e-mail de definição de senha enviado para {$vendor->email}.");
+
+            if (app()->isLocal()) {
+                $response->with('reset_preview', [
+                    'email' => (string) $vendor->email,
+                    'url' => $this->buildResetUrl($vendor),
+                ]);
+            }
+
+            return $response;
         }
 
         return back()->with('success', 'Vendedor criado com sucesso.')
@@ -253,11 +300,30 @@ class AdminManagementController extends Controller
         $status = Password::sendResetLink(['email' => (string) $user->email]);
 
         if ($status === Password::RESET_LINK_SENT) {
-            return back()->with('success', "Link de redefinição enviado para {$user->email}.");
+            $response = back()->with('success', "Link de redefinição enviado para {$user->email}.");
+
+            if (app()->isLocal()) {
+                $response->with('reset_preview', [
+                    'email' => (string) $user->email,
+                    'url' => $this->buildResetUrl($user),
+                ]);
+            }
+
+            return $response;
         }
 
         return back()->withErrors([
             'reset_link' => "Não foi possível enviar o e-mail de redefinição para {$user->email}.",
+        ]);
+    }
+
+    private function buildResetUrl(User $user): string
+    {
+        $token = Password::broker()->createToken($user);
+
+        return URL::route('password.reset', [
+            'token' => $token,
+            'email' => (string) $user->email,
         ]);
     }
 

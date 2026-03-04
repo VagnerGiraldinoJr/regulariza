@@ -37,4 +37,10 @@ return [
         'whatsapp_number' => env('CPFCLEAN_WHATSAPP_NUMBER', '5531998428448'),
     ],
 
+    'zapi' => [
+        'instance' => env('ZAPI_INSTANCE'),
+        'token' => env('ZAPI_TOKEN'),
+        'client_token' => env('ZAPI_CLIENT_TOKEN'),
+    ],
+
 ];

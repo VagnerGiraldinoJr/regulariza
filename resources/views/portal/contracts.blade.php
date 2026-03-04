@@ -1,11 +1,9 @@
 <x-layouts.app>
     @php
         $statusMap = [
-            'rascunho' => ['label' => 'Rascunho', 'class' => 'badge-neutral'],
-            'enviado' => ['label' => 'Enviado', 'class' => 'badge-info'],
-            'aguardando_assinatura' => ['label' => 'Aguardando assinatura', 'class' => 'badge-warning'],
-            'assinado' => ['label' => 'Assinado', 'class' => 'badge-success'],
+            'aguardando_entrada' => ['label' => 'Aguardando entrada', 'class' => 'badge-warning'],
             'ativo' => ['label' => 'Ativo', 'class' => 'badge-success'],
+            'concluido' => ['label' => 'Concluído', 'class' => 'badge-info'],
             'cancelado' => ['label' => 'Cancelado', 'class' => 'badge-danger'],
         ];
     @endphp

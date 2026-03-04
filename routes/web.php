@@ -247,6 +247,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/management')->name('adm
     Route::get('/commissions', [AdminManagementController::class, 'commissions'])->name('commissions');
     Route::get('/payout-requests', [AdminManagementController::class, 'payoutRequests'])->name('payout-requests');
     Route::get('/integrations', [AdminManagementController::class, 'integrations'])->name('integrations');
+    Route::post('/integrations', [AdminManagementController::class, 'updateIntegrations'])->name('integrations.update');
     Route::get('/messages', [AdminManagementController::class, 'messages'])->name('messages');
     Route::get('/orphan-leads', [AdminManagementController::class, 'orphanLeads'])->name('orphan-leads');
     Route::post('/orphan-leads/{lead}/assign', [AdminManagementController::class, 'assignLead'])->name('orphan-leads.assign');

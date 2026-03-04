@@ -40,6 +40,7 @@ class ContractService
 
             $analystId = $this->resolveAnalystId($order);
             $entryAmount = round($feeAmount * ($entryPercentage / 100), 2);
+            $entryPercentageLabel = rtrim(rtrim(number_format($entryPercentage, 2, '.', ''), '0'), '.');
             $remaining = round($feeAmount - $entryAmount, 2);
             $baseInstallment = floor(($remaining / 3) * 100) / 100;
             $amounts = [$baseInstallment, $baseInstallment, round($remaining - ($baseInstallment * 2), 2)];
@@ -64,7 +65,7 @@ class ContractService
                 'contract_id' => $contract->id,
                 'order_id' => $order->id,
                 'installment_number' => 0,
-                'label' => 'Entrada (50%)',
+                'label' => "Entrada ({$entryPercentageLabel}%)",
                 'amount' => $entryAmount,
                 'due_date' => now()->toDateString(),
                 'billing_type' => 'PIX',

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\SystemSetting;
 use App\Models\Order;
 use App\Models\SacTicket;
 use App\Policies\OrderPolicy;
@@ -25,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        SystemSetting::applyRuntimeConfig();
+
         Order::observe(OrderObserver::class);
 
         Gate::policy(Order::class, OrderPolicy::class);

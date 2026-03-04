@@ -2,20 +2,16 @@
     @php
         $viewMode = request()->query('view', 'tabela');
         $statusMap = [
-            'rascunho' => ['label' => 'Rascunho', 'class' => 'badge-neutral'],
-            'enviado' => ['label' => 'Enviado', 'class' => 'badge-info'],
-            'aguardando_assinatura' => ['label' => 'Aguardando assinatura', 'class' => 'badge-warning'],
-            'assinado' => ['label' => 'Assinado', 'class' => 'badge-success'],
+            'aguardando_entrada' => ['label' => 'Aguardando entrada', 'class' => 'badge-warning'],
             'cancelado' => ['label' => 'Cancelado', 'class' => 'badge-danger'],
             'ativo' => ['label' => 'Ativo', 'class' => 'badge-success'],
+            'concluido' => ['label' => 'Concluído', 'class' => 'badge-info'],
         ];
 
         $kanbanColumns = [
-            'rascunho' => 'Rascunho',
-            'enviado' => 'Enviado',
-            'aguardando_assinatura' => 'Aguardando assinatura',
-            'assinado' => 'Assinado',
+            'aguardando_entrada' => 'Aguardando entrada',
             'ativo' => 'Ativo',
+            'concluido' => 'Concluído',
             'cancelado' => 'Cancelado',
         ];
 

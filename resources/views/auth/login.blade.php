@@ -1,5 +1,5 @@
 <x-layouts.app>
-    <div class="min-h-screen bg-[radial-gradient(circle_at_20%_15%,#20b6c7_0%,#118ea0_40%,#061a2d_100%)] px-4 py-8 lg:px-6">
+    <div class="min-h-screen px-4 py-8 lg:px-6">
         <div class="mx-auto max-w-5xl">
             <div class="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl">
                 <div class="grid lg:grid-cols-[1.45fr_0.85fr]">
@@ -86,8 +86,8 @@
 
                             <div class="mt-5 text-center text-xs text-slate-500">
                                 <p>©2026 - CPF Clean Brasil</p>
-                                <p>0800 878 1179 | (11) 3197-0719</p>
-                                <p>atendimento@regulariza.com.br</p>
+                                <p>27 99973-2699</p>
+                                <p>contato@cpfclean.com</p>
                             </div>
 
                             <div class="mt-3 text-center text-xs">

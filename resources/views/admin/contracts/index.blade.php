@@ -1,11 +1,9 @@
 <x-layouts.app>
     @php
         $statusMap = [
-            'rascunho' => ['label' => 'Rascunho', 'class' => 'bg-slate-100/85 text-slate-800 border-slate-300/80'],
-            'enviado' => ['label' => 'Enviado', 'class' => 'bg-sky-100/85 text-sky-900 border-sky-300/80'],
-            'aguardando_assinatura' => ['label' => 'Aguardando assinatura', 'class' => 'bg-amber-100/85 text-amber-900 border-amber-300/80'],
-            'assinado' => ['label' => 'Assinado', 'class' => 'bg-emerald-100/85 text-emerald-900 border-emerald-300/80'],
+            'aguardando_entrada' => ['label' => 'Aguardando entrada', 'class' => 'bg-amber-100/85 text-amber-900 border-amber-300/80'],
             'ativo' => ['label' => 'Ativo', 'class' => 'bg-emerald-100/85 text-emerald-900 border-emerald-300/80'],
+            'concluido' => ['label' => 'Concluído', 'class' => 'bg-sky-100/85 text-sky-900 border-sky-300/80'],
             'cancelado' => ['label' => 'Cancelado', 'class' => 'bg-rose-100/85 text-rose-900 border-rose-300/80'],
         ];
     @endphp
@@ -22,19 +20,24 @@
 
         <section class="panel-card p-4">
             <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Novo contrato</h2>
+            @if($eligibleOrders->isEmpty())
+                <p class="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    Nenhum pedido pago disponível para gerar contrato neste momento.
+                </p>
+            @endif
             <form method="POST" action="{{ route('admin.contracts.store') }}" enctype="multipart/form-data" class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 @csrf
-                <select name="order_id" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
-                    <option value="">Pedido pago sem contrato</option>
+                <select name="order_id" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required @disabled($eligibleOrders->isEmpty())>
+                    <option value="" selected disabled>Selecione um pedido pago sem contrato</option>
                     @foreach($eligibleOrders as $order)
                         <option value="{{ $order->id }}">{{ $order->protocolo }} - {{ $order->user?->name }} - R$ {{ number_format((float) $order->valor, 2, ',', '.') }}</option>
                     @endforeach
                 </select>
-                <input type="number" step="0.01" min="0" name="debt_amount" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Dívida (R$)" required>
-                <input type="number" step="0.01" min="0.01" name="fee_amount" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Honorários (R$)" required>
-                <input type="number" step="0.01" min="1" max="99" name="entry_percentage" value="50" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Entrada %" required>
-                <input type="file" name="document" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" accept=".doc,.docx,.pdf">
-                <button class="btn-primary sm:col-span-2 lg:col-span-5">Criar contrato e gerar cobranças</button>
+                <input type="number" step="0.01" min="0" name="debt_amount" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Dívida (R$)" required @disabled($eligibleOrders->isEmpty())>
+                <input type="number" step="0.01" min="0.01" name="fee_amount" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Honorários (R$)" required @disabled($eligibleOrders->isEmpty())>
+                <input type="number" step="0.01" min="1" max="99" name="entry_percentage" value="50" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Entrada %" required @disabled($eligibleOrders->isEmpty())>
+                <input type="file" name="document" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" accept=".doc,.docx,.pdf" @disabled($eligibleOrders->isEmpty())>
+                <button class="btn-primary sm:col-span-2 lg:col-span-5" @disabled($eligibleOrders->isEmpty())>Criar contrato e gerar cobranças</button>
             </form>
         </section>
 

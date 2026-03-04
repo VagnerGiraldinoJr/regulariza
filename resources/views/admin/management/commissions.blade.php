@@ -1,4 +1,13 @@
 <x-layouts.app>
+    @php
+        $statusMap = [
+            'pending' => ['label' => 'Em retenção', 'class' => 'badge-warning'],
+            'available' => ['label' => 'Disponível', 'class' => 'badge-info'],
+            'paid' => ['label' => 'Pago', 'class' => 'badge-success'],
+            'canceled' => ['label' => 'Cancelado', 'class' => 'badge-danger'],
+        ];
+    @endphp
+
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">Controle de Pagamentos de Comissões</h1>
@@ -10,7 +19,7 @@
                 <select name="status" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
                     <option value="">Todos</option>
                     @foreach (['pending','available','paid','canceled'] as $s)
-                        <option value="{{ $s }}" @selected($status === $s)>{{ $s }}</option>
+                        <option value="{{ $s }}" @selected($status === $s)>{{ $statusMap[$s]['label'] }}</option>
                     @endforeach
                 </select>
                 <button class="btn-primary">Filtrar</button>
@@ -32,7 +41,10 @@
                                 <td class="px-4 py-3">{{ $c->order?->user?->name }}</td>
                                 <td class="px-4 py-3">R$ {{ number_format((float) $c->base_amount, 2, ',', '.') }}</td>
                                 <td class="px-4 py-3 font-semibold">R$ {{ number_format((float) $c->commission_amount, 2, ',', '.') }}</td>
-                                <td class="px-4 py-3">{{ $c->status }}</td>
+                                <td class="px-4 py-3">
+                                    @php $statusInfo = $statusMap[$c->status] ?? ['label' => ucfirst((string) $c->status), 'class' => 'badge-neutral']; @endphp
+                                    <span class="badge {{ $statusInfo['class'] }}">{{ $statusInfo['label'] }}</span>
+                                </td>
                                 <td class="px-4 py-3">{{ $c->available_at?->format('d/m/Y H:i') ?: '-' }}</td>
                             </tr>
                         @empty

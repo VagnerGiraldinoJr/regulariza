@@ -29,12 +29,12 @@
         <div id="app-shell" class="app-shell">
             <aside id="app-sidebar" class="hidden lg:flex lg:flex-col app-sidebar">
                 <div class="app-brand border-b border-white/10 px-5 py-4">
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-blue-200/90 sidebar-label">CPF Clean Brasil</p>
+                    <p class="brand-pulse text-xs font-semibold uppercase tracking-[0.24em] text-blue-200/90 sidebar-label">CPF Clean Brasil</p>
                     <h1 class="mt-1 text-2xl font-black text-white sidebar-label">Central de Controle</h1>
-                    <p class="mt-1 text-xs text-cyan-200/80 sidebar-label">___________</p>
+                    <p class="mt-1 text-xs text-cyan-200/80 sidebar-label">Operação Premium</p>
                 </div>
 
-                <nav class="flex-1 space-y-1 px-3 py-4">
+                <nav class="app-sidebar-nav flex-1 space-y-1 px-3 py-4">
                     @if ($authUser->role === 'cliente')
                         <a href="{{ route('portal.dashboard') }}" class="app-nav-link {{ request()->routeIs('portal.dashboard') ? 'is-active' : '' }}">
                             <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12 12 4l9 8"/><path d="M5 10v10h14V10"/></svg>
@@ -108,13 +108,21 @@
                         </a>
 
                         @if ($authUser->role === 'admin')
-                            <a href="{{ route('admin.management.dashboard') }}" class="app-nav-link {{ request()->routeIs('admin.management.*') ? 'is-active' : '' }}">
-                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h4v8H4zM10 4h4v16h-4zM16 9h4v11h-4z"/></svg>
-                                <span class="sidebar-label">Admin Básico</span>
-                            </a>
                             <a href="{{ route('admin.contracts.index') }}" class="app-nav-link {{ request()->routeIs('admin.contracts.*') ? 'is-active' : '' }}">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10l3 3v13H4V4h3z"/><path d="M14 4v4h4"/></svg>
                                 <span class="sidebar-label">Contratos</span>
+                            </a>
+                            <a href="{{ route('admin.management.contract-payments') }}" class="app-nav-link {{ request()->routeIs('admin.management.contract-payments') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h10"/></svg>
+                                <span class="sidebar-label">Controle de Pagamentos</span>
+                            </a>
+                            <a href="{{ route('admin.management.commissions') }}" class="app-nav-link {{ request()->routeIs('admin.management.commissions') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M9 10h6a2 2 0 1 1 0 4H9"/><path d="M12 8v8"/></svg>
+                                <span class="sidebar-label">Controle de Comissões</span>
+                            </a>
+                            <a href="{{ route('admin.management.payout-requests') }}" class="app-nav-link {{ request()->routeIs('admin.management.payout-requests') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12h18"/><path d="M12 3v18"/></svg>
+                                <span class="sidebar-label">Solicitações PIX</span>
                             </a>
                             <a href="{{ route('admin.vendors.index') }}" class="app-nav-link {{ request()->routeIs('admin.vendors.*') ? 'is-active' : '' }}">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 20h18"/><path d="M6 20V8l6-4 6 4v12"/></svg>
@@ -123,6 +131,18 @@
                             <a href="{{ route('admin.management.vendors') }}" class="app-nav-link {{ request()->routeIs('admin.management.vendors*') ? 'is-active' : '' }}">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M3 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/><path d="M11 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/></svg>
                                 <span class="sidebar-label">Cadastrar Vendedor</span>
+                            </a>
+                            <a href="{{ route('admin.management.users') }}" class="app-nav-link {{ request()->routeIs('admin.management.users*') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M3 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/><path d="M11 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/></svg>
+                                <span class="sidebar-label">Usuários</span>
+                            </a>
+                            <a href="{{ route('admin.management.messages') }}" class="app-nav-link {{ request()->routeIs('admin.management.messages') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16v12H4z"/><path d="M8 10h8M8 14h6"/></svg>
+                                <span class="sidebar-label">Mensagens Enviadas</span>
+                            </a>
+                            <a href="{{ route('admin.management.integrations') }}" class="app-nav-link {{ request()->routeIs('admin.management.integrations') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h6"/><path d="M14 12h6"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="12" r="2"/></svg>
+                                <span class="sidebar-label">Integrações</span>
                             </a>
                             <a href="{{ route('admin.finance.dashboard') }}" class="app-nav-link {{ request()->routeIs('admin.finance.*') ? 'is-active' : '' }}">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5"/><path d="M20 19H4"/><path d="M7 15l3-3 3 2 4-5"/></svg>
@@ -136,7 +156,7 @@
                     @endif
                 </nav>
 
-                <div class="border-t border-white/10 px-4 py-4">
+                <div class="app-sidebar-user border-t border-white/10 px-4 py-4">
                     <p class="text-xs text-[var(--sidebar-muted)] sidebar-label">{{ $authUser->name }}</p>
                     <p class="text-xs uppercase tracking-wide text-cyan-200 sidebar-label">{{ $authUser->role }}</p>
                 </div>
