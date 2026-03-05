@@ -44,8 +44,8 @@ main {
 body.page-entering .app-main-zone,
 body.page-entering .app-topbar,
 body.page-entering main {
-    opacity: 0.92;
-    transform: translate3d(0, 6px, 0);
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
 }
 
 body.page-ready .app-main-zone,

@@ -11,8 +11,27 @@
         html, body {
             min-height: 100%;
             margin: 0;
-            background: #e5ebf1 url('{{ asset('assets/backgrounds/premium-lines.jpg') }}') center / cover no-repeat fixed;
+            background:
+                linear-gradient(180deg, rgba(229, 235, 241, 0.84), rgba(229, 235, 241, 0.84)),
+                url('{{ asset('assets/backgrounds/premium-lines.jpg') }}'),
+                #e5ebf1;
+            background-size: cover, cover, auto;
+            background-position: center, center, 0 0;
+            background-attachment: fixed, fixed, scroll;
             color: #102235;
+        }
+
+        .app-shell::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                linear-gradient(180deg, rgba(240, 245, 250, 0.78) 0%, rgba(229, 236, 245, 0.8) 100%),
+                url('{{ asset('assets/backgrounds/premium-lines.jpg') }}');
+            background-size: cover, cover;
+            background-position: center;
+            pointer-events: none;
+            z-index: 0;
         }
     </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
