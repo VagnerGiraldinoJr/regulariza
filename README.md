@@ -1,159 +1,128 @@
-# Projeto CPF Clean Brasil
+# CPF Clean Brasil
 
-Plataforma para captacao de leads, pagamento da pesquisa, operacao de contratos, SAC e paineis internos (Admin, Analista e Cliente).
+Plataforma Laravel para funil de regularizacao, operacao de contratos, comissoes, SAC e paineis internos.
 
-## Visao geral
+## Escopo atual
 
-O sistema inclui:
-
-- Funil de regularizacao (`/regularizacao`) com checkout Asaas (Pix)
-- Portal do cliente com pedidos, contratos, timeline e SAC
-- Painel do analista com carteira, contratos e comissoes
-- Painel admin com pedidos, contratos, financeiro, usuarios e integracoes
-- Comissoes por pesquisa e por parcelas pagas
-- Mensageria e notificacoes (WhatsApp e E-mail)
+- Landing institucional em `/`
+- Funil publico em `/regularizacao`
+- Autenticacao e recuperacao de senha por e-mail
+- Portal do cliente (`/portal/*`)
+- Painel analista/vendedor (`/analyst/*`)
+- Painel administrativo e gestao (`/admin/*` e `/admin/management/*`)
+- Contratos com entrada + parcelas e acompanhamento de pagamentos
+- Comissoes com solicitacao de saque (PIX)
+- SAC com tickets e chat
+- Integracoes com Asaas e Z-API
 
 ## Stack
 
-- PHP 8.4 / Laravel 12
+- PHP 8.4
+- Laravel 12
 - MySQL 8.4
 - Redis
-- Queue worker
-- Vite / Tailwind
+- Queue worker (`queue:work`)
+- Vite + Tailwind
 - Docker Compose
-- Asaas (pagamentos)
-- Z-API (WhatsApp)
 
-## Modulos principais
+## Estrutura de containers (compose.yaml)
 
-### 1) Regularizacao (publico)
+- `app`: aplicacao web Laravel
+- `queue`: worker de filas
+- `mysql`: banco de dados
+- `redis`: cache/fila
 
-- Rota: `GET /regularizacao`
-- Captura de lead (com ou sem indicacao)
-- Checkout Asaas para pagamento da pesquisa
-- Obrigatoriedade de celular com mascara
+## Variaveis de ambiente importantes
 
-### 2) Contratos (entrada + 3 parcelas)
+Definidas em `.env` e injetadas no `compose.yaml`.
 
-- Tela admin: `GET /admin/contracts`
-- Cria contrato com:
-- entrada (percentual configurado)
-- 3 parcelas (30/60/90 dias)
-- upload de documento (`doc`, `docx`, `pdf`)
-- Cobrancas no Asaas por parcela
+- App:
+  - `APP_NAME`, `APP_ENV`, `APP_DEBUG`, `APP_URL`, `APP_KEY`
+- Banco:
+  - `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
+- Sessao/Fila/Cache:
+  - `SESSION_DRIVER`, `CACHE_STORE`, `QUEUE_CONNECTION`
+- E-mail (Hostinger SMTP):
+  - `MAIL_MAILER=smtp`
+  - `MAIL_SCHEME=smtps` (ou `tls` com porta `587`)
+  - `MAIL_HOST=smtp.hostinger.com`
+  - `MAIL_PORT=465`
+  - `MAIL_USERNAME`, `MAIL_PASSWORD`
+  - `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME`
+- Integracoes:
+  - `ASAAS_*`
+  - `ZAPI_*`
 
-### 3) Comissoes
-
-- Pesquisa: percentual por `RESEARCH_COMMISSION_RATE`
-- Parcelas pagas: percentual por `INSTALLMENT_COMMISSION_RATE`
-- Janela de retencao: `COMMISSION_HOLD_HOURS` (padrao 24h)
-
-### 4) Perfis e paineis
-
-- Admin: pedidos, SAC, contratos, financeiro, usuarios e gestao
-- Analista/Vendedor: dashboard, carteira, contratos, comissoes, perfil com PIX
-- Cliente: dashboard, contratos, timeline, SAC, perfil
-
-### 5) Reset de senha por e-mail
-
-Fluxo publico:
-
-- `GET /esqueci-senha`
-- `POST /esqueci-senha`
-- `GET /resetar-senha/{token}`
-- `POST /resetar-senha`
-
-Fluxo admin:
-
-- Botao de envio de reset em:
-- `GET /admin/management/users`
-- `GET /admin/management/clients`
-- Cadastro vendedor com envio automatico de reset:
-- `GET /admin/management/vendors`
-- `POST /admin/management/vendors`
-
-### 6) Paginas de erro customizadas
-
-Paginas no estilo institucional para:
-
-- 400, 401, 403, 404, 405, 419, 422, 429, 500 e 503
-
-Arquivos:
-
-- `resources/views/errors/error.blade.php`
-- `resources/views/errors/*.blade.php`
-
-## UI/UX recentes
-
-- Sidebar premium com recolhimento
-- Cards com transparencia
-- Badges em status/tipos
-- Fundo institucional com motion suave
-- Footer fixo com status + data/hora servidor
-- Selo Site Blindado e marca LetsEncrypt no layout
-- Icone Laravel discreto no footer
-- Widget WhatsApp corrigido com icone customizado e validacao isolada
-
-## E-mail (Hostinger SMTP)
-
-Variaveis usadas:
-
-- `MAIL_MAILER=smtp`
-- `MAIL_SCHEME=smtps`
-- `MAIL_HOST=smtp.hostinger.com`
-- `MAIL_PORT=465`
-- `MAIL_USERNAME=...`
-- `MAIL_PASSWORD=...`
-- `MAIL_FROM_ADDRESS=contato@cpfclean.com.br`
-- `MAIL_FROM_NAME="CPF Clean Brasil"`
-
-## Rodando local com Docker
-
-1. Subir ambiente:
+## Subindo local/VPS com Docker
 
 ```bash
 docker compose up -d --build --remove-orphans
-```
-
-2. Migrar e semear:
-
-```bash
 docker compose exec -T app php artisan migrate --force
-docker compose exec -T app php artisan db:seed --force
-```
-
-3. Limpar cache:
-
-```bash
 docker compose exec -T app php artisan optimize:clear
+docker compose exec -T app php artisan optimize
 ```
 
-Aplicacao local:
+Aplicacao padrao:
 
-- `http://localhost:8082`
+- `http://localhost:8082` (ou dominio configurado no proxy)
 
-## Usuarios padrao
+## Deploy rapido
 
-- Admin: `admin@cpfclean.com.br` / `Admin@123`
-- Analista: `analista@cpfclean.com.br` / `Analista@123`
-- SAC: `sac@cpfclean.com.br` / `Sac@123`
-- Cliente: `cliente@cpfclean.com.br` / `Cliente@123`
-
-## Testes
-
-No host (com dependencias de dev):
+Existe script de deploy na raiz:
 
 ```bash
-php artisan test
+./deploy.sh
 ```
 
-## Observacoes de deploy
+Fluxo do script:
 
-- Este projeto sobe `app` e `queue` por imagem (sem bind mount de codigo em runtime).
-- Sempre que alterar views/css/controllers:
+- `git fetch` + `git pull --ff-only`
+- `docker compose up -d --build --remove-orphans`
+- espera banco ficar pronto
+- `php artisan migrate --force`
+- `optimize:clear` + `optimize`
+- restart de `app` e `queue`
+
+Opcional para reset completo do banco (destrutivo):
 
 ```bash
-docker compose up -d --build app queue
-docker compose exec app php artisan optimize:clear
+DEPLOY_FRESH_SEED=true ./deploy.sh
 ```
 
+## Operacao em ambiente com WordPress no mesmo dominio
+
+Quando WordPress e Laravel compartilham o dominio, o proxy reverso precisa rotear para o Laravel:
+
+- `/login`, `/logout`
+- `/regularizacao*`
+- `/dashboard*`
+- `/portal*`
+- `/admin*`
+- `/analyst*`
+- `/perfil*`
+- `/esqueci-senha`, `/resetar-senha*`
+- `/contato/whatsapp`
+- `/build*`, `/assets*`, `/storage*`
+
+Sem isso, CSS/JS do Laravel podem cair no WordPress e quebrar layout.
+
+## UX e layout
+
+- Layout premium unificado (`resources/views/components/layouts/app.blade.php`)
+- Fundo institucional unico: `public/assets/backgrounds/premium-lines.jpg`
+- Transicao suave global entre paginas via `resources/js/app.js`
+- Paginas de erro personalizadas em `resources/views/errors/`
+
+## Troubleshooting rapido
+
+- Verificar env em runtime:
+  - `docker compose exec app printenv | grep -E '^MAIL_|^APP_KEY'`
+- Verificar config mail em runtime:
+  - `docker compose exec app php artisan tinker --execute="dump(config('mail.default')); dump(config('mail.mailers.smtp.host')); dump(config('mail.mailers.smtp.port')); dump(config('mail.mailers.smtp.scheme'));" `
+- Logs:
+  - `docker compose logs --tail=200 app queue`
+
+## Observacoes
+
+- Este repositorio e o projeto `regulariza` (na VPS coexistindo com outros sistemas).
+- Evite expor `APP_KEY` e credenciais SMTP em logs/chats.

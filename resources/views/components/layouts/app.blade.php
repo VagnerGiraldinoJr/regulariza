@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>CPF Clean Brasil</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('assets/branding/cpfclean-logo.svg') }}">
-    <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
+    <link rel="shortcut icon" href="{{ asset('favicon.svg') }}">
     <link rel="preload" as="image" href="{{ asset('assets/backgrounds/premium-lines.jpg') }}">
     <style>
         html, body {

@@ -10,10 +10,16 @@
     <button
         type="button"
         id="toggle-whatsapp-widget"
-        class="whatsapp-pulse inline-flex h-16 w-16 items-center justify-center rounded-full border border-white/25 bg-[#25d366] text-white shadow-[0_12px_24px_rgba(0,0,0,0.28)] transition hover:scale-105"
+        class="whatsapp-trigger inline-flex items-center gap-2 rounded-full border border-cyan-200/60 bg-[#041f37] px-3 py-2 text-white shadow-[0_14px_30px_rgba(1,20,40,0.38)] transition hover:-translate-y-0.5 hover:bg-[#062a49]"
         aria-label="Abrir contato WhatsApp"
     >
-        <img src="{{ asset('assets/icons/whatsapp-color-icon.svg') }}" alt="WhatsApp" class="h-9 w-9 object-contain">
+        <span class="whatsapp-icon-wrap inline-flex h-10 w-10 items-center justify-center rounded-full bg-white">
+            <img src="{{ asset('assets/icons/whatsapp-color-icon.svg') }}" alt="WhatsApp" class="h-6 w-6 object-contain">
+        </span>
+        <span class="hidden text-left leading-tight sm:block">
+            <strong class="block text-xs font-extrabold tracking-wide text-cyan-100">WhatsApp</strong>
+            <span class="block text-[11px] text-cyan-200/90">Fale com o SAC</span>
+        </span>
     </button>
 
     <div id="whatsapp-panel" class="mt-3 hidden w-[320px] max-w-[calc(100vw-2.5rem)] rounded-xl border border-[#d1e4d7] bg-white p-4 shadow-2xl" data-has-errors="{{ $hasPublicWhatsappErrors ? '1' : '0' }}">
@@ -87,22 +93,22 @@
 </div>
 
 <style>
-    .whatsapp-pulse {
+    .whatsapp-trigger {
         animation: whatsappPulse 1.8s ease-in-out infinite;
     }
 
     @keyframes whatsappPulse {
         0% {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55), 0 12px 24px rgba(0, 0, 0, 0.28);
+            transform: translateY(0);
+            box-shadow: 0 0 0 0 rgba(38, 190, 211, 0.35), 0 14px 30px rgba(1, 20, 40, 0.38);
         }
         65% {
-            transform: scale(1.06);
-            box-shadow: 0 0 0 14px rgba(37, 211, 102, 0), 0 12px 24px rgba(0, 0, 0, 0.28);
+            transform: translateY(-1px);
+            box-shadow: 0 0 0 12px rgba(38, 190, 211, 0), 0 14px 30px rgba(1, 20, 40, 0.38);
         }
         100% {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(37, 211, 102, 0), 0 12px 24px rgba(0, 0, 0, 0.28);
+            transform: translateY(0);
+            box-shadow: 0 0 0 0 rgba(38, 190, 211, 0), 0 14px 30px rgba(1, 20, 40, 0.38);
         }
     }
 </style>
