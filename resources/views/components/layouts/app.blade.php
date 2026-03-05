@@ -6,9 +6,18 @@
     <title>CPF Clean Brasil</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('assets/branding/cpfclean-logo.svg') }}">
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
+    <link rel="preload" as="image" href="{{ asset('assets/backgrounds/premium-lines.jpg') }}">
+    <style>
+        html, body {
+            min-height: 100%;
+            margin: 0;
+            background: #e5ebf1 url('{{ asset('assets/backgrounds/premium-lines.jpg') }}') center / cover no-repeat fixed;
+            color: #102235;
+        }
+    </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body>
+<body class="page-entering">
     @auth
         @php
             $authUser = auth()->user();
@@ -238,6 +247,13 @@
 
     <script>
         (function () {
+            if (document.body) {
+                requestAnimationFrame(function () {
+                    document.body.classList.remove('page-entering');
+                    document.body.classList.add('page-ready');
+                });
+            }
+
             const shell = document.getElementById('app-shell');
             const toggle = document.getElementById('sidebar-toggle');
             const storageKey = 'cpfclean.sidebar.collapsed';
@@ -253,6 +269,31 @@
                     window.localStorage.setItem(storageKey, collapsed ? '1' : '0');
                 });
             }
+
+            document.querySelectorAll('a[href]').forEach(function (link) {
+                link.addEventListener('click', function (event) {
+                    if (event.defaultPrevented || event.button !== 0 || link.target === '_blank') {
+                        return;
+                    }
+
+                    const href = link.getAttribute('href');
+                    if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+                        return;
+                    }
+
+                    try {
+                        const url = new URL(href, window.location.origin);
+                        if (url.origin !== window.location.origin || url.pathname === window.location.pathname) {
+                            return;
+                        }
+                    } catch (_) {
+                        return;
+                    }
+
+                    document.body.classList.remove('page-ready');
+                    document.body.classList.add('page-leaving');
+                }, { passive: true });
+            });
 
             document.querySelectorAll('[data-copy-ref]').forEach(function (button) {
                 button.addEventListener('click', function () {

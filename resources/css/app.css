@@ -34,6 +34,34 @@ body {
     animation: bodyAmbient 18s ease-in-out infinite alternate;
 }
 
+.app-main-zone,
+.app-sidebar,
+.app-topbar,
+main {
+    transition: opacity 180ms ease, transform 220ms ease;
+}
+
+body.page-entering .app-main-zone,
+body.page-entering .app-topbar,
+body.page-entering main {
+    opacity: 0.92;
+    transform: translate3d(0, 6px, 0);
+}
+
+body.page-ready .app-main-zone,
+body.page-ready .app-topbar,
+body.page-ready main {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+}
+
+body.page-leaving .app-main-zone,
+body.page-leaving .app-topbar,
+body.page-leaving main {
+    opacity: 0.9;
+    transform: translate3d(0, -4px, 0);
+}
+
 .panel-card {
     background: linear-gradient(165deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.34));
     border: 1px solid rgba(126, 155, 185, 0.28);
