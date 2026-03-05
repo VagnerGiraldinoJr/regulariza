@@ -266,13 +266,6 @@
 
     <script>
         (function () {
-            if (document.body) {
-                requestAnimationFrame(function () {
-                    document.body.classList.remove('page-entering');
-                    document.body.classList.add('page-ready');
-                });
-            }
-
             const shell = document.getElementById('app-shell');
             const toggle = document.getElementById('sidebar-toggle');
             const storageKey = 'cpfclean.sidebar.collapsed';
@@ -288,31 +281,6 @@
                     window.localStorage.setItem(storageKey, collapsed ? '1' : '0');
                 });
             }
-
-            document.querySelectorAll('a[href]').forEach(function (link) {
-                link.addEventListener('click', function (event) {
-                    if (event.defaultPrevented || event.button !== 0 || link.target === '_blank') {
-                        return;
-                    }
-
-                    const href = link.getAttribute('href');
-                    if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) {
-                        return;
-                    }
-
-                    try {
-                        const url = new URL(href, window.location.origin);
-                        if (url.origin !== window.location.origin || url.pathname === window.location.pathname) {
-                            return;
-                        }
-                    } catch (_) {
-                        return;
-                    }
-
-                    document.body.classList.remove('page-ready');
-                    document.body.classList.add('page-leaving');
-                }, { passive: true });
-            });
 
             document.querySelectorAll('[data-copy-ref]').forEach(function (button) {
                 button.addEventListener('click', function () {

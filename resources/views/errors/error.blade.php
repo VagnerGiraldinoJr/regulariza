@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $code ?? 'Erro' }} - CPF Clean Brasil</title>
-    @vite(['resources/css/app.css'])
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-slate-100 text-slate-900">
+<body class="page-entering min-h-screen bg-slate-100 text-slate-900">
     <div class="min-h-screen px-5 py-8 lg:px-10">
         <div class="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center">
             <div class="grid w-full items-center gap-8 rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-xl backdrop-blur md:grid-cols-[1fr_1.1fr] lg:p-10">
