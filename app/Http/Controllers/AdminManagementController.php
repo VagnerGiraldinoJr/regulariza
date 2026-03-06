@@ -132,7 +132,7 @@ class AdminManagementController extends Controller
             'asaas_api_key' => ['required', 'string', 'max:255'],
             'asaas_webhook_token' => ['nullable', 'string', 'max:255'],
             'apibrasil_base_url' => ['required', 'url', 'max:255'],
-            'apibrasil_token' => ['required', 'string', 'max:255'],
+            'apibrasil_token' => ['required', 'string', 'max:4096'],
             'apibrasil_token_header' => ['required', 'string', 'max:60'],
             'apibrasil_token_prefix' => ['nullable', 'string', 'max:30'],
             'apibrasil_cpf_path' => ['required', 'string', 'max:255'],
