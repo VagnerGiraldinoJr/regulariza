@@ -90,6 +90,20 @@
         .occ-table tr:nth-child(odd) td { background: #f8fbff; }
         .occ-key { font-weight: 700; color: #243a53; }
         .occ-val { text-align: right; font-weight: 700; color: #1f8f36; }
+        .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            background: #e2f6ff;
+            color: #0b4d73;
+        }
+        .socios { width: 100%; border-collapse: collapse; margin-top: 5px; }
+        .socios th, .socios td { border: 1px solid #e5ecf3; padding: 6px 8px; font-size: 10px; text-align: left; }
+        .socios th { background: #f8fbff; color: #48627a; font-weight: 700; }
         .footer {
             margin-top: 18px;
             border-top: 1px solid #dce4ec;
@@ -108,17 +122,56 @@
 @php
     $response = is_array($consultation->response_payload) ? $consultation->response_payload : [];
     $data = is_array($response['data'] ?? null) ? $response['data'] : [];
-    $nomeDaApi = trim((string) ($data['nome'] ?? ''));
+
+    $cnpjData = is_array($data['cnpj'] ?? null)
+        ? $data['cnpj']
+        : (is_array($data['dados'] ?? null) ? $data['dados'] : []);
+
+    $empresa = is_array($cnpjData['empresa'] ?? null) ? $cnpjData['empresa'] : [];
+    $socios = is_array($cnpjData['socios'] ?? null) ? $cnpjData['socios'] : [];
+    $isPj = $consultation->document_type === 'cnpj' || ! empty($cnpjData);
+
+    $nomeDaApi = trim((string) ($data['nome'] ?? ($empresa['razao_social'] ?? '')));
     $mostrarNome = $nomeDaApi !== '' && $nomeDaApi !== '-';
-    $documento = (string) ($data['documentoConsultado'] ?? $consultation->document_number);
+    $documento = (string) ($cnpjData['cnpj'] ?? ($data['documentoConsultado'] ?? $consultation->document_number));
     $score = (string) ($data['score'] ?? '-');
     $classeRisco = (string) ($data['classeRisco'] ?? '-');
-    $situacao = (string) ($data['situacao'] ?? '-');
+    $situacao = (string) ($data['situacao'] ?? ($cnpjData['situacao_cadastral'] ?? '-'));
     $statusConsulta = $consultation->status === 'success' ? 'Sucesso' : 'Erro';
     $consultaEmRaw = $data['consultaRealizadaEm'] ?? ($data['dataConsulta'] ?? null);
     $consultaEm = $consultaEmRaw ? date('d/m/Y H:i:s', strtotime((string) $consultaEmRaw)) : now()->format('d/m/Y H:i:s');
     $homolog = array_key_exists('homolog', $response) ? (bool) $response['homolog'] : null;
     $reportProtocol = 'CPFBR-'.now()->format('Ymd').'-'.str_pad((string) $consultation->id, 6, '0', STR_PAD_LEFT);
+    $mensagemApi = (string) ($data['msg'] ?? $response['message'] ?? '');
+
+    $formatDate = function (?string $value): string {
+        if (! is_string($value) || trim($value) === '' || $value === '00000000') {
+            return '-';
+        }
+        if (preg_match('/^\d{8}$/', $value) === 1) {
+            return substr($value, 6, 2).'/'.substr($value, 4, 2).'/'.substr($value, 0, 4);
+        }
+        $ts = strtotime($value);
+        return $ts ? date('d/m/Y', $ts) : $value;
+    };
+
+    $formatMoney = function ($value): string {
+        if (! is_numeric($value)) {
+            return '-';
+        }
+        return 'R$ '.number_format((float) $value, 2, ',', '.');
+    };
+
+    $endereco = trim(implode(', ', array_filter([
+        trim((string) ($cnpjData['tipo_logradouro'] ?? '')),
+        trim((string) ($cnpjData['logradouro'] ?? '')),
+        trim((string) ($cnpjData['numero'] ?? '')),
+        trim((string) ($cnpjData['complemento'] ?? '')),
+        trim((string) ($cnpjData['bairro'] ?? '')),
+        trim((string) ($cnpjData['municipio']['descricao'] ?? '')),
+        trim((string) ($cnpjData['uf'] ?? '')),
+        trim((string) ($cnpjData['cep'] ?? '')),
+    ])));
 
     $logoPath = public_path('assets/branding/cpfclean-logo.svg');
     $logoSvg = file_exists($logoPath) ? file_get_contents($logoPath) : null;
@@ -128,12 +181,19 @@
     $letsSvg = file_exists($letsPath) ? file_get_contents($letsPath) : null;
     $letsDataUri = $letsSvg ? 'data:image/svg+xml;base64,'.base64_encode($letsSvg) : null;
 
-    $ocorrencias = [
-        'Pendências' => !empty($data['possuiPendencias']) ? 'COM PENDÊNCIAS' : 'NADA CONSTA',
-        'Status Geral' => $data['status'] ?? 'NÃO INFORMADO',
-        'Perfil' => $data['perfil'] ?? 'NÃO INFORMADO',
-        'Relacionamentos' => $data['relacionamentos'] ?? 'NÃO INFORMADO',
-    ];
+    $ocorrencias = $isPj
+        ? [
+            'Situação Cadastral' => (string) ($cnpjData['situacao_cadastral'] ?? 'NÃO INFORMADO'),
+            'Porte da Empresa' => (string) ($empresa['porte_empresa'] ?? 'NÃO INFORMADO'),
+            'Natureza Jurídica' => (string) ($empresa['natureza_juridica'] ?? 'NÃO INFORMADO'),
+            'Quantidade de Sócios' => (string) count($socios),
+        ]
+        : [
+            'Pendências' => !empty($data['possuiPendencias']) ? 'COM PENDÊNCIAS' : 'NADA CONSTA',
+            'Status Geral' => $data['status'] ?? 'NÃO INFORMADO',
+            'Perfil' => $data['perfil'] ?? 'NÃO INFORMADO',
+            'Relacionamentos' => $data['relacionamentos'] ?? 'NÃO INFORMADO',
+        ];
 @endphp
 
 <div class="header">
@@ -165,6 +225,9 @@
         <tr><td class="label">Data da Consulta</td><td>{{ $consultaEm }}</td></tr>
         <tr><td class="label">Ambiente</td><td>{{ $homolog === null ? '-' : ($homolog ? 'Homologação (teste)' : 'Produção (dados reais)') }}</td></tr>
         <tr><td class="label">Status Técnico</td><td class="{{ $consultation->status === 'success' ? 'status-ok' : 'status-err' }}">{{ $statusConsulta }} (HTTP {{ $consultation->http_status ?: '-' }})</td></tr>
+        @if($mensagemApi !== '')
+            <tr><td class="label">Retorno da API</td><td><span class="pill">{{ $mensagemApi }}</span></td></tr>
+        @endif
     </table>
 </div>
 
@@ -173,26 +236,82 @@
     <table class="cards">
         <tr>
             <td>
-                <div class="card border-blue">
-                    <div class="card-label">Score</div>
-                    <div class="card-value text-blue">{{ $score }}</div>
-                </div>
+                @if($isPj)
+                    <div class="card border-blue">
+                        <div class="card-label">Razão Social</div>
+                        <div class="card-value small text-blue">{{ $empresa['razao_social'] ?? '-' }}</div>
+                    </div>
+                @else
+                    <div class="card border-blue">
+                        <div class="card-label">Score</div>
+                        <div class="card-value text-blue">{{ $score }}</div>
+                    </div>
+                @endif
             </td>
             <td>
-                <div class="card border-green">
-                    <div class="card-label">Classe de Risco</div>
-                    <div class="card-value small text-green">{{ $classeRisco }}</div>
-                </div>
+                @if($isPj)
+                    <div class="card border-green">
+                        <div class="card-label">Capital Social</div>
+                        <div class="card-value small text-green">{{ $formatMoney($empresa['capital_social'] ?? null) }}</div>
+                    </div>
+                @else
+                    <div class="card border-green">
+                        <div class="card-label">Classe de Risco</div>
+                        <div class="card-value small text-green">{{ $classeRisco }}</div>
+                    </div>
+                @endif
             </td>
             <td>
                 <div class="card border-red">
-                    <div class="card-label">Situação</div>
+                    <div class="card-label">{{ $isPj ? 'Situação Cadastral' : 'Situação' }}</div>
                     <div class="card-value small text-red">{{ $situacao }}</div>
                 </div>
             </td>
         </tr>
     </table>
 </div>
+
+@if($isPj)
+    <div class="section">
+        <h2 class="section-title">Dados Empresariais</h2>
+        <table class="table">
+            <tr><td class="label">Razão Social</td><td>{{ $empresa['razao_social'] ?? '-' }}</td></tr>
+            <tr><td class="label">Nome Fantasia</td><td>{{ $cnpjData['nome_fantasia'] ?: '-' }}</td></tr>
+            <tr><td class="label">Data de Início das Atividades</td><td>{{ $formatDate((string) ($cnpjData['data_inicio_atividades'] ?? '')) }}</td></tr>
+            <tr><td class="label">CNAE Principal</td><td>{{ $cnpjData['cnae_fiscal'] ?? '-' }}</td></tr>
+            <tr><td class="label">CNAE Secundário</td><td>{{ $cnpjData['cnae_fiscal_secundaria'] ?? '-' }}</td></tr>
+            <tr><td class="label">Endereço</td><td>{{ $endereco ?: '-' }}</td></tr>
+            <tr><td class="label">E-mail</td><td>{{ $cnpjData['correio_eletronico'] ?? '-' }}</td></tr>
+            <tr><td class="label">Telefone</td><td>{{ trim((string) (($cnpjData['ddd1'] ?? '').' '.($cnpjData['telefone1'] ?? ''))) ?: '-' }}</td></tr>
+        </table>
+    </div>
+
+    @if(!empty($socios))
+        <div class="section">
+            <h2 class="section-title">Quadro Societário</h2>
+            <table class="socios">
+                <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Documento</th>
+                    <th>Qualificação</th>
+                    <th>Entrada</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach($socios as $socio)
+                    <tr>
+                        <td>{{ $socio['nome_socio'] ?? '-' }}</td>
+                        <td>{{ $socio['cnpj_cpf_socio'] ?? '-' }}</td>
+                        <td>{{ $socio['qualificacao']['descricao'] ?? ($socio['qualificacao_socio'] ?? '-') }}</td>
+                        <td>{{ $formatDate((string) ($socio['data_entrada_sociedade'] ?? '')) }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+@endif
 
 <div class="section">
     <h2 class="section-title">Resumo de Ocorrências</h2>
