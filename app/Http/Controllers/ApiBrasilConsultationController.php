@@ -9,6 +9,7 @@ use App\Services\ApiBrasilService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -17,7 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ApiBrasilConsultationController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, ApiBrasilService $apiBrasilService): View
     {
         $status = (string) $request->query('status', '');
         $catalog = $this->catalog();
@@ -42,6 +43,22 @@ class ApiBrasilConsultationController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
 
+        $balance = [
+            'status' => 'error',
+            'balance' => null,
+            'error_message' => null,
+        ];
+
+        if ($this->isConfigured()) {
+            try {
+                $balance = Cache::remember('apibrasil.balance.snapshot', now()->addSeconds(45), function () use ($apiBrasilService) {
+                    return $apiBrasilService->consultarSaldo();
+                });
+            } catch (\Throwable $exception) {
+                $balance['error_message'] = $exception->getMessage();
+            }
+        }
+
         return view('admin.management.apibrasil-consultations', [
             'consultations' => $consultations,
             'paidOrders' => $paidOrders,
@@ -50,6 +67,7 @@ class ApiBrasilConsultationController extends Controller
             'apibrasilConfigured' => $this->isConfigured(),
             'catalog' => $catalog,
             'categories' => $categories,
+            'balance' => $balance,
         ]);
     }
 

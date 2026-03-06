@@ -38,6 +38,8 @@ return [
         'token' => env('APIBRASIL_TOKEN'),
         'token_header' => env('APIBRASIL_TOKEN_HEADER', 'Authorization'),
         'token_prefix' => env('APIBRASIL_TOKEN_PREFIX', 'Bearer'),
+        'balance_path' => env('APIBRASIL_BALANCE_PATH', '/api/v2/user'),
+        'balance_method' => env('APIBRASIL_BALANCE_METHOD', 'GET'),
         'cpf_path' => env('APIBRASIL_CPF_PATH', '/api/v2/consulta/cpf/credits'),
         'cnpj_path' => env('APIBRASIL_CNPJ_PATH', '/api/v2/consulta/cnpj/credits'),
         'cpf_method' => env('APIBRASIL_CPF_METHOD', 'POST'),

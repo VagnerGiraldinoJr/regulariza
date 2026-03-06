@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\WhatsappLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -108,6 +109,8 @@ class AdminManagementController extends Controller
                 'token' => (string) config('services.apibrasil.token'),
                 'token_header' => (string) config('services.apibrasil.token_header'),
                 'token_prefix' => (string) config('services.apibrasil.token_prefix'),
+                'balance_path' => (string) config('services.apibrasil.balance_path'),
+                'balance_method' => (string) config('services.apibrasil.balance_method'),
                 'cpf_path' => (string) config('services.apibrasil.cpf_path'),
                 'cnpj_path' => (string) config('services.apibrasil.cnpj_path'),
                 'cpf_method' => (string) config('services.apibrasil.cpf_method'),
@@ -135,6 +138,8 @@ class AdminManagementController extends Controller
             'apibrasil_token' => ['required', 'string', 'max:4096'],
             'apibrasil_token_header' => ['required', 'string', 'max:60'],
             'apibrasil_token_prefix' => ['nullable', 'string', 'max:30'],
+            'apibrasil_balance_path' => ['required', 'string', 'max:255'],
+            'apibrasil_balance_method' => ['required', Rule::in(['GET', 'POST', 'PUT'])],
             'apibrasil_cpf_path' => ['required', 'string', 'max:255'],
             'apibrasil_cnpj_path' => ['required', 'string', 'max:255'],
             'apibrasil_cpf_method' => ['required', Rule::in(['GET', 'POST', 'PUT'])],
@@ -153,6 +158,8 @@ class AdminManagementController extends Controller
             'apibrasil.token' => trim((string) $data['apibrasil_token']),
             'apibrasil.token_header' => trim((string) $data['apibrasil_token_header']),
             'apibrasil.token_prefix' => trim((string) ($data['apibrasil_token_prefix'] ?? '')),
+            'apibrasil.balance_path' => trim((string) $data['apibrasil_balance_path']),
+            'apibrasil.balance_method' => trim((string) $data['apibrasil_balance_method']),
             'apibrasil.cpf_path' => trim((string) $data['apibrasil_cpf_path']),
             'apibrasil.cnpj_path' => trim((string) $data['apibrasil_cnpj_path']),
             'apibrasil.cpf_method' => trim((string) $data['apibrasil_cpf_method']),
@@ -168,6 +175,7 @@ class AdminManagementController extends Controller
         }
 
         SystemSetting::applyRuntimeConfig();
+        Cache::forget('apibrasil.balance.snapshot');
 
         return back()->with('success', 'Integrações atualizadas com sucesso.');
     }

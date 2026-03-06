@@ -34,6 +34,7 @@
                     </span>
                 </p>
                 <p class="mt-1 text-xs text-slate-600">Base URL: {{ $integrations['apibrasil']['base_url'] ?: '-' }}</p>
+                <p class="text-xs text-slate-600">Saldo Path: {{ $integrations['apibrasil']['balance_path'] ?: '-' }}</p>
                 <p class="text-xs text-slate-600">CPF Path: {{ $integrations['apibrasil']['cpf_path'] ?: '-' }}</p>
                 <p class="text-xs text-slate-600">CNPJ Path: {{ $integrations['apibrasil']['cnpj_path'] ?: '-' }}</p>
             </div>
@@ -82,6 +83,18 @@
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">API Brasil Prefixo Token</label>
                     <input type="text" name="apibrasil_token_prefix" value="{{ old('apibrasil_token_prefix', $integrations['apibrasil']['token_prefix']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Bearer">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Path Saldo</label>
+                    <input type="text" name="apibrasil_balance_path" value="{{ old('apibrasil_balance_path', $integrations['apibrasil']['balance_path']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="/api/v2/user" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Método Saldo</label>
+                    <select name="apibrasil_balance_method" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                        @foreach (['GET', 'POST', 'PUT'] as $method)
+                            <option value="{{ $method }}" @selected(old('apibrasil_balance_method', $integrations['apibrasil']['balance_method']) === $method)>{{ $method }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Path CPF</label>

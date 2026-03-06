@@ -8,6 +8,26 @@ use RuntimeException;
 
 class ApiBrasilService
 {
+    public function consultarSaldo(): array
+    {
+        $path = (string) config('services.apibrasil.balance_path', '/api/v2/user');
+        $method = strtoupper((string) config('services.apibrasil.balance_method', 'GET'));
+        $url = $this->baseUrl().'/'.ltrim($path, '/');
+
+        $response = $this->send($method, $url, []);
+        $payload = $this->payload($response);
+        $balance = $this->extractBalance($payload);
+
+        return [
+            'status' => $response->successful() ? 'success' : 'error',
+            'http_status' => $response->status(),
+            'endpoint' => $url,
+            'balance' => $balance,
+            'response_payload' => $payload,
+            'error_message' => $response->successful() ? null : $this->errorMessage($response),
+        ];
+    }
+
     public function consultarCatalogo(string $consultationKey, string $documento): array
     {
         $catalog = (array) config('apibrasil_catalog.consultations', []);
@@ -170,5 +190,106 @@ class ApiBrasilService
         $decoded = json_decode($json, true);
 
         return is_array($decoded) ? $decoded : ['document' => $document];
+    }
+
+    private function extractBalance(mixed $payload): ?float
+    {
+        if (! is_array($payload)) {
+            return null;
+        }
+
+        $candidates = [
+            ['balance'],
+            ['saldo'],
+            ['credits'],
+            ['creditos'],
+            ['data', 'balance'],
+            ['data', 'saldo'],
+            ['data', 'credits'],
+            ['user', 'balance'],
+            ['wallet', 'balance'],
+            ['account', 'balance'],
+        ];
+
+        foreach ($candidates as $path) {
+            $value = $this->readPath($payload, $path);
+            $parsed = $this->parseMoney($value);
+            if ($parsed !== null) {
+                return $parsed;
+            }
+        }
+
+        return $this->searchNumericBalance($payload);
+    }
+
+    private function readPath(array $payload, array $path): mixed
+    {
+        $node = $payload;
+
+        foreach ($path as $segment) {
+            if (! is_array($node) || ! array_key_exists($segment, $node)) {
+                return null;
+            }
+            $node = $node[$segment];
+        }
+
+        return $node;
+    }
+
+    private function searchNumericBalance(array $payload): ?float
+    {
+        foreach ($payload as $key => $value) {
+            if (is_array($value)) {
+                $nested = $this->searchNumericBalance($value);
+                if ($nested !== null) {
+                    return $nested;
+                }
+                continue;
+            }
+
+            if (! is_string($key)) {
+                continue;
+            }
+
+            $isBalanceKey = str_contains(mb_strtolower($key), 'saldo')
+                || str_contains(mb_strtolower($key), 'balance')
+                || str_contains(mb_strtolower($key), 'credit');
+
+            if (! $isBalanceKey) {
+                continue;
+            }
+
+            $parsed = $this->parseMoney($value);
+            if ($parsed !== null) {
+                return $parsed;
+            }
+        }
+
+        return null;
+    }
+
+    private function parseMoney(mixed $value): ?float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $normalized = preg_replace('/[^\d,.\-]/', '', $value);
+        if ($normalized === null || $normalized === '') {
+            return null;
+        }
+
+        if (str_contains($normalized, ',') && str_contains($normalized, '.')) {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        } elseif (str_contains($normalized, ',')) {
+            $normalized = str_replace(',', '.', $normalized);
+        }
+
+        return is_numeric($normalized) ? (float) $normalized : null;
     }
 }

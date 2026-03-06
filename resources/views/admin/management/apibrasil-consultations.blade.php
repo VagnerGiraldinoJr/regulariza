@@ -5,6 +5,32 @@
             <p class="panel-subtitle mt-1">Selecione o tipo de consulta financeira, execute na API Brasil e gere o PDF para o vendedor.</p>
         </section>
 
+        <section class="grid gap-4 md:grid-cols-2">
+            <div class="panel-card p-4">
+                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Saldo de Créditos API Brasil</h2>
+                @if (($balance['status'] ?? 'error') === 'success' && is_numeric($balance['balance'] ?? null))
+                    <p class="mt-3 text-2xl font-black text-emerald-700">
+                        R$ {{ number_format((float) $balance['balance'], 2, ',', '.') }}
+                    </p>
+                    <p class="mt-1 text-xs text-slate-500">Atualizado automaticamente a cada 45s.</p>
+                @else
+                    <p class="mt-3 text-sm font-semibold text-amber-700">Não foi possível ler o saldo agora.</p>
+                    @if (!empty($balance['error_message']))
+                        <p class="mt-1 text-xs text-red-700">{{ \Illuminate\Support\Str::limit((string) $balance['error_message'], 160) }}</p>
+                    @endif
+                @endif
+            </div>
+            <div class="panel-card p-4">
+                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Status da Integração</h2>
+                <p class="mt-3 text-sm">
+                    <span class="badge {{ $apibrasilConfigured ? 'badge-success' : 'badge-warning' }}">
+                        {{ $apibrasilConfigured ? 'Configurada' : 'Pendente' }}
+                    </span>
+                </p>
+                <p class="mt-1 text-xs text-slate-500">Valide Base URL, Token e catálogo antes da pesquisa.</p>
+            </div>
+        </section>
+
         @if (session('success'))
             <div class="rounded-lg border border-emerald-200 bg-emerald-50/85 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
         @endif
@@ -22,11 +48,11 @@
                     {{ $apibrasilConfigured ? 'Integração configurada' : 'Configure API Brasil em Integrações' }}
                 </span>
             </div>
-            <form method="POST" action="{{ route('admin.management.apibrasil-consultations.store') }}" class="grid gap-3 md:grid-cols-2">
+            <form method="POST" action="{{ route('admin.management.apibrasil-consultations.store') }}" class="grid gap-3 md:grid-cols-2" data-apibrasil-form>
                 @csrf
                 <div class="space-y-1 md:col-span-2">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Tipo de consulta</label>
-                    <select name="consultation_key" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                    <select name="consultation_key" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required data-consultation-selector>
                         <option value="">Selecionar consulta</option>
                         @foreach ($categories as $categoryKey => $categoryLabel)
                             @php
@@ -37,7 +63,7 @@
                             @continue(empty($group))
                             <optgroup label="{{ $categoryLabel }}">
                                 @foreach ($group as $key => $definition)
-                                    <option value="{{ $key }}" @selected(old('consultation_key') === $key)>
+                                    <option value="{{ $key }}" data-document-type="{{ $definition['document_type'] ?? 'both' }}" @selected(old('consultation_key') === $key)>
                                         {{ $definition['title'] }}
                                     </option>
                                 @endforeach
@@ -65,7 +91,7 @@
                         type="text"
                         name="document_number"
                         value="{{ old('document_number') }}"
-                        placeholder="Somente números ou formatado"
+                        placeholder="Digite CPF ou CNPJ"
                         class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm"
                         required
                         data-document-input
@@ -76,7 +102,13 @@
                     <textarea name="notes" rows="2" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Contexto da consulta (opcional)">{{ old('notes') }}</textarea>
                 </div>
                 <div class="md:col-span-2">
-                    <button class="btn-primary" @disabled(!$apibrasilConfigured)>Consultar API Brasil</button>
+                    <button class="btn-primary inline-flex items-center gap-2" @disabled(!$apibrasilConfigured) data-submit-button>
+                        <span data-submit-label>Consultar API Brasil</span>
+                        <svg data-submit-spinner class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.3" stroke-width="3"></circle>
+                            <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                        </svg>
+                    </button>
                 </div>
             </form>
         </section>
@@ -188,19 +220,97 @@
 
     <script>
         (function () {
+            const consultationSelect = document.querySelector('[data-consultation-selector]');
             const orderSelect = document.querySelector('[data-order-selector]');
             const documentInput = document.querySelector('[data-document-input]');
-            if (!orderSelect || !documentInput) {
+            const form = document.querySelector('[data-apibrasil-form]');
+            const submitButton = document.querySelector('[data-submit-button]');
+            const submitLabel = document.querySelector('[data-submit-label]');
+            const submitSpinner = document.querySelector('[data-submit-spinner]');
+
+            if (!documentInput) {
                 return;
             }
 
-            orderSelect.addEventListener('change', function () {
+            const onlyDigits = (value) => (value || '').replace(/\D+/g, '');
+
+            const formatCpf = (value) => {
+                const digits = onlyDigits(value).slice(0, 11);
+                return digits
+                    .replace(/^(\d{3})(\d)/, '$1.$2')
+                    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+                    .replace(/\.(\d{3})(\d)/, '.$1-$2');
+            };
+
+            const formatCnpj = (value) => {
+                const digits = onlyDigits(value).slice(0, 14);
+                return digits
+                    .replace(/^(\d{2})(\d)/, '$1.$2')
+                    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+                    .replace(/\.(\d{3})(\d)/, '.$1/$2')
+                    .replace(/(\d{4})(\d)/, '$1-$2');
+            };
+
+            const selectedDocumentType = () => {
+                if (!consultationSelect) {
+                    return 'both';
+                }
+                const selected = consultationSelect.options[consultationSelect.selectedIndex];
+                return selected ? (selected.dataset.documentType || 'both') : 'both';
+            };
+
+            const applyMask = () => {
+                const raw = documentInput.value;
+                const digits = onlyDigits(raw);
+                const type = selectedDocumentType();
+                if (type === 'cpf') {
+                    documentInput.value = formatCpf(digits);
+                    documentInput.placeholder = '000.000.000-00';
+                    return;
+                }
+                if (type === 'cnpj') {
+                    documentInput.value = formatCnpj(digits);
+                    documentInput.placeholder = '00.000.000/0000-00';
+                    return;
+                }
+                documentInput.value = digits.length > 11 ? formatCnpj(digits) : formatCpf(digits);
+                documentInput.placeholder = 'CPF: 000.000.000-00 ou CNPJ: 00.000.000/0000-00';
+            };
+
+            if (consultationSelect) {
+                consultationSelect.addEventListener('change', applyMask);
+            }
+
+            documentInput.addEventListener('input', applyMask);
+
+            if (orderSelect) {
+                orderSelect.addEventListener('change', function () {
+                    const selected = orderSelect.options[orderSelect.selectedIndex];
+                    const document = selected ? (selected.dataset.document || '') : '';
+                    if (document !== '') {
+                        documentInput.value = document;
+                        applyMask();
+                    }
+                });
+            }
+
+            if (form && submitButton && submitLabel && submitSpinner) {
+                form.addEventListener('submit', function () {
+                    submitButton.setAttribute('disabled', 'disabled');
+                    submitSpinner.classList.remove('hidden');
+                    submitLabel.textContent = 'Consultando API Brasil...';
+                });
+            }
+
+            if (orderSelect && orderSelect.value) {
                 const selected = orderSelect.options[orderSelect.selectedIndex];
                 const document = selected ? (selected.dataset.document || '') : '';
                 if (document !== '') {
                     documentInput.value = document;
                 }
-            });
+            }
+
+            applyMask();
         })();
     </script>
 </x-layouts.app>
