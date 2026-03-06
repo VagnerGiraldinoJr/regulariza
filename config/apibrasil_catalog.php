@@ -16,7 +16,11 @@ return [
             'document_type' => 'cpf',
             'method' => 'POST',
             'path' => '/api/v2/consulta/cpf/credits',
-            'body' => ['cpf' => '{document}'],
+            'body' => [
+                'tipo' => 'scr-analitico-resumo-bacen',
+                'cpf' => '{document}',
+                'homolog' => true,
+            ],
             'description' => 'Consulta SCR Bacen e score para pessoa física.',
         ],
         'scr_bacen_score_pj' => [
@@ -25,7 +29,11 @@ return [
             'document_type' => 'cnpj',
             'method' => 'POST',
             'path' => '/api/v2/consulta/cnpj/credits',
-            'body' => ['cnpj' => '{document}'],
+            'body' => [
+                'tipo' => 'scr-analitico-resumo-bacen',
+                'cnpj' => '{document}',
+                'homolog' => true,
+            ],
             'description' => 'Consulta SCR Bacen e score para pessoa jurídica.',
         ],
         'serasa_score_pf' => [

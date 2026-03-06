@@ -8,11 +8,16 @@
         <section class="grid gap-4 md:grid-cols-2">
             <div class="panel-card p-4">
                 <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Saldo de Créditos API Brasil</h2>
-                @if (($balance['status'] ?? 'error') === 'success' && is_numeric($balance['balance'] ?? null))
+                @if (is_numeric($balance['balance'] ?? null))
                     <p class="mt-3 text-2xl font-black text-emerald-700">
                         R$ {{ number_format((float) $balance['balance'], 2, ',', '.') }}
                     </p>
-                    <p class="mt-1 text-xs text-slate-500">Atualizado automaticamente a cada 45s.</p>
+                    <p class="mt-1 text-xs text-slate-500">
+                        Atualizado automaticamente a cada 45s.
+                        @if (($balance['status'] ?? 'error') !== 'success')
+                            (saldo recuperado do último retorno da API)
+                        @endif
+                    </p>
                 @else
                     <p class="mt-3 text-sm font-semibold text-amber-700">Não foi possível ler o saldo agora.</p>
                     @if (!empty($balance['error_message']))

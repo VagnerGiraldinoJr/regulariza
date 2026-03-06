@@ -59,6 +59,13 @@ class ApiBrasilConsultationController extends Controller
             }
         }
 
+        if (! is_numeric($balance['balance'] ?? null)) {
+            $fallbackBalance = $this->balanceFromConsultationHistory();
+            if (is_numeric($fallbackBalance)) {
+                $balance['balance'] = (float) $fallbackBalance;
+            }
+        }
+
         return view('admin.management.apibrasil-consultations', [
             'consultations' => $consultations,
             'paidOrders' => $paidOrders,
@@ -180,5 +187,79 @@ class ApiBrasilConsultationController extends Controller
     private function catalog(): array
     {
         return (array) config('apibrasil_catalog.consultations', []);
+    }
+
+    private function balanceFromConsultationHistory(): ?float
+    {
+        $recentPayloads = ApiBrasilConsultation::query()
+            ->latest('id')
+            ->limit(30)
+            ->pluck('response_payload');
+
+        foreach ($recentPayloads as $payload) {
+            if (! is_array($payload)) {
+                continue;
+            }
+
+            $value = $this->findBalanceValue($payload);
+            if ($value !== null) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function findBalanceValue(array $payload): ?float
+    {
+        foreach ($payload as $key => $value) {
+            if (is_array($value)) {
+                $nested = $this->findBalanceValue($value);
+                if ($nested !== null) {
+                    return $nested;
+                }
+            }
+
+            if (! is_string($key)) {
+                continue;
+            }
+
+            $keyLower = mb_strtolower($key);
+            if (! str_contains($keyLower, 'saldo') && ! str_contains($keyLower, 'balance')) {
+                continue;
+            }
+
+            $parsed = $this->parseMoney($value);
+            if ($parsed !== null) {
+                return $parsed;
+            }
+        }
+
+        return null;
+    }
+
+    private function parseMoney(mixed $value): ?float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $normalized = preg_replace('/[^\d,.\-]/', '', $value);
+        if ($normalized === null || $normalized === '') {
+            return null;
+        }
+
+        if (str_contains($normalized, ',') && str_contains($normalized, '.')) {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        } elseif (str_contains($normalized, ',')) {
+            $normalized = str_replace(',', '.', $normalized);
+        }
+
+        return is_numeric($normalized) ? (float) $normalized : null;
     }
 }
