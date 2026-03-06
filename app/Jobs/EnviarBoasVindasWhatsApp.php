@@ -31,6 +31,22 @@ class EnviarBoasVindasWhatsApp implements ShouldQueue
             'protocolo' => $this->order->protocolo,
             'link' => route('portal.dashboard'),
         ]);
+        $imageUrl = trim((string) config('zapi.media.boas_vindas_image_url', ''));
+
+        if ($imageUrl !== '') {
+            $result = $zApiService->enviarImagem(
+                telefone: $user->whatsapp,
+                imageUrl: $imageUrl,
+                caption: $mensagem,
+                evento: 'boas_vindas',
+                userId: $user->id,
+                orderId: $this->order->id
+            );
+
+            if (($result['status'] ?? '') === 'enviado') {
+                return;
+            }
+        }
 
         $zApiService->enviarMensagem(
             telefone: $user->whatsapp,
