@@ -43,7 +43,6 @@ return [
             'method' => 'POST',
             'path' => '/api/v2/consulta/cnpj/credits',
             'body' => [
-                'tipo' => 'serasa-premium-pj',
                 'cnpj' => '{document}',
                 'homolog' => true,
             ],
