@@ -10,6 +10,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -145,18 +146,30 @@ class ApiBrasilConsultationController extends Controller
             return back()->withErrors(['analyst_user_id' => 'Selecione um analista/vendedor válido.']);
         }
 
-        $consultation->update([
-            'analyst_user_id' => $analyst->id,
-            'forwarded_at' => now(),
-            'notes' => $data['notes'] ?: $consultation->notes,
-        ]);
+        try {
+            $consultation->update([
+                'analyst_user_id' => $analyst->id,
+                'forwarded_at' => now(),
+                'notes' => $data['notes'] ?: $consultation->notes,
+            ]);
 
-        if ($consultation->lead) {
-            $consultation->lead->update(['referred_by_user_id' => $analyst->id]);
-        }
+            if ($consultation->lead) {
+                $consultation->lead->update(['referred_by_user_id' => $analyst->id]);
+            }
 
-        if ($consultation->user) {
-            $consultation->user->update(['referred_by_user_id' => $analyst->id]);
+            if ($consultation->user) {
+                $consultation->user->update(['referred_by_user_id' => $analyst->id]);
+            }
+        } catch (\Throwable $exception) {
+            Log::error('Falha ao encaminhar consulta API Brasil para analista.', [
+                'consultation_id' => $consultation->id,
+                'analyst_user_id' => $analyst->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return back()->withErrors([
+                'apibrasil_forward' => 'Não foi possível encaminhar para o analista agora. Tente novamente em instantes.',
+            ]);
         }
 
         return back()->with('success', 'Consulta encaminhada ao analista com sucesso.');
