@@ -54,6 +54,9 @@ class ApiBrasilService
         $method = strtoupper((string) ($definition['method'] ?? 'GET'));
         $bodyTemplate = (array) ($definition['body'] ?? []);
         $payload = $this->resolveTemplate($bodyTemplate, $digits);
+        if (array_key_exists('homolog', $payload)) {
+            $payload['homolog'] = (bool) config('services.apibrasil.homolog', false);
+        }
         $url = $this->baseUrl().'/'.ltrim($path, '/');
 
         $response = $this->send($method, $url, $payload);

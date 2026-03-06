@@ -34,6 +34,7 @@
                     </span>
                 </p>
                 <p class="mt-1 text-xs text-slate-600">Base URL: {{ $integrations['apibrasil']['base_url'] ?: '-' }}</p>
+                <p class="text-xs text-slate-600">Homologação: {{ $integrations['apibrasil']['homolog'] ? 'Sim' : 'Não' }}</p>
                 <p class="text-xs text-slate-600">Saldo Path: {{ $integrations['apibrasil']['balance_path'] ?: '-' }}</p>
                 <p class="text-xs text-slate-600">CPF Path: {{ $integrations['apibrasil']['cpf_path'] ?: '-' }}</p>
                 <p class="text-xs text-slate-600">CNPJ Path: {{ $integrations['apibrasil']['cnpj_path'] ?: '-' }}</p>
@@ -83,6 +84,13 @@
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">API Brasil Prefixo Token</label>
                     <input type="text" name="apibrasil_token_prefix" value="{{ old('apibrasil_token_prefix', $integrations['apibrasil']['token_prefix']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Bearer">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Modo Homologação</label>
+                    <label class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm text-slate-700">
+                        <input type="checkbox" name="apibrasil_homolog" value="1" @checked(old('apibrasil_homolog', $integrations['apibrasil']['homolog']) ? true : false)>
+                        Usar dados de homologação (teste)
+                    </label>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Path Saldo</label>

@@ -63,6 +63,7 @@ class SystemSetting extends Model
             'apibrasil.token' => 'services.apibrasil.token',
             'apibrasil.token_header' => 'services.apibrasil.token_header',
             'apibrasil.token_prefix' => 'services.apibrasil.token_prefix',
+            'apibrasil.homolog' => 'services.apibrasil.homolog',
             'apibrasil.balance_path' => 'services.apibrasil.balance_path',
             'apibrasil.balance_method' => 'services.apibrasil.balance_method',
             'apibrasil.cpf_path' => 'services.apibrasil.cpf_path',

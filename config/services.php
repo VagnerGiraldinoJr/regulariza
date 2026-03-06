@@ -38,6 +38,7 @@ return [
         'token' => env('APIBRASIL_TOKEN'),
         'token_header' => env('APIBRASIL_TOKEN_HEADER', 'Authorization'),
         'token_prefix' => env('APIBRASIL_TOKEN_PREFIX', 'Bearer'),
+        'homolog' => filter_var(env('APIBRASIL_HOMOLOG', false), FILTER_VALIDATE_BOOL),
         'balance_path' => env('APIBRASIL_BALANCE_PATH', '/api/v2/user'),
         'balance_method' => env('APIBRASIL_BALANCE_METHOD', 'GET'),
         'cpf_path' => env('APIBRASIL_CPF_PATH', '/api/v2/consulta/cpf/credits'),
