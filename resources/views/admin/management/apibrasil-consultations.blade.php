@@ -2,7 +2,7 @@
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">Consultas API Brasil</h1>
-            <p class="panel-subtitle mt-1">Consulta de CPF/CNPJ após pagamento e encaminhamento para analista.</p>
+            <p class="panel-subtitle mt-1">Selecione o tipo de consulta financeira, execute na API Brasil e gere o PDF para o vendedor.</p>
         </section>
 
         @if (session('success'))
@@ -24,6 +24,27 @@
             </div>
             <form method="POST" action="{{ route('admin.management.apibrasil-consultations.store') }}" class="grid gap-3 md:grid-cols-2">
                 @csrf
+                <div class="space-y-1 md:col-span-2">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Tipo de consulta</label>
+                    <select name="consultation_key" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                        <option value="">Selecionar consulta</option>
+                        @foreach ($categories as $categoryKey => $categoryLabel)
+                            @php
+                                $group = collect($catalog)
+                                    ->filter(fn ($item) => ($item['category'] ?? '') === $categoryKey)
+                                    ->all();
+                            @endphp
+                            @continue(empty($group))
+                            <optgroup label="{{ $categoryLabel }}">
+                                @foreach ($group as $key => $definition)
+                                    <option value="{{ $key }}" @selected(old('consultation_key') === $key)>
+                                        {{ $definition['title'] }}
+                                    </option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Pedido pago (opcional)</label>
                     <select name="order_id" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" data-order-selector>
@@ -91,6 +112,9 @@
                             <tr class="border-t border-slate-100 align-top">
                                 <td class="px-4 py-3 whitespace-nowrap">{{ $consultation->created_at?->format('d/m/Y H:i') }}</td>
                                 <td class="px-4 py-3">
+                                    <div class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                        {{ $consultation->consultation_title ?: 'Consulta API Brasil' }}
+                                    </div>
                                     <div class="font-semibold text-slate-800">{{ $consultation->document_type === 'cnpj' ? 'CNPJ' : 'CPF' }}</div>
                                     <div class="text-xs text-slate-600">{{ $consultation->document_number }}</div>
                                 </td>
@@ -127,6 +151,9 @@
                                             <summary class="cursor-pointer text-xs font-semibold text-slate-700">Ver retorno JSON</summary>
                                             <pre class="mt-2 max-h-56 overflow-auto rounded bg-slate-900/95 p-2 text-[11px] text-emerald-100">{{ json_encode($consultation->response_payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                         </details>
+                                        <a href="{{ route('admin.management.apibrasil-consultations.pdf', $consultation) }}" class="mb-2 inline-flex rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">
+                                            Baixar PDF
+                                        </a>
                                     @endif
 
                                     <form method="POST" action="{{ route('admin.management.apibrasil-consultations.forward', $consultation) }}" class="space-y-2">

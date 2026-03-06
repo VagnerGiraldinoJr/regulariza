@@ -8,6 +8,56 @@ use RuntimeException;
 
 class ApiBrasilService
 {
+    public function consultarCatalogo(string $consultationKey, string $documento): array
+    {
+        $catalog = (array) config('apibrasil_catalog.consultations', []);
+        $definition = $catalog[$consultationKey] ?? null;
+
+        if (! is_array($definition)) {
+            throw new RuntimeException('Consulta não encontrada no catálogo API Brasil.');
+        }
+
+        $digits = preg_replace('/\D+/', '', $documento);
+
+        if (! in_array(strlen($digits), [11, 14], true)) {
+            throw new RuntimeException('Documento inválido. Informe CPF (11) ou CNPJ (14) com números válidos.');
+        }
+
+        $resolvedType = strlen($digits) === 14 ? 'cnpj' : 'cpf';
+        $allowedType = (string) ($definition['document_type'] ?? 'both');
+
+        if ($allowedType !== 'both' && $allowedType !== $resolvedType) {
+            throw new RuntimeException("A consulta selecionada aceita apenas documento do tipo {$allowedType}.");
+        }
+
+        $path = str_replace('{document}', $digits, (string) ($definition['path'] ?? ''));
+        $method = strtoupper((string) ($definition['method'] ?? 'GET'));
+        $bodyTemplate = (array) ($definition['body'] ?? []);
+        $payload = $this->resolveTemplate($bodyTemplate, $digits);
+        $url = $this->baseUrl().'/'.ltrim($path, '/');
+
+        $response = $this->send($method, $url, $payload);
+
+        return [
+            'document' => $digits,
+            'document_type' => $resolvedType,
+            'status' => $response->successful() ? 'success' : 'error',
+            'http_status' => $response->status(),
+            'endpoint' => $url,
+            'request_payload' => [
+                'method' => $method,
+                'path' => '/'.ltrim($path, '/'),
+                'document' => $digits,
+                'body' => $payload,
+            ],
+            'response_payload' => $this->payload($response),
+            'error_message' => $response->successful() ? null : $this->errorMessage($response),
+            'consultation_key' => $consultationKey,
+            'consultation_title' => (string) ($definition['title'] ?? $consultationKey),
+            'consultation_category' => (string) ($definition['category'] ?? 'geral'),
+        ];
+    }
+
     public function consultarDocumento(string $documento): array
     {
         $digits = preg_replace('/\D+/', '', $documento);
@@ -21,27 +71,7 @@ class ApiBrasilService
         $method = $this->methodFor($tipo);
         $url = $this->baseUrl().'/'.ltrim($path, '/');
 
-        $tokenHeader = (string) config('services.apibrasil.token_header', 'Authorization');
-        $tokenPrefix = trim((string) config('services.apibrasil.token_prefix', 'Bearer'));
-        $token = trim((string) config('services.apibrasil.token', ''));
-
-        if ($token === '') {
-            throw new RuntimeException('APIBRASIL_TOKEN não configurado.');
-        }
-
-        $headerValue = $tokenPrefix !== '' ? $tokenPrefix.' '.$token : $token;
-
-        $request = Http::timeout((int) config('services.apibrasil.timeout', 20))
-            ->acceptJson()
-            ->withHeaders([
-                $tokenHeader => $headerValue,
-            ]);
-
-        $response = match ($method) {
-            'POST' => $request->post($url, ['document' => $digits]),
-            'PUT' => $request->put($url, ['document' => $digits]),
-            default => $request->get($url),
-        };
+        $response = $this->send($method, $url, ['document' => $digits]);
 
         return [
             'document' => $digits,
@@ -100,5 +130,45 @@ class ApiBrasilService
         }
 
         return $body;
+    }
+
+    private function send(string $method, string $url, array $payload): Response
+    {
+        $tokenHeader = (string) config('services.apibrasil.token_header', 'Authorization');
+        $tokenPrefix = trim((string) config('services.apibrasil.token_prefix', 'Bearer'));
+        $token = trim((string) config('services.apibrasil.token', ''));
+
+        if ($token === '') {
+            throw new RuntimeException('APIBRASIL_TOKEN não configurado.');
+        }
+
+        $headerValue = $tokenPrefix !== '' ? $tokenPrefix.' '.$token : $token;
+
+        $request = Http::timeout((int) config('services.apibrasil.timeout', 20))
+            ->acceptJson()
+            ->withHeaders([
+                $tokenHeader => $headerValue,
+                'Content-Type' => 'application/json',
+            ]);
+
+        return match ($method) {
+            'POST' => $request->post($url, $payload),
+            'PUT' => $request->put($url, $payload),
+            default => $request->get($url, $payload),
+        };
+    }
+
+    private function resolveTemplate(array $template, string $document): array
+    {
+        $json = json_encode($template, JSON_UNESCAPED_UNICODE);
+
+        if ($json === false) {
+            return ['document' => $document];
+        }
+
+        $json = str_replace('{document}', $document, $json);
+        $decoded = json_decode($json, true);
+
+        return is_array($decoded) ? $decoded : ['document' => $document];
     }
 }

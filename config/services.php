@@ -34,14 +34,14 @@ return [
     ],
 
     'apibrasil' => [
-        'base_url' => env('APIBRASIL_BASE_URL', 'https://apibrasil.com.br/api'),
+        'base_url' => env('APIBRASIL_BASE_URL', 'https://gateway.apibrasil.io'),
         'token' => env('APIBRASIL_TOKEN'),
         'token_header' => env('APIBRASIL_TOKEN_HEADER', 'Authorization'),
         'token_prefix' => env('APIBRASIL_TOKEN_PREFIX', 'Bearer'),
-        'cpf_path' => env('APIBRASIL_CPF_PATH', '/cpf/{document}'),
-        'cnpj_path' => env('APIBRASIL_CNPJ_PATH', '/cnpj/{document}'),
-        'cpf_method' => env('APIBRASIL_CPF_METHOD', 'GET'),
-        'cnpj_method' => env('APIBRASIL_CNPJ_METHOD', 'GET'),
+        'cpf_path' => env('APIBRASIL_CPF_PATH', '/api/v2/consulta/cpf/credits'),
+        'cnpj_path' => env('APIBRASIL_CNPJ_PATH', '/api/v2/consulta/cnpj/credits'),
+        'cpf_method' => env('APIBRASIL_CPF_METHOD', 'POST'),
+        'cnpj_method' => env('APIBRASIL_CNPJ_METHOD', 'POST'),
         'timeout' => (int) env('APIBRASIL_TIMEOUT', 20),
     ],
 

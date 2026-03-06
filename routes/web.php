@@ -251,6 +251,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/management')->name('adm
     Route::post('/integrations', [AdminManagementController::class, 'updateIntegrations'])->name('integrations.update');
     Route::get('/apibrasil-consultations', [ApiBrasilConsultationController::class, 'index'])->name('apibrasil-consultations');
     Route::post('/apibrasil-consultations', [ApiBrasilConsultationController::class, 'store'])->name('apibrasil-consultations.store');
+    Route::get('/apibrasil-consultations/{consultation}/pdf', [ApiBrasilConsultationController::class, 'downloadPdf'])->name('apibrasil-consultations.pdf');
     Route::post('/apibrasil-consultations/{consultation}/forward', [ApiBrasilConsultationController::class, 'forward'])->name('apibrasil-consultations.forward');
     Route::get('/messages', [AdminManagementController::class, 'messages'])->name('messages');
     Route::get('/orphan-leads', [AdminManagementController::class, 'orphanLeads'])->name('orphan-leads');
