@@ -32,6 +32,20 @@ class ApiBrasilConsultationController extends Controller
             ->paginate(20)
             ->withQueryString();
 
+        $orderIds = $consultations->getCollection()
+            ->pluck('order_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $consultationCountByOrder = ApiBrasilConsultation::query()
+            ->selectRaw('order_id, COUNT(*) as total')
+            ->whereIn('order_id', $orderIds)
+            ->groupBy('order_id')
+            ->pluck('total', 'order_id')
+            ->map(fn ($total) => (int) $total)
+            ->all();
+
         $paidOrders = Order::query()
             ->with(['lead', 'user'])
             ->where('pagamento_status', 'pago')
@@ -76,6 +90,7 @@ class ApiBrasilConsultationController extends Controller
             'catalog' => $catalog,
             'categories' => $categories,
             'balance' => $balance,
+            'consultationCountByOrder' => $consultationCountByOrder,
         ]);
     }
 
@@ -185,6 +200,31 @@ class ApiBrasilConsultationController extends Controller
 
         $pdf = Pdf::loadView('admin.management.apibrasil-consultation-pdf', [
             'consultation' => $consultation->loadMissing(['order', 'user', 'analyst', 'admin']),
+        ])->setPaper('a4');
+
+        return $pdf->download($filename);
+    }
+
+    public function downloadOrderPdf(Order $order): Response|RedirectResponse
+    {
+        $consultations = ApiBrasilConsultation::query()
+            ->where('order_id', $order->id)
+            ->where('status', 'success')
+            ->with(['order', 'user', 'analyst', 'admin'])
+            ->latest('id')
+            ->get();
+
+        if ($consultations->isEmpty()) {
+            return back()->withErrors([
+                'apibrasil_pdf' => 'Este pedido ainda não possui consultas de sucesso para gerar o dossiê.',
+            ]);
+        }
+
+        $filename = sprintf('dossie-%s-apibrasil.pdf', Str::slug((string) ($order->protocolo ?: $order->id)));
+
+        $pdf = Pdf::loadView('admin.management.apibrasil-order-dossier-pdf', [
+            'order' => $order->loadMissing(['lead', 'user']),
+            'consultations' => $consultations,
         ])->setPaper('a4');
 
         return $pdf->download($filename);

@@ -188,6 +188,11 @@
                                             <summary class="cursor-pointer text-xs font-semibold text-slate-700">Ver retorno JSON</summary>
                                             <pre class="mt-2 max-h-56 overflow-auto rounded bg-slate-900/95 p-2 text-[11px] text-emerald-100">{{ json_encode($consultation->response_payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                         </details>
+                                        @if ($consultation->order)
+                                            <a href="{{ route('admin.management.apibrasil-consultations.order-pdf', $consultation->order) }}" data-no-transition class="mb-2 inline-flex rounded-md bg-slate-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-slate-800">
+                                                Dossiê do pedido ({{ $consultationCountByOrder[$consultation->order_id] ?? 1 }} consultas)
+                                            </a>
+                                        @endif
                                         <a href="{{ route('admin.management.apibrasil-consultations.pdf', $consultation) }}" data-no-transition class="mb-2 inline-flex rounded-md bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">
                                             Baixar PDF
                                         </a>
