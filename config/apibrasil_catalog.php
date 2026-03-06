@@ -36,6 +36,19 @@ return [
             ],
             'description' => 'Consulta SCR Bacen e score para pessoa jurídica.',
         ],
+        'serasa_premium_pj' => [
+            'title' => 'Serasa Premium PJ',
+            'category' => 'consulta_cnpj',
+            'document_type' => 'cnpj',
+            'method' => 'POST',
+            'path' => '/api/v2/consulta/cnpj/credits',
+            'body' => [
+                'tipo' => 'serasa-premium-pj',
+                'cnpj' => '{document}',
+                'homolog' => true,
+            ],
+            'description' => 'Consulta completa Serasa Premium para CNPJ.',
+        ],
         'serasa_score_pf' => [
             'title' => 'Serasa Score PF',
             'category' => 'analise_credito',
