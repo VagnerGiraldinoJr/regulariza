@@ -211,7 +211,7 @@
         <tr>
             <td>
                 <div class="official">Documento Oficial CPF CLEAN BR</div>
-                <div>CPF Clean Brasil • CNPJ 27.674.876/0001-70</div>
+                <div>CPF Clean Brasil • CNPJ 44.156.681/0001-57</div>
                 <div>Protocolo {{ $reportProtocol }} • Emitido em {{ now()->format('d/m/Y H:i:s') }}</div>
             </td>
             <td class="cert">
