@@ -20,6 +20,10 @@ function shouldHandleNavigation(event, link) {
         return false;
     }
 
+    if (link.dataset.noTransition !== undefined) {
+        return false;
+    }
+
     const href = link.getAttribute('href');
     if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) {
         return false;
@@ -54,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         event.preventDefault();
         const destination = link.href;
+        const currentLocation = window.location.href;
 
         document.body.classList.remove('page-ready');
         document.body.classList.add('page-leaving');
@@ -61,6 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
         window.setTimeout(() => {
             window.location.assign(destination);
         }, TRANSITION_MS);
+
+        // Fallback: if navigation does not actually happen (e.g. file download),
+        // restore normal page state so the UI does not remain opaque.
+        window.setTimeout(() => {
+            if (window.location.href === currentLocation) {
+                markReady();
+            }
+        }, 2200);
     });
 });
 
