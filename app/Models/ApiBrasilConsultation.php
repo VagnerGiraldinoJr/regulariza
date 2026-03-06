@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ApiBrasilConsultation extends Model
 {
+    protected $table = 'apibrasil_consultations';
+
     protected $fillable = [
         'order_id',
         'lead_id',
