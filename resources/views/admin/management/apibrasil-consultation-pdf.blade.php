@@ -28,8 +28,12 @@
         .ok { color: #0f766e; font-weight: 700; }
         .err { color: #b42318; font-weight: 700; }
         .footer { margin-top: 14px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #64748b; }
-        .appendix-title { margin-top: 16px; font-size: 12px; font-weight: 700; color: #1e3550; }
-        pre { white-space: pre-wrap; word-break: break-word; background: #0b1e2d; color: #d5f4ff; padding: 10px; border-radius: 8px; font-size: 10px; line-height: 1.35; }
+        .footer-table { width: 100%; border-collapse: collapse; }
+        .footer-table td { vertical-align: middle; }
+        .official { font-size: 11px; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: .06em; }
+        .security-wrap { text-align: right; opacity: .7; }
+        .security-wrap svg { width: 110px; height: auto; }
+        .protocol-chip { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 10px; background: #e6f4ff; color: #0c4a6e; font-weight: 700; }
         .logo-wrap svg { width: 100%; height: 100%; }
     </style>
 </head>
@@ -39,6 +43,8 @@
         $data = is_array($response['data'] ?? null) ? $response['data'] : [];
         $logoPath = public_path('assets/branding/cpfclean-logo.svg');
         $logoSvg = file_exists($logoPath) ? file_get_contents($logoPath) : null;
+        $letsencryptPath = public_path('assets/branding/letsencrypt-logo-horizontal.svg');
+        $letsencryptSvg = file_exists($letsencryptPath) ? file_get_contents($letsencryptPath) : null;
 
         $score = $data['score'] ?? '-';
         $riskClass = $data['classeRisco'] ?? '-';
@@ -48,7 +54,7 @@
         $consultaEm = $data['consultaRealizadaEm'] ?? ($data['dataConsulta'] ?? null);
         $consultaEm = $consultaEm ? date('d/m/Y H:i:s', strtotime((string) $consultaEm)) : '-';
         $homolog = array_key_exists('homolog', $response) ? (bool) $response['homolog'] : null;
-        $valorConsulta = $response['valor_consulta'] ?? ($response['tax'] ?? '-');
+        $reportProtocol = 'DOC-CPF-'.now()->format('Ymd').'-'.str_pad((string) $consultation->id, 6, '0', STR_PAD_LEFT);
     @endphp
 
     <div class="page">
@@ -66,6 +72,7 @@
                         <div class="brand">CPF Clean Brasil</div>
                         <h1 class="title">Relatório de Consulta Financeira</h1>
                         <p class="subtitle">Documento técnico-operacional para avaliação de regularização e proposta de contrato.</p>
+                        <p style="margin:8px 0 0;"><span class="protocol-chip">Protocolo do Documento: {{ $reportProtocol }}</span></p>
                     </td>
                 </tr>
             </table>
@@ -110,11 +117,11 @@
                     <tr><td class="label">Categoria</td><td>{{ $consultation->consultation_category ?: '-' }}</td></tr>
                     <tr><td class="label">Cliente</td><td>{{ $nome }}</td></tr>
                     <tr><td class="label">Documento</td><td>{{ $consultation->document_type === 'cnpj' ? 'CNPJ' : 'CPF' }}: {{ $documento }}</td></tr>
+                    <tr><td class="label">Protocolo do Documento</td><td>{{ $reportProtocol }}</td></tr>
                     <tr><td class="label">Protocolo</td><td>{{ $consultation->order?->protocolo ?: '-' }}</td></tr>
                     <tr><td class="label">Analista Responsável</td><td>{{ $consultation->analyst?->name ?: '-' }}</td></tr>
                     <tr><td class="label">Data da Consulta</td><td>{{ $consultaEm }}</td></tr>
                     <tr><td class="label">Ambiente</td><td>{{ $homolog === null ? '-' : ($homolog ? 'Homologação (teste)' : 'Produção (dados reais)') }}</td></tr>
-                    <tr><td class="label">Tarifa da Consulta</td><td>{{ is_numeric($valorConsulta) ? 'R$ '.number_format((float) $valorConsulta, 2, ',', '.') : $valorConsulta }}</td></tr>
                     <tr><td class="label">HTTP</td><td>{{ $consultation->http_status ?: '-' }}</td></tr>
                 </table>
             </div>
@@ -143,12 +150,21 @@
             </div>
         @endif
 
-        <div class="appendix-title">Anexo Técnico - Retorno Bruto da API</div>
-        <pre>{{ json_encode($consultation->response_payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
-
         <div class="footer">
-            CPF Clean Brasil • Relatório interno para apoio comercial e formalização de contrato.<br>
-            Gerado em {{ now()->format('d/m/Y H:i:s') }}.
+            <table class="footer-table">
+                <tr>
+                    <td>
+                        <div class="official">Documento Oficial CPF CLEAN BR</div>
+                        <div>CPF Clean Brasil • CNPJ 27.674.876/0001-70</div>
+                        <div>Gerado em {{ now()->format('d/m/Y H:i:s') }} • Protocolo {{ $reportProtocol }}</div>
+                    </td>
+                    <td class="security-wrap">
+                        @if($letsencryptSvg)
+                            {!! $letsencryptSvg !!}
+                        @endif
+                    </td>
+                </tr>
+            </table>
         </div>
     </div>
 </body>
