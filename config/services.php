@@ -33,6 +33,18 @@ return [
         'webhook_token' => env('ASAAS_WEBHOOK_TOKEN'),
     ],
 
+    'apibrasil' => [
+        'base_url' => env('APIBRASIL_BASE_URL', 'https://apibrasil.com.br/api'),
+        'token' => env('APIBRASIL_TOKEN'),
+        'token_header' => env('APIBRASIL_TOKEN_HEADER', 'Authorization'),
+        'token_prefix' => env('APIBRASIL_TOKEN_PREFIX', 'Bearer'),
+        'cpf_path' => env('APIBRASIL_CPF_PATH', '/cpf/{document}'),
+        'cnpj_path' => env('APIBRASIL_CNPJ_PATH', '/cnpj/{document}'),
+        'cpf_method' => env('APIBRASIL_CPF_METHOD', 'GET'),
+        'cnpj_method' => env('APIBRASIL_CNPJ_METHOD', 'GET'),
+        'timeout' => (int) env('APIBRASIL_TIMEOUT', 20),
+    ],
+
     'cpfclean' => [
         'whatsapp_number' => env('CPFCLEAN_WHATSAPP_NUMBER', '5531998428448'),
     ],

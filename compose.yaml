@@ -45,6 +45,7 @@ services:
       ZAPI_INSTANCE: ${ZAPI_INSTANCE:-}
       ZAPI_TOKEN: ${ZAPI_TOKEN:-}
       ZAPI_CLIENT_TOKEN: ${ZAPI_CLIENT_TOKEN:-}
+      ZAPI_WELCOME_IMAGE_URL: ${ZAPI_WELCOME_IMAGE_URL:-}
       MAIL_MAILER: ${MAIL_MAILER:-smtp}
       MAIL_SCHEME: ${MAIL_SCHEME:-smtps}
       MAIL_HOST: ${MAIL_HOST:-smtp.hostinger.com}
@@ -103,6 +104,7 @@ services:
       ZAPI_INSTANCE: ${ZAPI_INSTANCE:-}
       ZAPI_TOKEN: ${ZAPI_TOKEN:-}
       ZAPI_CLIENT_TOKEN: ${ZAPI_CLIENT_TOKEN:-}
+      ZAPI_WELCOME_IMAGE_URL: ${ZAPI_WELCOME_IMAGE_URL:-}
       MAIL_MAILER: ${MAIL_MAILER:-smtp}
       MAIL_SCHEME: ${MAIL_SCHEME:-smtps}
       MAIL_HOST: ${MAIL_HOST:-smtp.hostinger.com}

@@ -3,6 +3,7 @@
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\AdminManagementController;
 use App\Http\Controllers\AnalystPanelController;
+use App\Http\Controllers\ApiBrasilConsultationController;
 use App\Http\Controllers\ClientExperienceController;
 use App\Http\Controllers\ContractController;
 use App\Http\Controllers\ProfileController;
@@ -248,6 +249,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/management')->name('adm
     Route::get('/payout-requests', [AdminManagementController::class, 'payoutRequests'])->name('payout-requests');
     Route::get('/integrations', [AdminManagementController::class, 'integrations'])->name('integrations');
     Route::post('/integrations', [AdminManagementController::class, 'updateIntegrations'])->name('integrations.update');
+    Route::get('/apibrasil-consultations', [ApiBrasilConsultationController::class, 'index'])->name('apibrasil-consultations');
+    Route::post('/apibrasil-consultations', [ApiBrasilConsultationController::class, 'store'])->name('apibrasil-consultations.store');
+    Route::post('/apibrasil-consultations/{consultation}/forward', [ApiBrasilConsultationController::class, 'forward'])->name('apibrasil-consultations.forward');
     Route::get('/messages', [AdminManagementController::class, 'messages'])->name('messages');
     Route::get('/orphan-leads', [AdminManagementController::class, 'orphanLeads'])->name('orphan-leads');
     Route::post('/orphan-leads/{lead}/assign', [AdminManagementController::class, 'assignLead'])->name('orphan-leads.assign');

@@ -172,6 +172,10 @@
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h6"/><path d="M14 12h6"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="12" r="2"/></svg>
                                 <span class="sidebar-label">Integrações</span>
                             </a>
+                            <a href="{{ route('admin.management.apibrasil-consultations') }}" class="app-nav-link {{ request()->routeIs('admin.management.apibrasil-consultations*') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 9h8"/><path d="M8 13h4"/></svg>
+                                <span class="sidebar-label">Consultas API Brasil</span>
+                            </a>
                             <a href="{{ route('admin.finance.dashboard') }}" class="app-nav-link {{ request()->routeIs('admin.finance.*') ? 'is-active' : '' }}">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5"/><path d="M20 19H4"/><path d="M7 15l3-3 3 2 4-5"/></svg>
                                 <span class="sidebar-label">Financeiro</span>

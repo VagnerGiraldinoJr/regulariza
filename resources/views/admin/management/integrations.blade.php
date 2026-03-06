@@ -2,14 +2,14 @@
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">Tela de Integrações</h1>
-            <p class="panel-subtitle mt-1">Configure credenciais e parâmetros operacionais do Asaas e Z-API.</p>
+            <p class="panel-subtitle mt-1">Configure credenciais e parâmetros operacionais do Asaas, API Brasil e Z-API.</p>
         </section>
 
         @if (session('success'))
             <div class="rounded-lg border border-emerald-200 bg-emerald-50/85 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
         @endif
 
-        <section class="grid gap-4 lg:grid-cols-2">
+        <section class="grid gap-4 lg:grid-cols-3">
             <div class="panel-card p-4">
                 <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Gestão Asaas</h2>
                 <p class="mt-2 text-sm">
@@ -19,6 +19,18 @@
                     </span>
                 </p>
                 <p class="mt-1 text-xs text-slate-600">Webhook: <code>{{ $integrations['asaas']['webhook'] }}</code></p>
+            </div>
+            <div class="panel-card p-4">
+                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Gestão API Brasil</h2>
+                <p class="mt-2 text-sm">
+                    Status:
+                    <span class="badge {{ $integrations['apibrasil']['enabled'] ? 'badge-success' : 'badge-warning' }}">
+                        {{ $integrations['apibrasil']['enabled'] ? 'Configurado' : 'Pendente' }}
+                    </span>
+                </p>
+                <p class="mt-1 text-xs text-slate-600">Base URL: {{ $integrations['apibrasil']['base_url'] ?: '-' }}</p>
+                <p class="text-xs text-slate-600">CPF Path: {{ $integrations['apibrasil']['cpf_path'] ?: '-' }}</p>
+                <p class="text-xs text-slate-600">CNPJ Path: {{ $integrations['apibrasil']['cnpj_path'] ?: '-' }}</p>
             </div>
             <div class="panel-card p-4">
                 <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Gestão Z-API</h2>
@@ -49,6 +61,46 @@
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Asaas Webhook Token</label>
                     <input type="text" name="asaas_webhook_token" value="{{ old('asaas_webhook_token', $integrations['asaas']['webhook_token']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">API Brasil Base URL</label>
+                    <input type="url" name="apibrasil_base_url" value="{{ old('apibrasil_base_url', $integrations['apibrasil']['base_url']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">API Brasil Token</label>
+                    <input type="text" name="apibrasil_token" value="{{ old('apibrasil_token', $integrations['apibrasil']['token']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">API Brasil Header Token</label>
+                    <input type="text" name="apibrasil_token_header" value="{{ old('apibrasil_token_header', $integrations['apibrasil']['token_header']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">API Brasil Prefixo Token</label>
+                    <input type="text" name="apibrasil_token_prefix" value="{{ old('apibrasil_token_prefix', $integrations['apibrasil']['token_prefix']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Bearer">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Path CPF</label>
+                    <input type="text" name="apibrasil_cpf_path" value="{{ old('apibrasil_cpf_path', $integrations['apibrasil']['cpf_path']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="/cpf/{document}" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Path CNPJ</label>
+                    <input type="text" name="apibrasil_cnpj_path" value="{{ old('apibrasil_cnpj_path', $integrations['apibrasil']['cnpj_path']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="/cnpj/{document}" required>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Método CPF</label>
+                    <select name="apibrasil_cpf_method" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                        @foreach (['GET', 'POST', 'PUT'] as $method)
+                            <option value="{{ $method }}" @selected(old('apibrasil_cpf_method', $integrations['apibrasil']['cpf_method']) === $method)>{{ $method }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Método CNPJ</label>
+                    <select name="apibrasil_cnpj_method" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                        @foreach (['GET', 'POST', 'PUT'] as $method)
+                            <option value="{{ $method }}" @selected(old('apibrasil_cnpj_method', $integrations['apibrasil']['cnpj_method']) === $method)>{{ $method }}</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Z-API Instância</label>
