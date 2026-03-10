@@ -1,5 +1,51 @@
 <x-layouts.app>
     <div class="space-y-5">
+        <div
+            class="pointer-events-none fixed inset-0 z-[80] hidden items-center justify-center px-4"
+            data-loading-overlay
+            aria-hidden="true"
+        >
+            <div class="absolute inset-0 bg-slate-950/45 backdrop-blur-[4px]"></div>
+            <div class="relative w-full max-w-md overflow-hidden rounded-[1.75rem] border border-white/35 bg-white/88 p-6 shadow-[0_30px_90px_rgba(7,26,47,0.35)] backdrop-blur-xl">
+                <div class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-cyan-400 via-sky-500 to-cyan-300 opacity-90"></div>
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <p class="text-[0.68rem] font-black uppercase tracking-[0.26em] text-cyan-700">Processando dossiê</p>
+                        <h2 class="mt-2 text-2xl font-black tracking-tight text-slate-900">Executando pacote de pesquisas</h2>
+                        <p class="mt-2 text-sm leading-6 text-slate-600" data-loading-status>
+                            Validando fontes e consolidando os dados para gerar o PDF final.
+                        </p>
+                    </div>
+                    <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-cyan-700 shadow-inner shadow-cyan-100">
+                        <svg class="h-8 w-8 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.18" stroke-width="3"></circle>
+                            <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <div class="mb-2 flex items-end justify-between gap-3">
+                        <span class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Progresso estimado</span>
+                        <span class="text-3xl font-black tracking-tight text-slate-900" data-loading-progress-value>1%</span>
+                    </div>
+                    <div class="h-3 overflow-hidden rounded-full bg-slate-200/90 shadow-inner">
+                        <div
+                            class="h-full rounded-full bg-gradient-to-r from-cyan-500 via-sky-500 to-cyan-300 transition-[width] duration-300 ease-out"
+                            style="width: 1%;"
+                            data-loading-progress-bar
+                        ></div>
+                    </div>
+                </div>
+
+                <div class="mt-5 grid gap-2 text-xs text-slate-500 sm:grid-cols-3">
+                    <div class="rounded-2xl bg-white/70 px-3 py-2">Consulta nas fontes</div>
+                    <div class="rounded-2xl bg-white/70 px-3 py-2">Consolidação dos dados</div>
+                    <div class="rounded-2xl bg-white/70 px-3 py-2">Preparação do PDF</div>
+                </div>
+            </div>
+        </div>
+
         <section>
             <h1 class="panel-title">Consultas API Brasil</h1>
             <p class="panel-subtitle mt-1">Selecione apenas o tipo de dossiê, execute o pacote de pesquisas e gere o PDF consolidado para o vendedor.</p>
@@ -65,7 +111,7 @@
                             </option>
                         @endforeach
                     </select>
-                    <p class="text-xs text-slate-500">PF executa 3 fontes consolidadas. PJ executa o pacote completo do dossiê empresarial.</p>
+                    <p class="text-xs text-slate-500">PF executa 2 fontes consolidadas prioritárias. PJ executa o pacote completo do dossiê empresarial.</p>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Pedido pago (opcional)</label>
@@ -230,10 +276,81 @@
             const submitButton = document.querySelector('[data-submit-button]');
             const submitLabel = document.querySelector('[data-submit-label]');
             const submitSpinner = document.querySelector('[data-submit-spinner]');
+            const loadingOverlay = document.querySelector('[data-loading-overlay]');
+            const loadingProgressValue = document.querySelector('[data-loading-progress-value]');
+            const loadingProgressBar = document.querySelector('[data-loading-progress-bar]');
+            const loadingStatus = document.querySelector('[data-loading-status]');
 
             if (!documentInput) {
                 return;
             }
+
+            let loadingTimer = null;
+            let loadingProgress = 1;
+
+            const loadingSteps = [
+                { until: 28, text: 'Conectando com a API Brasil e validando os parâmetros da consulta.' },
+                { until: 61, text: 'Executando as fontes selecionadas e organizando os retornos recebidos.' },
+                { until: 87, text: 'Consolidando o conteúdo do dossiê para preparar a visualização final.' },
+                { until: 100, text: 'Finalizando a montagem do relatório e liberando o PDF para download.' },
+            ];
+
+            const setLoadingProgress = (value) => {
+                loadingProgress = Math.max(1, Math.min(100, value));
+
+                if (loadingProgressValue) {
+                    loadingProgressValue.textContent = `${loadingProgress}%`;
+                }
+
+                if (loadingProgressBar) {
+                    loadingProgressBar.style.width = `${loadingProgress}%`;
+                }
+
+                if (loadingStatus) {
+                    const activeStep = loadingSteps.find((step) => loadingProgress <= step.until) || loadingSteps[loadingSteps.length - 1];
+                    loadingStatus.textContent = activeStep.text;
+                }
+            };
+
+            const startLoadingOverlay = () => {
+                if (!loadingOverlay) {
+                    return;
+                }
+
+                setLoadingProgress(1);
+                loadingOverlay.classList.remove('hidden');
+                loadingOverlay.classList.add('flex', 'pointer-events-auto');
+                loadingOverlay.setAttribute('aria-hidden', 'false');
+                document.body.classList.add('overflow-hidden');
+
+                if (loadingTimer) {
+                    window.clearInterval(loadingTimer);
+                }
+
+                loadingTimer = window.setInterval(function () {
+                    if (loadingProgress < 84) {
+                        setLoadingProgress(loadingProgress + 3);
+                        return;
+                    }
+
+                    if (loadingProgress < 96) {
+                        setLoadingProgress(loadingProgress + 1);
+                    }
+                }, 180);
+            };
+
+            const finishLoadingOverlay = () => {
+                if (!loadingOverlay) {
+                    return;
+                }
+
+                if (loadingTimer) {
+                    window.clearInterval(loadingTimer);
+                    loadingTimer = null;
+                }
+
+                setLoadingProgress(100);
+            };
 
             const onlyDigits = (value) => (value || '').replace(/\D+/g, '');
 
@@ -302,8 +419,12 @@
                     submitButton.setAttribute('disabled', 'disabled');
                     submitSpinner.classList.remove('hidden');
                     submitLabel.textContent = 'Executando pacote de pesquisas...';
+                    startLoadingOverlay();
                 });
             }
+
+            window.addEventListener('beforeunload', finishLoadingOverlay);
+            window.addEventListener('pagehide', finishLoadingOverlay);
 
             if (orderSelect && orderSelect.value) {
                 const selected = orderSelect.options[orderSelect.selectedIndex];

@@ -117,10 +117,32 @@ class PfResearchReportService
 
         $plusItems = $this->arrayNode($data, 'dados');
         $plusItem = $this->firstItem($plusItems);
-        $acertaPlus = $this->arrayNode($plusItem, 'acertaEssencialPositivo');
-        $consultaCredito = $this->arrayNode($acertaPlus, 'consultaCredito');
-        $scoreRating = $this->arrayNode($plusItem, 'scoreRating');
-        $resumoRetorno = $this->arrayNode($plusItem, 'resumoRetorno');
+        $acertaPlus = $this->firstNonEmptyArray([
+            $this->arrayNode($plusItem, 'acertaEssencialPositivo'),
+            $this->arrayNode($data, 'acertaEssencialPositivo'),
+            $this->arrayNode($topLevelData, 'acertaEssencialPositivo'),
+            $this->findNodeContainingKeys($payload, ['consultaCredito', 'scoreRating', 'resumoRetorno']),
+        ]);
+        $consultaCredito = $this->firstNonEmptyArray([
+            $this->arrayNode($acertaPlus, 'consultaCredito'),
+            $this->arrayNode($data, 'consultaCredito'),
+            $this->arrayNode($topLevelData, 'consultaCredito'),
+            $this->findNodeContainingKeys($payload, ['dadosCadastrais', 'resumoConsulta']),
+        ]);
+        $scoreRating = $this->firstNonEmptyArray([
+            $this->arrayNode($plusItem, 'scoreRating'),
+            $this->arrayNode($acertaPlus, 'scoreRating'),
+            $this->arrayNode($data, 'scoreRating'),
+            $this->arrayNode($topLevelData, 'scoreRating'),
+            $this->findNodeContainingKeys($payload, ['score', 'classificacao']),
+        ]);
+        $resumoRetorno = $this->firstNonEmptyArray([
+            $this->arrayNode($plusItem, 'resumoRetorno'),
+            $this->arrayNode($acertaPlus, 'resumoRetorno'),
+            $this->arrayNode($data, 'resumoRetorno'),
+            $this->arrayNode($topLevelData, 'resumoRetorno'),
+            $this->findNodeContainingKeys($payload, ['protocolo', 'dataConsulta']),
+        ]);
 
         $legacyData = $this->arrayNode($response, 'dados');
         $results = $this->firstItem($this->firstNonEmptyArray([
@@ -133,17 +155,37 @@ class PfResearchReportService
         $dadosCadastrais = $this->firstNonEmptyArray([
             $this->arrayNode($consultaCredito, 'dadosCadastrais'),
             $this->arrayNode($results, 'cadastral'),
+            $this->arrayNode($data, 'dadosCadastrais'),
+            $this->arrayNode($topLevelData, 'dadosCadastrais'),
             $legacyData,
+            $this->findNodeContainingKeys($payload, ['nome', 'cpf']),
+            $this->findNodeContainingKeys($payload, ['nm_completo', 'nr_cpf']),
         ]);
 
-        $emails = collect($this->arrayNode($this->arrayNode($consultaCredito, 'contato'), 'email'))
+        $contatoNode = $this->firstNonEmptyArray([
+            $this->arrayNode($consultaCredito, 'contato'),
+            $this->arrayNode($data, 'contato'),
+            $this->arrayNode($topLevelData, 'contato'),
+            $this->findNodeContainingKeys($payload, ['email', 'telefone']),
+        ]);
+
+        $emails = collect($this->firstNonEmptyArray([
+            $this->arrayNode($contatoNode, 'email'),
+            $this->arrayNode($dadosCadastrais, 'email') !== [] ? [$this->arrayNode($dadosCadastrais, 'email')] : [],
+            filled($dadosCadastrais['email'] ?? null) ? [$dadosCadastrais['email']] : [],
+        ]))
             ->map(fn ($item) => trim((string) ($item['ds_email'] ?? '')))
+            ->when(
+                filled($dadosCadastrais['email'] ?? null),
+                fn ($collection) => $collection->push((string) $dadosCadastrais['email'])
+            )
             ->filter()
+            ->unique()
             ->values()
             ->all();
 
         $addresses = collect($this->firstNonEmptyArray([
-            $this->arrayNode($this->arrayNode($consultaCredito, 'contato'), 'endereco'),
+            $this->arrayNode($contatoNode, 'endereco'),
             [],
         ]))
             ->map(function (array $item): string {
@@ -176,7 +218,7 @@ class PfResearchReportService
         }
 
         $phones = collect($this->firstNonEmptyArray([
-            $this->arrayNode($this->arrayNode($consultaCredito, 'contato'), 'telefone'),
+            $this->arrayNode($contatoNode, 'telefone'),
             [],
         ]))
             ->map(function (array $item): string {
@@ -255,6 +297,7 @@ class PfResearchReportService
         $employers = collect($this->firstNonEmptyArray([
             $this->arrayNode($this->arrayNode($consultaCredito, 'vinculo'), 'empregador'),
             $this->arrayNode($vinculo, 'empregador'),
+            $this->arrayNode($contatoNode, 'empregador'),
         ]))
             ->map(fn ($item) => trim((string) (($item['razao_social'] ?? '').($item['dt_admissao'] ? ' • admissão '.$item['dt_admissao'] : ''))))
             ->filter()
@@ -314,22 +357,44 @@ class PfResearchReportService
         $payload = $this->payload($consultation);
         $response = $this->arrayNode($payload, 'response');
         $data = $this->arrayNode($response, 'data');
-        $dados = $this->arrayNode($data, 'dados');
-        $resumo = $this->arrayNode($dados, 'resumoRetorno');
+        $topLevelData = $this->arrayNode($payload, 'data');
+        $dados = $this->firstNonEmptyArray([
+            $this->arrayNode($data, 'dados'),
+            $this->arrayNode($topLevelData, 'dados'),
+            $data,
+            $topLevelData,
+        ]);
+        $resumo = $this->firstNonEmptyArray([
+            $this->arrayNode($dados, 'resumoRetorno'),
+            $this->arrayNode($data, 'resumoRetorno'),
+            $this->arrayNode($topLevelData, 'resumoRetorno'),
+            $this->findNodeContainingKeys($payload, ['protocolo', 'dataConsulta']),
+        ]);
 
         $scrNode = $this->firstNonEmptyArray([
             $this->arrayNode($this->arrayNode($dados, 'scrBacen'), 'scrBacen'),
+            $this->arrayNode($dados, 'scrBacen'),
+            $this->arrayNode($data, 'scrBacen'),
+            $this->arrayNode($topLevelData, 'scrBacen'),
             $data,
+            $topLevelData,
+            $this->findNodeContainingKeys($payload, ['quantidadeInstituicoes', 'quantidadeOperacoes']),
         ]);
 
         $consolidado = $this->firstNonEmptyArray([
             $this->arrayNode($scrNode, 'consolidado'),
             $this->arrayNode($data, 'carteiraCredito'),
+            $this->arrayNode($topLevelData, 'carteiraCredito'),
+            $this->findNodeContainingKeys($payload, ['creditoAVencer', 'creditoVencido']),
         ]);
 
         $score = $this->firstNonEmptyArray([
             $this->arrayNode($scrNode, 'score'),
+            $this->arrayNode($dados, 'score'),
+            $this->arrayNode($data, 'score'),
+            $this->arrayNode($topLevelData, 'score'),
             ['PONTUACAO' => $data['score'] ?? null, 'FAIXA' => $data['classeRisco'] ?? null],
+            ['PONTUACAO' => $topLevelData['score'] ?? null, 'FAIXA' => $topLevelData['classeRisco'] ?? null],
         ]);
 
         return [
@@ -402,6 +467,41 @@ class PfResearchReportService
         }
 
         return [];
+    }
+
+    private function findNodeContainingKeys(array $source, array $keys): array
+    {
+        if ($source === []) {
+            return [];
+        }
+
+        if ($this->hasAnyKey($source, $keys)) {
+            return $source;
+        }
+
+        foreach ($source as $value) {
+            if (! is_array($value)) {
+                continue;
+            }
+
+            $match = $this->findNodeContainingKeys($value, $keys);
+            if ($match !== []) {
+                return $match;
+            }
+        }
+
+        return [];
+    }
+
+    private function hasAnyKey(array $source, array $keys): bool
+    {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $source)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function riskLabel(string $rating, int $restrictionCount, int $protestCount): string

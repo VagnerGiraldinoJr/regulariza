@@ -33,10 +33,6 @@ return [
                     'provider' => 'bacen',
                     'consultation_key' => 'scr_bacen_score_pf',
                 ],
-                [
-                    'provider' => 'fiscal',
-                    'consultation_key' => 'certidao_negativa_pf',
-                ],
             ],
         ],
         'pj' => [
