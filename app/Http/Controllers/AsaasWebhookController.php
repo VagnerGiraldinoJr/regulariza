@@ -76,6 +76,7 @@ class AsaasWebhookController extends Controller
                 $installment->installment_number === 0
                 && $installment->status === 'pago'
                 && $installment->contract
+                && $installment->contract->accepted_at !== null
                 && $installment->contract->portal_access_sent_at === null
             ) {
                 CriarUsuarioPortal::dispatch($installment->order);

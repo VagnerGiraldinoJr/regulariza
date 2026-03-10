@@ -1,0 +1,283 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\ApiBrasilConsultation;
+use App\Models\Order;
+use App\Models\ResearchReport;
+use App\Models\User;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
+
+class ResearchReportService
+{
+    public function __construct(
+        private readonly ResearchProviderManager $providerManager,
+        private readonly PfResearchReportService $pfResearchReportService
+    ) {
+    }
+
+    public function createFromBundle(
+        ?Order $order,
+        User $admin,
+        string $reportType,
+        string $documentNumber,
+        ?string $notes = null
+    ): ResearchReport {
+        $bundle = $this->bundle($reportType);
+        $documentDigits = preg_replace('/\D+/', '', $documentNumber);
+        $sources = collect((array) ($bundle['sources'] ?? []))
+            ->map(fn ($source) => $this->resolveSourceDefinition($source))
+            ->values();
+
+        if ($documentDigits === '') {
+            throw new RuntimeException('Documento inválido para gerar o dossiê.');
+        }
+
+        if ($sources->isEmpty()) {
+            throw new RuntimeException('O pacote selecionado não possui fontes configuradas.');
+        }
+
+        return DB::transaction(function () use ($order, $admin, $reportType, $bundle, $documentDigits, $sources, $notes): ResearchReport {
+            $order?->loadMissing(['lead', 'user']);
+
+            $report = ResearchReport::query()->create([
+                'order_id' => $order?->id,
+                'lead_id' => $order?->lead_id,
+                'user_id' => $order?->user_id,
+                'admin_user_id' => $admin->id,
+                'analyst_user_id' => $this->resolveAnalystId($order),
+                'report_type' => $reportType,
+                'title' => (string) ($bundle['title'] ?? strtoupper($reportType)),
+                'document_type' => (string) ($bundle['document_type'] ?? $this->documentTypeFromDigits($documentDigits)),
+                'document_number' => $documentDigits,
+                'status' => 'processing',
+                'source_count' => $sources->count(),
+                'notes' => $notes ?: null,
+            ]);
+
+            $consultations = collect();
+
+            foreach ($sources as $source) {
+                $result = $this->executeSource($source, $documentDigits);
+                $consultation = ApiBrasilConsultation::query()->create([
+                    'order_id' => $order?->id,
+                    'lead_id' => $order?->lead_id,
+                    'user_id' => $order?->user_id,
+                    'admin_user_id' => $admin->id,
+                    'analyst_user_id' => $report->analyst_user_id,
+                    'consultation_key' => $result['consultation_key'] ?? $source['consultation_key'],
+                    'consultation_title' => $result['consultation_title'] ?? $source['consultation_key'],
+                    'consultation_category' => $result['consultation_category'] ?? null,
+                    'document_type' => $result['document_type'] ?? $report->document_type,
+                    'document_number' => $result['document'] ?? $documentDigits,
+                    'status' => $result['status'] ?? 'error',
+                    'provider' => (string) ($result['provider'] ?? $source['provider']),
+                    'endpoint' => $result['endpoint'] ?? null,
+                    'http_status' => $result['http_status'] ?? null,
+                    'request_payload' => $result['request_payload'] ?? null,
+                    'response_payload' => $result['response_payload'] ?? null,
+                    'error_message' => $result['error_message'] ?? null,
+                    'notes' => $notes ?: $report->title,
+                ]);
+
+                $report->items()->create([
+                    'apibrasil_consultation_id' => $consultation->id,
+                    'provider' => (string) ($result['provider'] ?? $source['provider']),
+                    'source_key' => $result['consultation_key'] ?? $source['consultation_key'],
+                    'source_title' => $result['consultation_title'] ?? $source['consultation_key'],
+                    'source_category' => $result['consultation_category'] ?? null,
+                    'status' => $result['status'] ?? 'error',
+                    'http_status' => $result['http_status'] ?? null,
+                    'request_payload' => $result['request_payload'] ?? null,
+                    'response_payload' => $result['response_payload'] ?? null,
+                    'error_message' => $result['error_message'] ?? null,
+                ]);
+
+                $consultations->push($consultation);
+            }
+
+            $successCount = (int) $consultations->where('status', 'success')->count();
+            $failureCount = (int) $consultations->count() - $successCount;
+
+            $report->update([
+                'status' => $successCount === 0
+                    ? 'error'
+                    : ($failureCount > 0 ? 'partial' : 'success'),
+                'success_count' => $successCount,
+                'failure_count' => $failureCount,
+                'normalized_payload' => $this->normalizePayload($report, $consultations),
+                'generated_at' => now(),
+            ]);
+
+            return $report->fresh(['order', 'lead', 'user', 'admin', 'analyst', 'items.consultation']);
+        });
+    }
+
+    public function consultationsFor(ResearchReport $report): Collection
+    {
+        $consultationIds = $report->items()
+            ->orderBy('id')
+            ->pluck('apibrasil_consultation_id')
+            ->filter()
+            ->values();
+
+        if ($consultationIds->isEmpty()) {
+            return collect();
+        }
+
+        $consultations = ApiBrasilConsultation::query()
+            ->with(['order', 'user', 'analyst', 'admin'])
+            ->whereIn('id', $consultationIds)
+            ->get()
+            ->keyBy('id');
+
+        return $consultationIds
+            ->map(fn ($id) => $consultations->get($id))
+            ->filter()
+            ->values();
+    }
+
+    private function executeSource(array $source, string $documentDigits): array
+    {
+        $definition = $this->consultationDefinition((string) $source['consultation_key']);
+
+        try {
+            return $this->providerManager->consult($source, $documentDigits);
+        } catch (\Throwable $exception) {
+            return [
+                'document' => $documentDigits,
+                'document_type' => $this->documentTypeFromDigits($documentDigits),
+                'status' => 'error',
+                'provider' => (string) ($source['provider'] ?? 'apibrasil'),
+                'provider_label' => (string) ($source['provider_label'] ?? 'Fonte de pesquisa'),
+                'provider_driver' => (string) ($source['provider_driver'] ?? 'apibrasil'),
+                'endpoint' => null,
+                'http_status' => null,
+                'request_payload' => [
+                    'document' => $documentDigits,
+                    'provider' => $source['provider'] ?? null,
+                    'source_key' => $source['consultation_key'] ?? null,
+                ],
+                'response_payload' => null,
+                'error_message' => $exception->getMessage(),
+                'consultation_key' => $source['consultation_key'] ?? null,
+                'consultation_title' => (string) ($definition['title'] ?? ($source['consultation_key'] ?? 'fonte')),
+                'consultation_category' => (string) ($definition['category'] ?? 'geral'),
+            ];
+        }
+    }
+
+    private function resolveSourceDefinition(array|string $source): array
+    {
+        if (is_string($source)) {
+            return [
+                'provider' => 'apibrasil',
+                'provider_label' => 'API Brasil',
+                'provider_driver' => 'apibrasil',
+                'consultation_key' => $source,
+            ];
+        }
+
+        $providerKey = (string) ($source['provider'] ?? 'apibrasil');
+        $providerConfig = config("apibrasil_catalog.providers.{$providerKey}");
+
+        if (! is_array($providerConfig)) {
+            throw new RuntimeException("Provedor de pesquisa não encontrado: {$providerKey}");
+        }
+
+        return [
+            'provider' => $providerKey,
+            'provider_label' => (string) ($providerConfig['label'] ?? $providerKey),
+            'provider_driver' => (string) ($providerConfig['driver'] ?? 'apibrasil'),
+            'consultation_key' => (string) ($source['consultation_key'] ?? ''),
+        ];
+    }
+
+    private function normalizePayload(ResearchReport $report, Collection $consultations): array
+    {
+        $successfulConsultations = $consultations->where('status', 'success')->values();
+
+        if ($report->report_type === 'pf' && $successfulConsultations->isNotEmpty()) {
+            $payload = $this->pfResearchReportService->build($this->contextOrder($report), $successfulConsultations);
+            $payload['meta']['generated_at'] = $report->freshTimestamp()->toIso8601String();
+
+            return $payload;
+        }
+
+        return [
+            'meta' => [
+                'title' => $report->title,
+                'generated_at' => $report->freshTimestamp()->toIso8601String(),
+                'document' => $report->document_number,
+                'document_type' => strtoupper($report->document_type),
+                'order_protocol' => $report->order?->protocolo ?: null,
+            ],
+            'summary' => [
+                'source_count' => (int) $report->source_count,
+                'success_count' => (int) $consultations->where('status', 'success')->count(),
+                'failure_count' => (int) $consultations->where('status', '!=', 'success')->count(),
+            ],
+            'sources' => $consultations->map(fn (ApiBrasilConsultation $consultation) => [
+                'key' => $consultation->consultation_key,
+                'title' => $consultation->consultation_title,
+                'status' => $consultation->status,
+                'http_status' => $consultation->http_status,
+            ])->all(),
+        ];
+    }
+
+    private function contextOrder(ResearchReport $report): Order
+    {
+        if ($report->order) {
+            return $report->order->loadMissing(['lead', 'user']);
+        }
+
+        $order = new Order([
+            'protocolo' => 'REL-'.$report->id,
+        ]);
+        $order->id = $report->id;
+
+        $order->setRelation('lead', $report->lead);
+        $order->setRelation('user', $report->user);
+
+        return $order;
+    }
+
+    private function resolveAnalystId(?Order $order): ?int
+    {
+        if (! $order) {
+            return null;
+        }
+
+        $order->loadMissing(['lead', 'user']);
+
+        $candidateId = (int) ($order->lead?->referred_by_user_id ?: $order->user?->referred_by_user_id ?: 0);
+
+        return $candidateId > 0 ? $candidateId : null;
+    }
+
+    private function bundle(string $reportType): array
+    {
+        $bundle = config("apibrasil_catalog.bundles.{$reportType}");
+
+        if (! is_array($bundle)) {
+            throw new RuntimeException('Pacote de pesquisa não encontrado.');
+        }
+
+        return $bundle;
+    }
+
+    private function consultationDefinition(string $sourceKey): array
+    {
+        $definition = config("apibrasil_catalog.consultations.{$sourceKey}");
+
+        return is_array($definition) ? $definition : [];
+    }
+
+    private function documentTypeFromDigits(string $documentDigits): string
+    {
+        return strlen($documentDigits) === 14 ? 'cnpj' : 'cpf';
+    }
+}

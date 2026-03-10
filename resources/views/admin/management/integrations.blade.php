@@ -1,8 +1,20 @@
 <x-layouts.app>
+    @php
+        $maskSecret = static function (?string $value): string {
+            $value = trim((string) $value);
+            if ($value === '') {
+                return 'Não configurado';
+            }
+
+            $suffix = mb_substr($value, -4);
+
+            return '••••••••'.$suffix;
+        };
+    @endphp
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">Tela de Integrações</h1>
-            <p class="panel-subtitle mt-1">Configure credenciais e parâmetros operacionais do Asaas, API Brasil e Z-API.</p>
+            <p class="panel-subtitle mt-1">Configure Asaas, API Brasil e Z-API separadamente pela interface administrativa.</p>
         </section>
 
         @if (session('success'))
@@ -24,6 +36,7 @@
                     </span>
                 </p>
                 <p class="mt-1 text-xs text-slate-600">Webhook: <code>{{ $integrations['asaas']['webhook'] }}</code></p>
+                <p class="mt-1 text-xs text-slate-600">Base URL: {{ $integrations['asaas']['base_url'] ?: '-' }}</p>
             </div>
             <div class="panel-card p-4">
                 <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Gestão API Brasil</h2>
@@ -35,9 +48,6 @@
                 </p>
                 <p class="mt-1 text-xs text-slate-600">Base URL: {{ $integrations['apibrasil']['base_url'] ?: '-' }}</p>
                 <p class="text-xs text-slate-600">Homologação: {{ $integrations['apibrasil']['homolog'] ? 'Sim' : 'Não' }}</p>
-                <p class="text-xs text-slate-600">Saldo Path: {{ $integrations['apibrasil']['balance_path'] ?: '-' }}</p>
-                <p class="text-xs text-slate-600">CPF Path: {{ $integrations['apibrasil']['cpf_path'] ?: '-' }}</p>
-                <p class="text-xs text-slate-600">CNPJ Path: {{ $integrations['apibrasil']['cnpj_path'] ?: '-' }}</p>
             </div>
             <div class="panel-card p-4">
                 <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Gestão Z-API</h2>
@@ -52,10 +62,15 @@
             </div>
         </section>
 
-        <section class="panel-card p-4">
-            <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Editar integrações</h2>
-            <form method="POST" action="{{ route('admin.management.integrations.update') }}" class="mt-3 grid gap-3 md:grid-cols-2">
+        <section class="grid gap-4 xl:grid-cols-3">
+            <form method="POST" action="{{ route('admin.management.integrations.update') }}" class="panel-card p-4 space-y-3">
                 @csrf
+                <input type="hidden" name="integration_group" value="asaas">
+
+                <div>
+                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Configurar Asaas</h2>
+                    <p class="mt-1 text-xs text-slate-500">Use este bloco para salvar somente a integração de pagamento.</p>
+                </div>
 
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Asaas Base URL</label>
@@ -63,19 +78,32 @@
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Asaas API Key</label>
-                    <input type="text" name="asaas_api_key" value="{{ old('asaas_api_key', $integrations['asaas']['api_key']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                    <input type="password" name="asaas_api_key" value="" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Manter atual: {{ $maskSecret($integrations['asaas']['api_key']) }}" autocomplete="off">
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Asaas Webhook Token</label>
-                    <input type="text" name="asaas_webhook_token" value="{{ old('asaas_webhook_token', $integrations['asaas']['webhook_token']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm">
+                    <input type="password" name="asaas_webhook_token" value="" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Manter atual: {{ $maskSecret($integrations['asaas']['webhook_token']) }}" autocomplete="off">
                 </div>
+
+                <button class="btn-primary w-full">Salvar Asaas</button>
+            </form>
+
+            <form method="POST" action="{{ route('admin.management.integrations.update') }}" class="panel-card p-4 space-y-3">
+                @csrf
+                <input type="hidden" name="integration_group" value="apibrasil">
+
+                <div>
+                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Configurar API Brasil</h2>
+                    <p class="mt-1 text-xs text-slate-500">Catálogo e parâmetros usados nas consultas consolidadas.</p>
+                </div>
+
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">API Brasil Base URL</label>
                     <input type="url" name="apibrasil_base_url" value="{{ old('apibrasil_base_url', $integrations['apibrasil']['base_url']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">API Brasil Token</label>
-                    <input type="text" name="apibrasil_token" value="{{ old('apibrasil_token', $integrations['apibrasil']['token']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                    <input type="password" name="apibrasil_token" value="" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Manter atual: {{ $maskSecret($integrations['apibrasil']['token']) }}" autocomplete="off">
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">API Brasil Header Token</label>
@@ -106,47 +134,61 @@
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Path CPF</label>
-                    <input type="text" name="apibrasil_cpf_path" value="{{ old('apibrasil_cpf_path', $integrations['apibrasil']['cpf_path']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="/cpf/{document}" required>
+                    <input type="text" name="apibrasil_cpf_path" value="{{ old('apibrasil_cpf_path', $integrations['apibrasil']['cpf_path']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="/api/v2/consulta/cpf/credits" required>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Path CNPJ</label>
-                    <input type="text" name="apibrasil_cnpj_path" value="{{ old('apibrasil_cnpj_path', $integrations['apibrasil']['cnpj_path']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="/cnpj/{document}" required>
+                    <input type="text" name="apibrasil_cnpj_path" value="{{ old('apibrasil_cnpj_path', $integrations['apibrasil']['cnpj_path']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="/api/v2/consulta/cnpj/credits" required>
                 </div>
-                <div class="space-y-1">
-                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Método CPF</label>
-                    <select name="apibrasil_cpf_method" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
-                        @foreach (['GET', 'POST', 'PUT'] as $method)
-                            <option value="{{ $method }}" @selected(old('apibrasil_cpf_method', $integrations['apibrasil']['cpf_method']) === $method)>{{ $method }}</option>
-                        @endforeach
-                    </select>
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Método CPF</label>
+                        <select name="apibrasil_cpf_method" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                            @foreach (['GET', 'POST', 'PUT'] as $method)
+                                <option value="{{ $method }}" @selected(old('apibrasil_cpf_method', $integrations['apibrasil']['cpf_method']) === $method)>{{ $method }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Método CNPJ</label>
+                        <select name="apibrasil_cnpj_method" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
+                            @foreach (['GET', 'POST', 'PUT'] as $method)
+                                <option value="{{ $method }}" @selected(old('apibrasil_cnpj_method', $integrations['apibrasil']['cnpj_method']) === $method)>{{ $method }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
-                <div class="space-y-1">
-                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Método CNPJ</label>
-                    <select name="apibrasil_cnpj_method" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required>
-                        @foreach (['GET', 'POST', 'PUT'] as $method)
-                            <option value="{{ $method }}" @selected(old('apibrasil_cnpj_method', $integrations['apibrasil']['cnpj_method']) === $method)>{{ $method }}</option>
-                        @endforeach
-                    </select>
+
+                <button class="btn-primary w-full">Salvar API Brasil</button>
+            </form>
+
+            <form method="POST" action="{{ route('admin.management.integrations.update') }}" class="panel-card p-4 space-y-3">
+                @csrf
+                <input type="hidden" name="integration_group" value="zapi">
+
+                <div>
+                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Configurar Z-API</h2>
+                    <p class="mt-1 text-xs text-slate-500">Use este bloco para WhatsApp transacional e notificações operacionais.</p>
                 </div>
+
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Z-API Instância</label>
                     <input type="text" name="zapi_instance" value="{{ old('zapi_instance', $integrations['zapi']['instance']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm">
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Z-API Token</label>
-                    <input type="text" name="zapi_token" value="{{ old('zapi_token', $integrations['zapi']['token']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm">
+                    <input type="password" name="zapi_token" value="" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Manter atual: {{ $maskSecret($integrations['zapi']['token']) }}" autocomplete="off">
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Z-API Client Token</label>
-                    <input type="text" name="zapi_client_token" value="{{ old('zapi_client_token', $integrations['zapi']['client_token']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm">
+                    <input type="password" name="zapi_client_token" value="" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Manter atual: {{ $maskSecret($integrations['zapi']['client_token']) }}" autocomplete="off">
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">WhatsApp padrão CPF Clean</label>
                     <input type="text" name="cpfclean_whatsapp_number" value="{{ old('cpfclean_whatsapp_number', $integrations['zapi']['whatsapp_number']) }}" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Somente números com DDI">
                 </div>
-                <div class="md:col-span-2">
-                    <button class="btn-primary">Salvar integrações</button>
-                </div>
+
+                <button class="btn-primary w-full">Salvar Z-API</button>
             </form>
         </section>
     </div>

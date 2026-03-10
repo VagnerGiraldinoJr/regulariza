@@ -5,7 +5,9 @@ use App\Http\Controllers\AdminManagementController;
 use App\Http\Controllers\AnalystPanelController;
 use App\Http\Controllers\ApiBrasilConsultationController;
 use App\Http\Controllers\ClientExperienceController;
+use App\Http\Controllers\ContractAcceptanceController;
 use App\Http\Controllers\ContractController;
+use App\Http\Controllers\PortalInviteController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicContactController;
 use App\Http\Controllers\SacTicketController;
@@ -63,6 +65,12 @@ Route::post('/contato/whatsapp', [PublicContactController::class, 'store'])
     ->middleware('throttle:20,1')
     ->name('public.whatsapp.store');
 
+Route::get('/contracts/accept/{token}', [ContractAcceptanceController::class, 'show'])->name('contracts.accept.show');
+Route::post('/contracts/accept/{token}', [ContractAcceptanceController::class, 'accept'])->name('contracts.accept.store');
+Route::get('/contracts/accept/{token}/pdf', [ContractAcceptanceController::class, 'downloadPdf'])->name('contracts.accept.pdf');
+Route::get('/contracts/accept/{token}/document', [ContractAcceptanceController::class, 'downloadOriginalDocument'])->name('contracts.accept.document');
+Route::get('/portal/convite/{token}', PortalInviteController::class)->middleware('guest')->name('portal.invite');
+
 Route::get('/dashboard', function (Request $request) {
     return match ($request->user()?->role) {
         'admin', 'atendente' => redirect()->route('admin.orders.index'),
@@ -82,6 +90,15 @@ Route::middleware('guest')->group(function (): void {
 
         $email = mb_strtolower(trim((string) $credentials['email']));
         $password = (string) $credentials['password'];
+        $throttleKey = sprintf('login:%s|%s', $email, (string) $request->ip());
+
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
+
+            return back()->withErrors([
+                'email' => "Muitas tentativas. Tente novamente em {$seconds} segundos.",
+            ])->onlyInput('email');
+        }
 
         $attemptOk = Auth::attempt([
             'email' => $email,
@@ -92,6 +109,8 @@ Route::middleware('guest')->group(function (): void {
             $user = User::query()->where('email', $email)->first();
 
             if (! $user || ! Hash::check($password, (string) $user->password)) {
+                \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 60);
+
                 return back()->withErrors([
                     'email' => 'Credenciais inválidas.',
                 ])->onlyInput('email');
@@ -101,6 +120,7 @@ Route::middleware('guest')->group(function (): void {
         }
 
         $request->session()->regenerate();
+        \Illuminate\Support\Facades\RateLimiter::clear($throttleKey);
 
         return match ($request->user()?->role) {
             'admin', 'atendente' => redirect()->intended(route('admin.orders.index')),
@@ -252,6 +272,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/management')->name('adm
     Route::get('/apibrasil-consultations', [ApiBrasilConsultationController::class, 'index'])->name('apibrasil-consultations');
     Route::post('/apibrasil-consultations', [ApiBrasilConsultationController::class, 'store'])->name('apibrasil-consultations.store');
     Route::get('/apibrasil-consultations/{consultation}/pdf', [ApiBrasilConsultationController::class, 'downloadPdf'])->name('apibrasil-consultations.pdf');
+    Route::get('/apibrasil-consultations/reports/{report}/pdf', [ApiBrasilConsultationController::class, 'downloadResearchReportPdf'])->name('apibrasil-consultations.reports.pdf');
     Route::get('/apibrasil-consultations/orders/{order}/pdf', [ApiBrasilConsultationController::class, 'downloadOrderPdf'])->name('apibrasil-consultations.order-pdf');
     Route::post('/apibrasil-consultations/{consultation}/forward', [ApiBrasilConsultationController::class, 'forward'])->name('apibrasil-consultations.forward');
     Route::get('/messages', [AdminManagementController::class, 'messages'])->name('messages');

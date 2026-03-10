@@ -11,6 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class ContractService
@@ -44,7 +45,6 @@ class ContractService
             $remaining = round($feeAmount - $entryAmount, 2);
             $baseInstallment = floor(($remaining / 3) * 100) / 100;
             $amounts = [$baseInstallment, $baseInstallment, round($remaining - ($baseInstallment * 2), 2)];
-            $customerId = $this->hasAsaasConfigured() ? $this->ensureAsaasCustomer($order->user) : null;
 
             $contract = Contract::query()->create([
                 'order_id' => $order->id,
@@ -55,10 +55,13 @@ class ContractService
                 'entry_percentage' => round($entryPercentage, 2),
                 'entry_amount' => $entryAmount,
                 'installments_count' => 3,
-                'status' => 'aguardando_entrada',
+                'status' => 'aguardando_aceite',
                 'payment_provider' => 'asaas',
-                'asaas_customer_id' => $customerId,
+                'asaas_customer_id' => null,
                 'document_path' => $documentFile?->store('contracts'),
+                'acceptance_token' => Str::random(64),
+                'sent_for_acceptance_at' => now(),
+                'acceptance_expires_at' => now()->addDays(7),
             ]);
 
             $entry = ContractInstallment::query()->create([
@@ -70,9 +73,8 @@ class ContractService
                 'due_date' => now()->toDateString(),
                 'billing_type' => 'PIX',
                 'payment_provider' => 'asaas',
-                'status' => 'aguardando_pagamento',
+                'status' => 'aguardando_aceite',
             ]);
-            $this->issueInstallmentCharge($contract, $entry);
 
             foreach ($amounts as $index => $amount) {
                 $installmentNumber = $index + 1;
@@ -87,14 +89,82 @@ class ContractService
                     'due_date' => now()->addDays($days)->toDateString(),
                     'billing_type' => 'BOLETO',
                     'payment_provider' => 'asaas',
-                    'status' => 'aguardando_pagamento',
+                    'status' => 'aguardando_aceite',
                 ]);
-
-                $this->issueInstallmentCharge($contract, $installment);
             }
 
             return $contract->fresh(['installments', 'user', 'analyst', 'order']);
         });
+    }
+
+    public function accept(Contract $contract, string $acceptedName, ?string $acceptedIp = null, ?string $acceptedUserAgent = null): Contract
+    {
+        return DB::transaction(function () use ($contract, $acceptedName, $acceptedIp, $acceptedUserAgent): Contract {
+            $contract->loadMissing(['installments', 'user', 'analyst', 'order']);
+
+            if ($contract->status === 'cancelado') {
+                throw new RuntimeException('Não é possível aceitar um contrato cancelado.');
+            }
+
+            if ($contract->accepted_at === null && $contract->acceptance_expires_at?->isPast()) {
+                throw new RuntimeException('Este link de aceite expirou. Solicite um novo envio do contrato.');
+            }
+
+            if ($contract->accepted_at === null) {
+                $contract->update([
+                    'accepted_at' => now(),
+                    'accepted_name' => trim($acceptedName),
+                    'accepted_ip' => $acceptedIp ?: $contract->accepted_ip,
+                    'accepted_user_agent' => $acceptedUserAgent ?: $contract->accepted_user_agent,
+                    'accepted_hash' => $this->buildAcceptanceHash($contract, trim($acceptedName)),
+                ]);
+            }
+
+            $this->syncContractStatus($contract->fresh(['installments', 'user', 'analyst', 'order']));
+
+            return $contract->fresh(['installments', 'user', 'analyst', 'order']);
+        });
+    }
+
+    public function releaseChargesAfterAcceptance(Contract $contract): array
+    {
+        $contract->loadMissing(['installments', 'user']);
+
+        $pendingInstallments = $contract->installments
+            ->filter(fn (ContractInstallment $installment) => $installment->status === 'aguardando_aceite' && $installment->paid_at === null)
+            ->values();
+
+        if ($pendingInstallments->isEmpty()) {
+            return ['released' => 0, 'failed' => 0];
+        }
+
+        ContractInstallment::query()
+            ->whereIn('id', $pendingInstallments->pluck('id'))
+            ->update(['status' => 'aguardando_pagamento']);
+
+        if (! $this->hasAsaasConfigured()) {
+            return ['released' => (int) $pendingInstallments->count(), 'failed' => 0];
+        }
+
+        $released = 0;
+        $failed = 0;
+
+        foreach ($pendingInstallments as $installment) {
+            try {
+                $this->issueInstallmentCharge($contract, $installment->fresh());
+                $released++;
+            } catch (RuntimeException $exception) {
+                $failed++;
+
+                Log::warning('Aceite registrado, mas a cobrança da parcela não foi emitida.', [
+                    'contract_id' => $contract->id,
+                    'installment_id' => $installment->id,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return ['released' => $released, 'failed' => $failed];
     }
 
     public function markInstallmentAsPaid(ContractInstallment $installment, ?string $paymentId = null, ?string $invoiceUrl = null): void
@@ -115,24 +185,7 @@ class ContractService
             return;
         }
 
-        $entryPaid = $contract->installments->firstWhere('installment_number', 0)?->status === 'pago';
-        $remainingPaid = $contract->installments
-            ->where('installment_number', '>', 0)
-            ->every(fn (ContractInstallment $item) => $item->status === 'pago');
-
-        if ($entryPaid && $contract->status === 'aguardando_entrada') {
-            $contract->update([
-                'status' => 'ativo',
-                'accepted_at' => now(),
-            ]);
-        }
-
-        if ($entryPaid && $remainingPaid) {
-            $contract->update([
-                'status' => 'concluido',
-                'completed_at' => now(),
-            ]);
-        }
+        $this->syncContractStatus($contract);
     }
 
     public function markInstallmentAsFailed(ContractInstallment $installment, string $status): void
@@ -183,6 +236,7 @@ class ContractService
         $installment->update([
             'asaas_payment_id' => (string) ($payment['id'] ?? ''),
             'payment_link_url' => (string) ($payment['invoiceUrl'] ?? ''),
+            'status' => 'aguardando_pagamento',
         ]);
     }
 
@@ -203,6 +257,65 @@ class ContractService
             ?? User::query()->whereIn('role', ['analista', 'vendedor'])->orderBy('id')->first();
 
         return $defaultAnalyst?->id;
+    }
+
+    private function syncContractStatus(Contract $contract): void
+    {
+        $contract->loadMissing('installments');
+
+        if ($contract->status === 'cancelado') {
+            return;
+        }
+
+        $entryPaid = $contract->installments->firstWhere('installment_number', 0)?->status === 'pago';
+        $remainingPaid = $contract->installments
+            ->where('installment_number', '>', 0)
+            ->every(fn (ContractInstallment $item) => $item->status === 'pago');
+
+        $status = 'aguardando_aceite';
+
+        if ($contract->accepted_at !== null) {
+            $status = 'aguardando_entrada';
+        }
+
+        if ($contract->accepted_at !== null && $entryPaid) {
+            $status = 'ativo';
+        }
+
+        if ($contract->accepted_at !== null && $entryPaid && $remainingPaid) {
+            $status = 'concluido';
+        }
+
+        $updates = [
+            'status' => $status,
+            'entry_paid_at' => $entryPaid
+                ? ($contract->entry_paid_at ?: now())
+                : null,
+            'activated_at' => $status === 'ativo' || $status === 'concluido'
+                ? ($contract->activated_at ?: now())
+                : null,
+            'completed_at' => $status === 'concluido'
+                ? ($contract->completed_at ?: now())
+                : null,
+        ];
+
+        $contract->update($updates);
+    }
+
+    private function buildAcceptanceHash(Contract $contract, string $acceptedName): string
+    {
+        $payload = [
+            'contract_id' => $contract->id,
+            'order_id' => $contract->order_id,
+            'document_path' => $contract->document_path,
+            'fee_amount' => (string) $contract->fee_amount,
+            'entry_amount' => (string) $contract->entry_amount,
+            'entry_percentage' => (string) $contract->entry_percentage,
+            'installments_count' => (int) $contract->installments_count,
+            'accepted_name' => $acceptedName,
+        ];
+
+        return hash('sha256', json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     private function ensureAsaasCustomer(User $user): string

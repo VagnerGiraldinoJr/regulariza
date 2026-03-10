@@ -77,6 +77,11 @@ class Order extends Model
         return $this->hasOne(Contract::class);
     }
 
+    public function researchReports(): HasMany
+    {
+        return $this->hasMany(ResearchReport::class);
+    }
+
     public function scopePendentes(Builder $query): Builder
     {
         return $query->where('status', 'pendente');

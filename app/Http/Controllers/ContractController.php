@@ -49,7 +49,7 @@ class ContractController extends Controller
             documentFile: $request->file('document')
         );
 
-        return back()->with('success', 'Contrato criado com entrada + 3 parcelas (30/60/90).');
+        return back()->with('success', 'Contrato criado com link de aceite. As cobranças da entrada e das parcelas serão liberadas após o aceite.');
     }
 
     public function analystIndex(Request $request): View

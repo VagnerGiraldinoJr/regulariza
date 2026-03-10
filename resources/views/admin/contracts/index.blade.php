@@ -1,6 +1,7 @@
 <x-layouts.app>
     @php
         $statusMap = [
+            'aguardando_aceite' => ['label' => 'Aguardando aceite', 'class' => 'bg-orange-100/85 text-orange-900 border-orange-300/80'],
             'aguardando_entrada' => ['label' => 'Aguardando entrada', 'class' => 'bg-amber-100/85 text-amber-900 border-amber-300/80'],
             'ativo' => ['label' => 'Ativo', 'class' => 'bg-emerald-100/85 text-emerald-900 border-emerald-300/80'],
             'concluido' => ['label' => 'Concluído', 'class' => 'bg-sky-100/85 text-sky-900 border-sky-300/80'],
@@ -11,7 +12,7 @@
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">Módulo de Contratos</h1>
-            <p class="panel-subtitle mt-1">Entrada + 3 parcelas (30/60/90) com cobrança Asaas.</p>
+            <p class="panel-subtitle mt-1">Contrato com link de aceite do cliente, PDF final de evidência e liberação de cobranças após o aceite.</p>
         </section>
 
         @if (session('success'))
@@ -37,7 +38,7 @@
                 <input type="number" step="0.01" min="0.01" name="fee_amount" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Honorários (R$)" required @disabled($eligibleOrders->isEmpty())>
                 <input type="number" step="0.01" min="1" max="99" name="entry_percentage" value="50" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Entrada %" required @disabled($eligibleOrders->isEmpty())>
                 <input type="file" name="document" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" accept=".doc,.docx,.pdf" @disabled($eligibleOrders->isEmpty())>
-                <button class="btn-primary sm:col-span-2 lg:col-span-5" @disabled($eligibleOrders->isEmpty())>Criar contrato e gerar cobranças</button>
+                <button class="btn-primary sm:col-span-2 lg:col-span-5" @disabled($eligibleOrders->isEmpty())>Criar contrato e link de aceite</button>
             </form>
         </section>
 
@@ -52,12 +53,14 @@
                             <th class="px-4 py-3">Honorários</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Parcelas</th>
+                            <th class="px-4 py-3">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                     @forelse($contracts as $contract)
                         @php
                             $statusInfo = $statusMap[$contract->status] ?? ['label' => ucfirst(str_replace('_', ' ', (string) $contract->status)), 'class' => 'bg-slate-100/85 text-slate-800 border-slate-300/80'];
+                            $acceptUrl = $contract->acceptanceUrl();
                         @endphp
                         <tr class="border-t border-slate-200/60 align-top">
                             <td class="px-4 py-3 font-semibold">#{{ $contract->id }}<br><span class="text-xs text-slate-500">Pedido {{ $contract->order?->protocolo }}</span></td>
@@ -66,6 +69,9 @@
                             <td class="px-4 py-3">R$ {{ number_format((float) $contract->fee_amount, 2, ',', '.') }}<br><span class="text-xs text-slate-500">Entrada: R$ {{ number_format((float) $contract->entry_amount, 2, ',', '.') }}</span></td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold {{ $statusInfo['class'] }}">{{ $statusInfo['label'] }}</span>
+                                @if($contract->accepted_at)
+                                    <div class="mt-1 text-xs text-slate-500">Aceito em {{ $contract->accepted_at->format('d/m/Y H:i') }}</div>
+                                @endif
                             </td>
                             <td class="px-4 py-3">
                                 <div class="space-y-1 text-xs">
@@ -87,9 +93,31 @@
                                     @endforeach
                                 </div>
                             </td>
+                            <td class="px-4 py-3">
+                                <div class="space-y-2 text-xs">
+                                    @if($acceptUrl)
+                                        <a href="{{ $acceptUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex rounded-md bg-cyan-700 px-2.5 py-1.5 font-semibold text-white hover:bg-cyan-800">
+                                            Link de aceite
+                                        </a>
+                                    @endif
+                                    @if($contract->document_path && $contract->acceptance_token)
+                                        <a href="{{ route('contracts.accept.document', $contract->acceptance_token) }}" target="_blank" rel="noopener noreferrer" class="inline-flex rounded-md bg-slate-700 px-2.5 py-1.5 font-semibold text-white hover:bg-slate-800">
+                                            Contrato-base
+                                        </a>
+                                    @endif
+                                    @if($contract->accepted_at && $contract->acceptance_token)
+                                        <a href="{{ route('contracts.accept.pdf', $contract->acceptance_token) }}" target="_blank" rel="noopener noreferrer" class="inline-flex rounded-md bg-emerald-700 px-2.5 py-1.5 font-semibold text-white hover:bg-emerald-800">
+                                            PDF final
+                                        </a>
+                                    @endif
+                                    @if($acceptUrl)
+                                        <div class="max-w-xs break-all text-slate-500">{{ $acceptUrl }}</div>
+                                    @endif
+                                </div>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">Sem contratos.</td></tr>
+                        <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">Sem contratos.</td></tr>
                     @endforelse
                     </tbody>
                 </table>

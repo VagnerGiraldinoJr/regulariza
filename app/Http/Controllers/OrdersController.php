@@ -313,11 +313,17 @@ class OrdersController extends Controller
         }
 
         try {
-            $checkoutUrl = $checkoutService->createCheckoutSessionForOrder($order);
+            $checkout = $checkoutService->createCheckoutSessionForOrder($order);
         } catch (Throwable $e) {
             report($e);
 
             return back()->with('payment_link_error', 'Não foi possível gerar o novo link de pagamento agora.');
+        }
+
+        $checkoutUrl = (string) ($checkout['payment_url'] ?? $order->payment_link_url ?? '');
+
+        if ($checkoutUrl === '') {
+            return back()->with('payment_link_error', 'A cobrança foi criada, mas nenhum link de pagamento foi retornado.');
         }
 
         if ($isReferrer) {

@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rule;
@@ -118,7 +119,7 @@ class AdminManagementController extends Controller
                 'cnpj_method' => (string) config('services.apibrasil.cnpj_method'),
             ],
             'zapi' => [
-                'enabled' => filled(config('zapi.instance')) && filled(config('zapi.token')),
+                'enabled' => filled(config('zapi.instance')) && filled(config('zapi.token')) && filled(config('zapi.client_token')),
                 'instance' => (string) config('zapi.instance'),
                 'token' => (string) config('zapi.token'),
                 'client_token' => (string) config('zapi.client_token'),
@@ -131,12 +132,55 @@ class AdminManagementController extends Controller
 
     public function updateIntegrations(Request $request): RedirectResponse
     {
+        $group = (string) $request->validate([
+            'integration_group' => ['required', Rule::in(['asaas', 'apibrasil', 'zapi'])],
+        ])['integration_group'];
+
+        $map = match ($group) {
+            'asaas' => $this->asaasIntegrationMap($request),
+            'apibrasil' => $this->apiBrasilIntegrationMap($request),
+            'zapi' => $this->zApiIntegrationMap($request),
+        };
+
+        foreach ($map as $key => $value) {
+            SystemSetting::setValue($key, $value !== '' ? $value : null);
+        }
+
+        Log::info('Integração administrativa atualizada.', [
+            'group' => $group,
+            'keys' => array_keys($map),
+            'admin_user_id' => (int) $request->user()->id,
+        ]);
+
+        SystemSetting::applyRuntimeConfig();
+        Cache::forget('apibrasil.balance.snapshot');
+
+        return back()->with('success', 'Integração atualizada com sucesso.');
+    }
+
+    private function asaasIntegrationMap(Request $request): array
+    {
         $data = $request->validate([
             'asaas_base_url' => ['required', 'url', 'max:255'],
-            'asaas_api_key' => ['required', 'string', 'max:255'],
+            'asaas_api_key' => ['nullable', 'string', 'max:255'],
             'asaas_webhook_token' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $currentApiKey = (string) SystemSetting::getValue('asaas.api_key', (string) config('services.asaas.api_key'));
+        $currentWebhookToken = (string) SystemSetting::getValue('asaas.webhook_token', (string) config('services.asaas.webhook_token'));
+
+        return [
+            'asaas.base_url' => trim((string) $data['asaas_base_url']),
+            'asaas.api_key' => trim((string) ($data['asaas_api_key'] ?? '')) !== '' ? trim((string) $data['asaas_api_key']) : $currentApiKey,
+            'asaas.webhook_token' => trim((string) ($data['asaas_webhook_token'] ?? '')) !== '' ? trim((string) $data['asaas_webhook_token']) : $currentWebhookToken,
+        ];
+    }
+
+    private function apiBrasilIntegrationMap(Request $request): array
+    {
+        $data = $request->validate([
             'apibrasil_base_url' => ['required', 'url', 'max:255'],
-            'apibrasil_token' => ['required', 'string', 'max:4096'],
+            'apibrasil_token' => ['nullable', 'string', 'max:4096'],
             'apibrasil_token_header' => ['required', 'string', 'max:60'],
             'apibrasil_token_prefix' => ['nullable', 'string', 'max:30'],
             'apibrasil_homolog' => ['nullable', 'boolean'],
@@ -146,18 +190,13 @@ class AdminManagementController extends Controller
             'apibrasil_cnpj_path' => ['required', 'string', 'max:255'],
             'apibrasil_cpf_method' => ['required', Rule::in(['GET', 'POST', 'PUT'])],
             'apibrasil_cnpj_method' => ['required', Rule::in(['GET', 'POST', 'PUT'])],
-            'zapi_instance' => ['nullable', 'string', 'max:255'],
-            'zapi_token' => ['nullable', 'string', 'max:255'],
-            'zapi_client_token' => ['nullable', 'string', 'max:255'],
-            'cpfclean_whatsapp_number' => ['nullable', 'string', 'max:25'],
         ]);
 
-        $map = [
-            'asaas.base_url' => trim((string) $data['asaas_base_url']),
-            'asaas.api_key' => trim((string) $data['asaas_api_key']),
-            'asaas.webhook_token' => trim((string) ($data['asaas_webhook_token'] ?? '')),
+        $currentToken = (string) SystemSetting::getValue('apibrasil.token', (string) config('services.apibrasil.token'));
+
+        return [
             'apibrasil.base_url' => trim((string) $data['apibrasil_base_url']),
-            'apibrasil.token' => trim((string) $data['apibrasil_token']),
+            'apibrasil.token' => trim((string) ($data['apibrasil_token'] ?? '')) !== '' ? trim((string) $data['apibrasil_token']) : $currentToken,
             'apibrasil.token_header' => trim((string) $data['apibrasil_token_header']),
             'apibrasil.token_prefix' => trim((string) ($data['apibrasil_token_prefix'] ?? '')),
             'apibrasil.homolog' => ! empty($data['apibrasil_homolog']) ? '1' : '0',
@@ -167,20 +206,27 @@ class AdminManagementController extends Controller
             'apibrasil.cnpj_path' => trim((string) $data['apibrasil_cnpj_path']),
             'apibrasil.cpf_method' => trim((string) $data['apibrasil_cpf_method']),
             'apibrasil.cnpj_method' => trim((string) $data['apibrasil_cnpj_method']),
+        ];
+    }
+
+    private function zApiIntegrationMap(Request $request): array
+    {
+        $data = $request->validate([
+            'zapi_instance' => ['nullable', 'string', 'max:255'],
+            'zapi_token' => ['nullable', 'string', 'max:255'],
+            'zapi_client_token' => ['nullable', 'string', 'max:255'],
+            'cpfclean_whatsapp_number' => ['nullable', 'string', 'max:25'],
+        ]);
+
+        $currentToken = (string) SystemSetting::getValue('zapi.token', (string) config('zapi.token'));
+        $currentClientToken = (string) SystemSetting::getValue('zapi.client_token', (string) config('zapi.client_token'));
+
+        return [
             'zapi.instance' => trim((string) ($data['zapi_instance'] ?? '')),
-            'zapi.token' => trim((string) ($data['zapi_token'] ?? '')),
-            'zapi.client_token' => trim((string) ($data['zapi_client_token'] ?? '')),
+            'zapi.token' => trim((string) ($data['zapi_token'] ?? '')) !== '' ? trim((string) $data['zapi_token']) : $currentToken,
+            'zapi.client_token' => trim((string) ($data['zapi_client_token'] ?? '')) !== '' ? trim((string) $data['zapi_client_token']) : $currentClientToken,
             'cpfclean.whatsapp_number' => preg_replace('/\D+/', '', (string) ($data['cpfclean_whatsapp_number'] ?? '')),
         ];
-
-        foreach ($map as $key => $value) {
-            SystemSetting::setValue($key, $value !== '' ? $value : null);
-        }
-
-        SystemSetting::applyRuntimeConfig();
-        Cache::forget('apibrasil.balance.snapshot');
-
-        return back()->with('success', 'Integrações atualizadas com sucesso.');
     }
 
     public function messages(Request $request): View

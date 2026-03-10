@@ -2,7 +2,7 @@
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">Consultas API Brasil</h1>
-            <p class="panel-subtitle mt-1">Selecione o tipo de consulta financeira, execute na API Brasil e gere o PDF para o vendedor.</p>
+            <p class="panel-subtitle mt-1">Selecione apenas o tipo de dossiê, execute o pacote de pesquisas e gere o PDF consolidado para o vendedor.</p>
         </section>
 
         <section class="grid gap-4 md:grid-cols-2">
@@ -48,7 +48,7 @@
 
         <section class="panel-card p-4">
             <div class="mb-3 flex items-center justify-between gap-2">
-                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Nova consulta</h2>
+                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Novo dossiê consolidado</h2>
                 <span class="badge {{ $apibrasilConfigured ? 'badge-success' : 'badge-warning' }}">
                     {{ $apibrasilConfigured ? 'Integração configurada' : 'Configure API Brasil em Integrações' }}
                 </span>
@@ -56,25 +56,16 @@
             <form method="POST" action="{{ route('admin.management.apibrasil-consultations.store') }}" class="grid gap-3 md:grid-cols-2" data-apibrasil-form>
                 @csrf
                 <div class="space-y-1 md:col-span-2">
-                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Tipo de consulta</label>
-                    <select name="consultation_key" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required data-consultation-selector>
-                        <option value="">Selecionar consulta</option>
-                        @foreach ($categories as $categoryKey => $categoryLabel)
-                            @php
-                                $group = collect($catalog)
-                                    ->filter(fn ($item) => ($item['category'] ?? '') === $categoryKey)
-                                    ->all();
-                            @endphp
-                            @continue(empty($group))
-                            <optgroup label="{{ $categoryLabel }}">
-                                @foreach ($group as $key => $definition)
-                                    <option value="{{ $key }}" data-document-type="{{ $definition['document_type'] ?? 'both' }}" @selected(old('consultation_key') === $key)>
-                                        {{ $definition['title'] }}
-                                    </option>
-                                @endforeach
-                            </optgroup>
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Tipo de dossiê</label>
+                    <select name="report_type" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required data-report-type-selector>
+                        <option value="">Selecionar dossiê</option>
+                        @foreach ($bundles as $key => $bundle)
+                            <option value="{{ $key }}" data-document-type="{{ $bundle['document_type'] ?? 'both' }}" @selected(old('report_type') === $key)>
+                                {{ $bundle['title'] }}
+                            </option>
                         @endforeach
                     </select>
+                    <p class="text-xs text-slate-500">PF executa 3 fontes consolidadas. PJ executa o pacote completo do dossiê empresarial.</p>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Pedido pago (opcional)</label>
@@ -104,11 +95,11 @@
                 </div>
                 <div class="space-y-1 md:col-span-2">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Observações</label>
-                    <textarea name="notes" rows="2" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Contexto da consulta (opcional)">{{ old('notes') }}</textarea>
+                    <textarea name="notes" rows="2" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Contexto do dossiê (opcional)">{{ old('notes') }}</textarea>
                 </div>
                 <div class="md:col-span-2">
                     <button class="btn-primary inline-flex items-center gap-2" @disabled(!$apibrasilConfigured) data-submit-button>
-                        <span data-submit-label>Consultar API Brasil</span>
+                        <span data-submit-label>Gerar dossiê</span>
                         <svg data-submit-spinner class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.3" stroke-width="3"></circle>
                             <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
@@ -117,6 +108,8 @@
                 </div>
             </form>
         </section>
+
+        @include('admin.management.partials.research-reports', ['reports' => $reports])
 
         <section class="panel-card overflow-hidden">
             <div class="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
@@ -230,7 +223,7 @@
 
     <script>
         (function () {
-            const consultationSelect = document.querySelector('[data-consultation-selector]');
+            const reportTypeSelect = document.querySelector('[data-report-type-selector]');
             const orderSelect = document.querySelector('[data-order-selector]');
             const documentInput = document.querySelector('[data-document-input]');
             const form = document.querySelector('[data-apibrasil-form]');
@@ -262,10 +255,10 @@
             };
 
             const selectedDocumentType = () => {
-                if (!consultationSelect) {
+                if (!reportTypeSelect) {
                     return 'both';
                 }
-                const selected = consultationSelect.options[consultationSelect.selectedIndex];
+                const selected = reportTypeSelect.options[reportTypeSelect.selectedIndex];
                 return selected ? (selected.dataset.documentType || 'both') : 'both';
             };
 
@@ -287,8 +280,8 @@
                 documentInput.placeholder = 'CPF: 000.000.000-00 ou CNPJ: 00.000.000/0000-00';
             };
 
-            if (consultationSelect) {
-                consultationSelect.addEventListener('change', applyMask);
+            if (reportTypeSelect) {
+                reportTypeSelect.addEventListener('change', applyMask);
             }
 
             documentInput.addEventListener('input', applyMask);
@@ -308,7 +301,7 @@
                 form.addEventListener('submit', function () {
                     submitButton.setAttribute('disabled', 'disabled');
                     submitSpinner.classList.remove('hidden');
-                    submitLabel.textContent = 'Consultando API Brasil...';
+                    submitLabel.textContent = 'Executando pacote de pesquisas...';
                 });
             }
 

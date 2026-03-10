@@ -78,10 +78,12 @@
 </head>
 <body>
 @php
-    $reportProtocol = 'CPFBR-DOSSIE-'.now()->format('Ymd').'-'.str_pad((string) $order->id, 6, '0', STR_PAD_LEFT);
+    $referenceId = $researchReport->id ?? $order->id;
+    $reportProtocol = 'CPFBR-DOSSIE-'.now()->format('Ymd').'-'.str_pad((string) $referenceId, 6, '0', STR_PAD_LEFT);
     $logoPath = public_path('assets/branding/cpfclean-logo.svg');
     $logoSvg = file_exists($logoPath) ? file_get_contents($logoPath) : null;
     $logoDataUri = $logoSvg ? 'data:image/svg+xml;base64,'.base64_encode($logoSvg) : null;
+    $documentValue = (string) ($researchReport->document_number ?? ($order->lead?->cpf_cnpj ?: $order->user?->cpf_cnpj ?: '-'));
 @endphp
 
 <div class="header">
@@ -96,11 +98,11 @@
                 <p class="title">Dossie de Consultas Financeiras</p>
                 <p class="subtitle">Consolidado de analises para um unico pedido</p>
                 <div class="meta">
-                    Protocolo Comercial: {{ $order->protocolo ?: '-' }}<br>
+                    Protocolo Comercial: {{ $order->protocolo ?: ($researchReport->title ?? '-') }}<br>
                     Cliente: {{ $order->user?->name ?: '-' }}<br>
-                    Documento: {{ preg_replace('/\D+/', '', (string) ($order->lead?->cpf_cnpj ?: $order->user?->cpf_cnpj ?: '-')) }}<br>
+                    Documento: {{ preg_replace('/\D+/', '', $documentValue) }}<br>
                     Protocolo do Documento: {{ $reportProtocol }}<br>
-                    Emitido em: {{ now()->format('d/m/Y H:i:s') }}
+                    Emitido em: {{ ($researchReport->generated_at ?? now())->format('d/m/Y H:i:s') }}
                 </div>
             </td>
         </tr>
@@ -113,6 +115,12 @@
         <td class="label">Total de consultas no pedido</td>
         <td>{{ $consultations->count() }}</td>
     </tr>
+    @if(isset($researchReport))
+        <tr>
+            <td class="label">Status do relatório</td>
+            <td>{{ strtoupper((string) $researchReport->status) }} | {{ $researchReport->success_count }}/{{ $researchReport->source_count }} fonte(s) com sucesso</td>
+        </tr>
+    @endif
     <tr>
         <td class="label">Status</td>
         <td><span class="badge">Consultas validas para analise comercial</span></td>

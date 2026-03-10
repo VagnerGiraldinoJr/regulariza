@@ -8,6 +8,8 @@ use App\Models\SacTicket;
 use App\Policies\OrderPolicy;
 use App\Policies\SacTicketPolicy;
 use App\Observers\OrderObserver;
+use App\Services\ResearchProviderManager;
+use App\Services\ResearchProviders\ApiBrasilResearchProvider;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -18,7 +20,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(ResearchProviderManager::class, function ($app): ResearchProviderManager {
+            return new ResearchProviderManager([
+                $app->make(ApiBrasilResearchProvider::class),
+            ]);
+        });
     }
 
     /**

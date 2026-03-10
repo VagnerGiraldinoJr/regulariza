@@ -77,9 +77,17 @@ class SystemSetting extends Model
         ];
 
         foreach ($configMap as $settingKey => $configKey) {
-            if (array_key_exists($settingKey, $map) && $map[$settingKey] !== null && $map[$settingKey] !== '') {
-                Config::set($configKey, $map[$settingKey]);
+            if (! array_key_exists($settingKey, $map)) {
+                continue;
             }
+
+            $value = $map[$settingKey];
+
+            if ($settingKey === 'apibrasil.homolog') {
+                $value = filter_var($value, FILTER_VALIDATE_BOOL);
+            }
+
+            Config::set($configKey, $value);
         }
     }
 }

@@ -4,11 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\ApiBrasilConsultation;
 use App\Models\Order;
+use App\Models\ResearchReport;
 use App\Models\User;
 use App\Services\ApiBrasilService;
+use App\Services\PfResearchReportService;
+use App\Services\ResearchReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -22,8 +26,7 @@ class ApiBrasilConsultationController extends Controller
     public function index(Request $request, ApiBrasilService $apiBrasilService): View
     {
         $status = (string) $request->query('status', '');
-        $catalog = $this->catalog();
-        $categories = (array) config('apibrasil_catalog.categories', []);
+        $bundles = $this->bundles();
 
         $consultations = ApiBrasilConsultation::query()
             ->with(['order', 'user', 'analyst', 'admin'])
@@ -51,6 +54,12 @@ class ApiBrasilConsultationController extends Controller
             ->where('pagamento_status', 'pago')
             ->latest('id')
             ->limit(80)
+            ->get();
+
+        $reports = ResearchReport::query()
+            ->with(['order', 'user', 'admin'])
+            ->latest('id')
+            ->limit(12)
             ->get();
 
         $analysts = User::query()
@@ -84,22 +93,22 @@ class ApiBrasilConsultationController extends Controller
         return view('admin.management.apibrasil-consultations', [
             'consultations' => $consultations,
             'paidOrders' => $paidOrders,
+            'reports' => $reports,
             'analysts' => $analysts,
             'status' => $status,
             'apibrasilConfigured' => $this->isConfigured(),
-            'catalog' => $catalog,
-            'categories' => $categories,
+            'bundles' => $bundles,
             'balance' => $balance,
             'consultationCountByOrder' => $consultationCountByOrder,
         ]);
     }
 
-    public function store(Request $request, ApiBrasilService $apiBrasilService): RedirectResponse
+    public function store(Request $request, ResearchReportService $researchReportService): RedirectResponse
     {
-        $catalog = $this->catalog();
+        $bundles = $this->bundles();
         $data = $request->validate([
             'order_id' => ['nullable', 'integer', Rule::exists('orders', 'id')],
-            'consultation_key' => ['required', Rule::in(array_keys($catalog))],
+            'report_type' => ['required', Rule::in(array_keys($bundles))],
             'document_number' => ['required', 'string', 'max:18'],
             'notes' => ['nullable', 'string', 'max:1500'],
         ]);
@@ -110,42 +119,46 @@ class ApiBrasilConsultationController extends Controller
             $order = Order::query()->with(['lead', 'user'])->findOrFail((int) $data['order_id']);
         }
 
+        $reportType = (string) $data['report_type'];
+        $documentDigits = preg_replace('/\D+/', '', (string) $data['document_number']);
+        $expectedDocumentType = (string) ($bundles[$reportType]['document_type'] ?? 'both');
+
+        if (
+            ($expectedDocumentType === 'cpf' && strlen($documentDigits) !== 11)
+            || ($expectedDocumentType === 'cnpj' && strlen($documentDigits) !== 14)
+        ) {
+            return back()->withErrors([
+                'document_number' => $expectedDocumentType === 'cpf'
+                    ? 'Informe um CPF válido para o dossiê PF.'
+                    : 'Informe um CNPJ válido para o dossiê PJ.',
+            ])->withInput();
+        }
+
         try {
-            $result = $apiBrasilService->consultarCatalogo(
-                (string) $data['consultation_key'],
-                (string) $data['document_number']
+            $report = $researchReportService->createFromBundle(
+                order: $order,
+                admin: $request->user(),
+                reportType: $reportType,
+                documentNumber: $documentDigits,
+                notes: $data['notes'] ?? null
             );
         } catch (RuntimeException $exception) {
-            return back()->withErrors(['apibrasil' => $exception->getMessage()])->withInput();
+            return back()->withErrors([
+                'apibrasil' => $exception->getMessage(),
+            ])->withInput();
         }
 
-        $consultation = ApiBrasilConsultation::query()->create([
-            'order_id' => $order?->id,
-            'lead_id' => $order?->lead_id,
-            'user_id' => $order?->user_id,
-            'admin_user_id' => (int) $request->user()->id,
-            'consultation_key' => $result['consultation_key'] ?? null,
-            'consultation_title' => $result['consultation_title'] ?? null,
-            'consultation_category' => $result['consultation_category'] ?? null,
-            'document_type' => $result['document_type'],
-            'document_number' => $result['document'],
-            'status' => $result['status'],
-            'provider' => 'apibrasil',
-            'endpoint' => $result['endpoint'],
-            'http_status' => $result['http_status'],
-            'request_payload' => $result['request_payload'],
-            'response_payload' => $result['response_payload'],
-            'error_message' => $result['error_message'],
-            'notes' => $data['notes'] ?: null,
-        ]);
+        $bundleTitle = (string) ($bundles[$reportType]['title'] ?? strtoupper($reportType));
+        $successCount = (int) $report->success_count;
+        $failureCount = (int) $report->failure_count;
 
-        if ($consultation->status === 'success') {
-            return back()->with('success', 'Consulta realizada e salva com sucesso.');
+        $message = "{$bundleTitle} executado com {$successCount} consulta(s) concluída(s)";
+        if ($failureCount > 0) {
+            $message .= " e {$failureCount} com falha";
         }
+        $message .= ". Relatório #{$report->id} gerado.";
 
-        return back()->withErrors([
-            'apibrasil' => 'Consulta salva com falha na API Brasil: '.($consultation->error_message ?: 'erro não identificado.'),
-        ]);
+        return back()->with('success', $message);
     }
 
     public function forward(Request $request, ApiBrasilConsultation $consultation): RedirectResponse
@@ -165,8 +178,12 @@ class ApiBrasilConsultationController extends Controller
             $consultation->update([
                 'analyst_user_id' => $analyst->id,
                 'forwarded_at' => now(),
-                'notes' => $data['notes'] ?: $consultation->notes,
+                'notes' => ($data['notes'] ?? null) ?: $consultation->notes,
             ]);
+
+            ResearchReport::query()
+                ->whereHas('items', fn ($query) => $query->where('apibrasil_consultation_id', $consultation->id))
+                ->update(['analyst_user_id' => $analyst->id]);
 
             if ($consultation->lead) {
                 $consultation->lead->update(['referred_by_user_id' => $analyst->id]);
@@ -205,8 +222,17 @@ class ApiBrasilConsultationController extends Controller
         return $pdf->download($filename);
     }
 
-    public function downloadOrderPdf(Order $order): Response|RedirectResponse
+    public function downloadOrderPdf(Order $order, PfResearchReportService $pfResearchReportService): Response|RedirectResponse
     {
+        $existingReport = ResearchReport::query()
+            ->where('order_id', $order->id)
+            ->latest('id')
+            ->first();
+
+        if ($existingReport) {
+            return $this->downloadResearchReportPdf($existingReport, $pfResearchReportService);
+        }
+
         $consultations = ApiBrasilConsultation::query()
             ->where('order_id', $order->id)
             ->where('status', 'success')
@@ -222,12 +248,108 @@ class ApiBrasilConsultationController extends Controller
 
         $filename = sprintf('dossie-%s-apibrasil.pdf', Str::slug((string) ($order->protocolo ?: $order->id)));
 
-        $pdf = Pdf::loadView('admin.management.apibrasil-order-dossier-pdf', [
-            'order' => $order->loadMissing(['lead', 'user']),
-            'consultations' => $consultations,
-        ])->setPaper('a4');
+        $order->loadMissing(['lead', 'user']);
+        $documentDigits = preg_replace('/\D+/', '', (string) ($order->lead?->cpf_cnpj ?: $order->user?->cpf_cnpj ?: ''));
+
+        if (strlen($documentDigits) === 11) {
+            $report = $pfResearchReportService->build($order, $consultations);
+
+            $pdf = Pdf::loadView('admin.management.apibrasil-order-dossier-pf-pdf', [
+                'order' => $order,
+                'consultations' => $consultations,
+                'report' => $report,
+            ])->setPaper('a4');
+        } else {
+            $pdf = Pdf::loadView('admin.management.apibrasil-order-dossier-pdf', [
+                'order' => $order,
+                'consultations' => $consultations,
+            ])->setPaper('a4');
+        }
 
         return $pdf->download($filename);
+    }
+
+    public function downloadResearchReportPdf(ResearchReport $report, PfResearchReportService $pfResearchReportService): Response|RedirectResponse
+    {
+        $report->loadMissing([
+            'order.lead',
+            'order.user',
+            'lead',
+            'user',
+            'admin',
+            'analyst',
+            'items.consultation.order',
+            'items.consultation.user',
+            'items.consultation.analyst',
+            'items.consultation.admin',
+        ]);
+        $consultations = $report->items
+            ->pluck('consultation')
+            ->filter()
+            ->values();
+
+        if ($consultations->isEmpty()) {
+            return back()->withErrors([
+                'apibrasil_pdf' => 'Este relatório ainda não possui consultas suficientes para gerar o PDF.',
+            ]);
+        }
+
+        $filename = sprintf(
+            'dossie-%s-%s.pdf',
+            $report->report_type,
+            Str::slug((string) ($report->order?->protocolo ?: $report->document_number))
+        );
+
+        $documentDigits = preg_replace('/\D+/', '', (string) $report->document_number);
+        $contextOrder = $report->order ?: $this->virtualOrderFromReport($report);
+
+        if (strlen($documentDigits) === 11) {
+            $payload = $this->hydratePfPayload(
+                $report->normalized_payload,
+                $pfResearchReportService->build($contextOrder, $consultations)
+            );
+
+            $pdf = Pdf::loadView('admin.management.apibrasil-order-dossier-pf-pdf', [
+                'order' => $contextOrder,
+                'consultations' => $consultations,
+                'report' => $payload,
+            ])->setPaper('a4');
+        } else {
+            $pdf = Pdf::loadView('admin.management.apibrasil-order-dossier-pdf', [
+                'order' => $contextOrder,
+                'consultations' => $consultations,
+                'researchReport' => $report,
+            ])->setPaper('a4');
+        }
+
+        return $pdf->download($filename);
+    }
+
+    private function virtualOrderFromReport(ResearchReport $report): Order
+    {
+        $order = new Order([
+            'protocolo' => 'REL-'.$report->id,
+        ]);
+        $order->id = $report->id;
+
+        $order->setRelation('lead', $report->lead);
+        $order->setRelation('user', $report->user);
+
+        return $order;
+    }
+
+    private function hydratePfPayload(?array $storedPayload, array $fallbackPayload): array
+    {
+        $payload = is_array($storedPayload) && $storedPayload !== [] ? $storedPayload : $fallbackPayload;
+        $generatedAt = data_get($payload, 'meta.generated_at');
+
+        if (is_string($generatedAt) && $generatedAt !== '') {
+            data_set($payload, 'meta.generated_at', Carbon::parse($generatedAt));
+        } elseif (! $generatedAt instanceof Carbon) {
+            data_set($payload, 'meta.generated_at', now());
+        }
+
+        return $payload;
     }
 
     private function isConfigured(): bool
@@ -240,6 +362,11 @@ class ApiBrasilConsultationController extends Controller
     private function catalog(): array
     {
         return (array) config('apibrasil_catalog.consultations', []);
+    }
+
+    private function bundles(): array
+    {
+        return (array) config('apibrasil_catalog.bundles', []);
     }
 
     private function balanceFromConsultationHistory(): ?float

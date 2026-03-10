@@ -14,12 +14,14 @@ use RuntimeException;
 
 class CheckoutService
 {
+    private const SUPPORTED_BILLING_TYPES = ['PIX', 'BOLETO', 'CREDIT_CARD'];
+
     public function __construct(
         private readonly ReferralService $referralService,
         private readonly SellerCommissionService $sellerCommissionService
     ) {}
 
-    public function createCheckoutSession(Lead $lead, Service $service): string
+    public function createCheckoutSession(Lead $lead, Service $service, string $billingType = 'PIX'): array
     {
         $user = $this->resolveUserFromLead($lead);
 
@@ -33,10 +35,10 @@ class CheckoutService
             'pagamento_status' => 'aguardando',
         ]);
 
-        return $this->createAsaasPixPayment($order, $lead, $service, $user);
+        return $this->createAsaasPayment($order, $lead, $service, $user, $billingType);
     }
 
-    public function createCheckoutSessionForOrder(Order $order): string
+    public function createCheckoutSessionForOrder(Order $order, string $billingType = 'PIX'): array
     {
         $order->loadMissing(['user', 'service', 'lead']);
 
@@ -46,55 +48,118 @@ class CheckoutService
             throw new RuntimeException('Pedido sem serviço vinculado.');
         }
 
-        return $this->createAsaasPixPayment($order, $order->lead, $service, $order->user);
+        return $this->createAsaasPayment($order, $order->lead, $service, $order->user, $billingType);
     }
 
-    protected function createAsaasPixPayment(Order $order, ?Lead $lead, Service $service, ?User $user): string
+    public function getCheckoutSessionForOrder(Order $order): ?array
     {
+        $order->loadMissing(['user', 'service', 'lead']);
+
+        if ($order->pagamento_status === 'pago') {
+            return null;
+        }
+
         if (! $this->hasAsaasConfigured()) {
-            return $this->approveLocally($order, $lead, isResend: true);
+            return [
+                'order_id' => $order->id,
+                'payment_id' => (string) ($order->asaas_payment_id ?? ''),
+                'billing_type' => 'MOCK',
+                'payment_url' => (string) ($order->payment_link_url ?? ''),
+                'invoice_url' => (string) ($order->payment_link_url ?? ''),
+                'bank_slip_url' => null,
+                'pix' => null,
+                'status' => (string) $order->pagamento_status,
+                'value' => (float) $order->valor,
+                'description' => (string) ($order->service?->nome ?? ''),
+                'due_date' => now()->toDateString(),
+            ];
+        }
+
+        if (! filled($order->asaas_payment_id)) {
+            return null;
+        }
+
+        $response = $this->asaasClient()->get('/payments/'.$order->asaas_payment_id);
+
+        if (! $response->successful()) {
+            Log::warning('Falha ao consultar cobrança Asaas para o pedido.', [
+                'order_id' => $order->id,
+                'payment_id' => $order->asaas_payment_id,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        }
+
+        return $this->buildPaymentSession($order, $response->json());
+    }
+
+    protected function createAsaasPayment(Order $order, ?Lead $lead, Service $service, ?User $user, string $billingType): array
+    {
+        $billingType = strtoupper(trim($billingType));
+
+        if (! in_array($billingType, self::SUPPORTED_BILLING_TYPES, true)) {
+            throw new RuntimeException('Forma de pagamento inválida para a pesquisa.');
+        }
+
+        if (! $this->hasAsaasConfigured()) {
+            $redirectUrl = $this->approveLocally($order, $lead, isResend: true);
+
+            return [
+                'order_id' => $order->id,
+                'payment_id' => '',
+                'billing_type' => 'MOCK',
+                'payment_url' => $redirectUrl,
+                'invoice_url' => $redirectUrl,
+                'bank_slip_url' => null,
+                'pix' => null,
+                'status' => 'pago',
+                'value' => (float) $order->valor,
+                'description' => $service->nome,
+                'due_date' => now()->toDateString(),
+            ];
         }
 
         $customerId = $this->ensureAsaasCustomer($lead, $user);
 
         $payload = [
             'customer' => $customerId,
-            'billingType' => 'PIX',
+            'billingType' => $billingType,
             'value' => (float) $order->valor,
             'dueDate' => now()->toDateString(),
             'description' => $service->nome,
             'externalReference' => 'order:'.$order->id,
+            'callback' => [
+                'successUrl' => route('regularizacao.sucesso', ['order_id' => $order->id]),
+                'autoRedirect' => false,
+            ],
         ];
 
         $response = $this->asaasClient()->post('/payments', $payload);
 
         if (! $response->successful()) {
-            Log::error('Falha ao criar cobrança Pix no Asaas.', [
+            Log::error('Falha ao criar cobrança no Asaas.', [
                 'order_id' => $order->id,
+                'billing_type' => $billingType,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
 
-            throw new RuntimeException('Não foi possível criar a cobrança Pix no Asaas. Verifique ASAAS_API_KEY no .env.');
+            throw new RuntimeException('Não foi possível criar a cobrança no Asaas. Verifique a configuração salva no painel administrativo.');
         }
 
         $payment = $response->json();
         $paymentId = (string) ($payment['id'] ?? '');
-        $invoiceUrl = (string) ($payment['invoiceUrl'] ?? '');
 
         if ($paymentId === '') {
             throw new RuntimeException('Asaas retornou resposta sem id da cobrança.');
-        }
-
-        if ($invoiceUrl === '') {
-            $invoiceUrl = route('regularizacao.index').'?order_id='.$order->id;
         }
 
         $order->update([
             'payment_provider' => 'asaas',
             'asaas_customer_id' => $customerId,
             'asaas_payment_id' => $paymentId,
-            'payment_link_url' => $invoiceUrl,
             'pagamento_status' => 'aguardando',
         ]);
 
@@ -102,7 +167,68 @@ class CheckoutService
             $lead->update(['etapa' => 'pagamento']);
         }
 
-        return $invoiceUrl;
+        return $this->buildPaymentSession($order->fresh(['service']), $payment, $customerId);
+    }
+
+    protected function buildPaymentSession(Order $order, array $payment, ?string $customerId = null): array
+    {
+        $paymentId = (string) ($payment['id'] ?? $order->asaas_payment_id ?? '');
+        $billingType = strtoupper((string) ($payment['billingType'] ?? 'PIX'));
+        $invoiceUrl = (string) ($payment['invoiceUrl'] ?? '');
+        $bankSlipUrl = (string) ($payment['bankSlipUrl'] ?? '');
+        $paymentUrl = match ($billingType) {
+            'BOLETO' => $bankSlipUrl !== '' ? $bankSlipUrl : $invoiceUrl,
+            default => $invoiceUrl,
+        };
+
+        if ($paymentUrl === '') {
+            $paymentUrl = route('regularizacao.index', ['order_id' => $order->id]);
+        }
+
+        $order->update([
+            'payment_provider' => 'asaas',
+            'asaas_customer_id' => $customerId ?: $order->asaas_customer_id,
+            'asaas_payment_id' => $paymentId !== '' ? $paymentId : $order->asaas_payment_id,
+            'payment_link_url' => $paymentUrl,
+            'pagamento_status' => $order->pagamento_status === 'pago' ? 'pago' : 'aguardando',
+        ]);
+
+        return [
+            'order_id' => $order->id,
+            'payment_id' => $paymentId,
+            'billing_type' => $billingType,
+            'payment_url' => $paymentUrl,
+            'invoice_url' => $invoiceUrl !== '' ? $invoiceUrl : $paymentUrl,
+            'bank_slip_url' => $bankSlipUrl !== '' ? $bankSlipUrl : null,
+            'pix' => $billingType === 'PIX' && $paymentId !== '' ? $this->fetchPixQrCode($paymentId) : null,
+            'status' => (string) ($payment['status'] ?? $order->pagamento_status),
+            'value' => (float) ($payment['value'] ?? $order->valor),
+            'description' => (string) ($payment['description'] ?? ($order->service?->nome ?? '')),
+            'due_date' => (string) ($payment['dueDate'] ?? now()->toDateString()),
+        ];
+    }
+
+    protected function fetchPixQrCode(string $paymentId): ?array
+    {
+        $response = $this->asaasClient()->get('/payments/'.$paymentId.'/pixQrCode');
+
+        if (! $response->successful()) {
+            Log::warning('Falha ao consultar QR Code Pix no Asaas.', [
+                'payment_id' => $paymentId,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        }
+
+        $payload = $response->json();
+
+        return [
+            'encoded_image' => (string) ($payload['encodedImage'] ?? ''),
+            'payload' => (string) ($payload['payload'] ?? ''),
+            'expiration_date' => (string) ($payload['expirationDate'] ?? ''),
+        ];
     }
 
     protected function ensureAsaasCustomer(?Lead $lead, ?User $user): string

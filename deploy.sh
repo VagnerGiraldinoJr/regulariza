@@ -49,16 +49,6 @@ log "Branch de deploy: $BRANCH"
 run git fetch origin "$BRANCH"
 run git pull --ff-only origin "$BRANCH"
 
-if [[ -f package.json ]]; then
-  if command -v npm >/dev/null 2>&1; then
-    run npm ci --no-audit --no-fund
-    run npm run build
-  else
-    log "npm nao encontrado no host. Abortando para nao subir sem build de frontend."
-    exit 1
-  fi
-fi
-
 run docker compose up -d --build --remove-orphans
 
 wait_mysql_health

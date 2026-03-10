@@ -11,15 +11,18 @@ use Livewire\Component;
 new class extends Component
 {
     public int $etapa = 1;
+    public ?int $order_id = null;
     public string $cpf_cnpj = '';
     public string $whatsapp = '';
     public string $tipo_documento = '';
+    public string $payment_method = 'PIX';
     public ?int $service_id = null;
     public ?int $lead_id = null;
     public ?string $protocolo = null;
     public ?int $referred_by_user_id = null;
     public ?string $referred_by_name = null;
     public ?string $referred_by_code = null;
+    public array $payment_session = [];
     public array $services = [];
 
     public function mount(): void
@@ -27,15 +30,47 @@ new class extends Component
         $this->loadServices();
         $this->resolveReferralFromQuery();
 
-        $orderId = request()->integer('order_id');
+        $this->order_id = request()->integer('order_id') ?: null;
 
-        if ($orderId && request()->routeIs('regularizacao.sucesso')) {
-            $order = Order::find($orderId);
+        if ($this->order_id) {
+            $this->hydrateFromOrder($this->order_id);
+        }
+    }
 
-            if ($order) {
-                $this->etapa = 4;
-                $this->protocolo = $order->protocolo;
+    private function hydrateFromOrder(int $orderId): void
+    {
+        $order = Order::query()->with(['service', 'lead', 'user'])->find($orderId);
+
+        if (! $order) {
+            return;
+        }
+
+        $this->order_id = $order->id;
+        $this->lead_id = $order->lead_id;
+        $this->service_id = $order->service_id;
+        $this->protocolo = $order->protocolo;
+        $this->cpf_cnpj = (string) ($order->lead?->cpf_cnpj ?: $order->user?->cpf_cnpj ?: '');
+        $this->whatsapp = $this->formatWhatsapp((string) ($order->lead?->whatsapp ?: $order->user?->whatsapp ?: ''));
+        $this->tipo_documento = (string) ($order->lead?->tipo_documento ?: (strlen(preg_replace('/\D+/', '', $this->cpf_cnpj)) > 11 ? 'cnpj' : 'cpf'));
+
+        if ($order->pagamento_status === 'pago' && request()->routeIs('regularizacao.sucesso')) {
+            $this->etapa = 4;
+
+            return;
+        }
+
+        $this->etapa = 3;
+
+        try {
+            $session = app(CheckoutService::class)->getCheckoutSessionForOrder($order);
+            if ($session) {
+                $this->payment_session = $session;
+                $this->payment_method = $session['billing_type'] === 'BOLETO' || $session['billing_type'] === 'CREDIT_CARD'
+                    ? $session['billing_type']
+                    : 'PIX';
             }
+        } catch (\Throwable) {
+            $this->payment_session = [];
         }
     }
 
@@ -179,24 +214,29 @@ new class extends Component
 
     public function iniciarPagamento(CheckoutService $checkoutService)
     {
-        if (! $this->lead_id || ! $this->service_id) {
+        if ((! $this->lead_id && ! $this->order_id) || ! $this->service_id) {
             $this->addError('service_id', 'Selecione a pesquisa para continuar.');
 
             return null;
         }
 
-        $lead = Lead::findOrFail($this->lead_id);
-        $service = Service::query()->where('ativo', true)->findOrFail($this->service_id);
-
         try {
-            $checkoutUrl = $checkoutService->createCheckoutSession($lead, $service);
+            if ($this->order_id) {
+                $order = Order::query()->with(['service', 'lead', 'user'])->findOrFail($this->order_id);
+                $this->payment_session = $checkoutService->createCheckoutSessionForOrder($order, $this->payment_method);
+            } else {
+                $lead = Lead::findOrFail($this->lead_id);
+                $service = Service::query()->where('ativo', true)->findOrFail($this->service_id);
+                $this->payment_session = $checkoutService->createCheckoutSession($lead, $service, $this->payment_method);
+                $this->order_id = (int) ($this->payment_session['order_id'] ?? 0) ?: null;
+            }
         } catch (\RuntimeException $exception) {
             $this->addError('service_id', $exception->getMessage());
 
             return null;
         }
 
-        return $this->redirect($checkoutUrl, navigate: false);
+        return null;
     }
 
     protected function isValidCpf(string $cpf): bool
@@ -409,7 +449,7 @@ new class extends Component
                     <div class="space-y-4">
                         <div>
                             <h2 class="text-base font-bold text-slate-800">3. Confirmar pagamento da pesquisa</h2>
-                            <p class="mt-1 text-sm text-slate-500">Ao confirmar, você contrata a pesquisa para análise interna e plano de direcionamento.</p>
+                            <p class="mt-1 text-sm text-slate-500">Escolha como deseja pagar a pesquisa. O pagamento é gerado pelo Asaas no mesmo fluxo.</p>
                         </div>
 
                         @if ($this->selectedService)
@@ -421,9 +461,86 @@ new class extends Component
                             </div>
                         @endif
 
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            @foreach ([
+                                'PIX' => ['title' => 'PIX', 'copy' => 'QRCode e copia e cola'],
+                                'BOLETO' => ['title' => 'Boleto', 'copy' => 'Boleto Asaas para pagamento'],
+                                'CREDIT_CARD' => ['title' => 'Cartão', 'copy' => 'Pagamento com cartão no Asaas'],
+                            ] as $method => $meta)
+                                <button
+                                    type="button"
+                                    wire:click="$set('payment_method', '{{ $method }}')"
+                                    class="rounded-xl border p-4 text-left transition {{ $payment_method === $method ? 'border-cyan-500 bg-cyan-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300' }}"
+                                >
+                                    <p class="text-xs font-semibold uppercase tracking-wide text-cyan-700">{{ $meta['title'] }}</p>
+                                    <p class="mt-1 text-sm font-bold text-slate-800">{{ $meta['copy'] }}</p>
+                                </button>
+                            @endforeach
+                        </div>
+
                         @error('service_id')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
 
-                        <button wire:click="iniciarPagamento" class="btn-primary w-full">Contratar pesquisa e continuar</button>
+                        <button wire:click="iniciarPagamento" class="btn-primary w-full">
+                            {{ $order_id ? 'Atualizar cobrança no Asaas' : 'Gerar cobrança no Asaas' }}
+                        </button>
+
+                        @if (! empty($payment_session))
+                            <div class="rounded-xl border border-slate-200 bg-white p-4">
+                                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cobrança ativa</p>
+                                        <p class="mt-1 text-sm font-bold text-slate-800">{{ $payment_session['billing_type'] === 'CREDIT_CARD' ? 'Cartão de crédito' : ucfirst(mb_strtolower(str_replace('_', ' ', $payment_session['billing_type']))) }}</p>
+                                    </div>
+                                    @if (! empty($payment_session['due_date']))
+                                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">Vencimento {{ \Carbon\Carbon::parse($payment_session['due_date'])->format('d/m/Y') }}</span>
+                                    @endif
+                                </div>
+
+                                @if (($payment_session['billing_type'] ?? '') === 'PIX' && ! empty($payment_session['pix']))
+                                    <div class="mt-4 grid gap-4 lg:grid-cols-[220px_1fr]">
+                                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                            @if (! empty($payment_session['pix']['encoded_image']))
+                                                <img src="data:image/png;base64,{{ $payment_session['pix']['encoded_image'] }}" alt="QR Code Pix" class="mx-auto h-48 w-48 rounded-lg border border-slate-200 bg-white p-2" />
+                                            @endif
+                                        </div>
+                                        <div class="space-y-3">
+                                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pix copia e cola</p>
+                                                <textarea readonly rows="5" class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700">{{ $payment_session['pix']['payload'] ?? '' }}</textarea>
+                                            </div>
+                                            <div class="flex flex-wrap gap-2">
+                                                @if (! empty($payment_session['payment_url']))
+                                                    <a href="{{ $payment_session['payment_url'] }}" target="_blank" rel="noopener noreferrer" class="btn-dark">Abrir fatura Asaas</a>
+                                                @endif
+                                                <a href="{{ route('regularizacao.index', ['order_id' => $payment_session['order_id']]) }}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Atualizar status</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @elseif (($payment_session['billing_type'] ?? '') === 'BOLETO')
+                                    <div class="mt-4 space-y-3">
+                                        <p class="text-sm text-slate-600">O boleto foi gerado. Abra o documento do Asaas para visualizar ou baixar.</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            @if (! empty($payment_session['bank_slip_url']))
+                                                <a href="{{ $payment_session['bank_slip_url'] }}" target="_blank" rel="noopener noreferrer" class="btn-dark">Abrir boleto</a>
+                                            @endif
+                                            @if (! empty($payment_session['invoice_url']))
+                                                <a href="{{ $payment_session['invoice_url'] }}" target="_blank" rel="noopener noreferrer" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Abrir fatura</a>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @elseif (($payment_session['billing_type'] ?? '') === 'CREDIT_CARD')
+                                    <div class="mt-4 space-y-3">
+                                        <p class="text-sm text-slate-600">O pagamento com cartão é concluído na página segura do Asaas.</p>
+                                        <div class="flex flex-wrap gap-2">
+                                            @if (! empty($payment_session['payment_url']))
+                                                <a href="{{ $payment_session['payment_url'] }}" target="_blank" rel="noopener noreferrer" class="btn-dark">Pagar com cartão</a>
+                                            @endif
+                                            <a href="{{ route('regularizacao.index', ['order_id' => $payment_session['order_id']]) }}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Atualizar status</a>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
                     </div>
                 @endif
 

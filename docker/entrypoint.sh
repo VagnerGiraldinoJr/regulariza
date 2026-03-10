@@ -33,6 +33,7 @@ upsert_env() {
 upsert_env APP_ENV "${APP_ENV:-}"
 upsert_env APP_DEBUG "${APP_DEBUG:-}"
 upsert_env APP_URL "${APP_URL:-}"
+upsert_env APP_KEY "${APP_KEY:-}"
 upsert_env APP_TIMEZONE "${APP_TIMEZONE:-}"
 upsert_env SERVER_CITY "${SERVER_CITY:-}"
 upsert_env SERVER_UF "${SERVER_UF:-}"
@@ -61,8 +62,9 @@ chmod -R ug+rwx storage bootstrap/cache
 # Prevent stale package/config cache copied from host (can reference dev providers).
 rm -f bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/*.php
 
-if [ -z "${APP_KEY}" ]; then
-  php artisan key:generate --force || true
+if [ -z "${APP_KEY:-}" ]; then
+  echo "APP_KEY ausente. Defina uma chave estavel no .env antes de subir os containers." >&2
+  exit 1
 fi
 
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then

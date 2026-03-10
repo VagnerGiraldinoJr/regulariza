@@ -42,17 +42,18 @@ class EnviarAcessoPortalWhatsApp implements ShouldQueue
         }
 
         $temporaryPassword = strtoupper(Str::random(4)).strtolower(Str::random(4));
+        $portalToken = Str::random(64);
 
         $user->forceFill([
             'role' => 'cliente',
             'password' => Hash::make($temporaryPassword),
-            'portal_token' => Str::random(64),
+            'portal_token' => $portalToken,
             'portal_token_expires_at' => now()->addDays(7),
         ])->save();
 
         $mensagem = $zApiService->renderTemplate('portal_acesso', [
             'nome' => $user->name,
-            'link' => route('login'),
+            'link' => route('portal.invite', $portalToken),
             'email' => $user->email,
             'senha' => $temporaryPassword,
         ]);

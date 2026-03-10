@@ -55,6 +55,14 @@ Definidas em `.env` e injetadas no `compose.yaml`.
 
 ## Subindo local/VPS com Docker
 
+Garanta antes que o `.env` tenha uma `APP_KEY` estavel. Em instalacao nova:
+
+```bash
+php artisan key:generate --show
+```
+
+Copie o valor retornado para `APP_KEY=` no `.env`.
+
 ```bash
 docker compose up -d --build --remove-orphans
 docker compose exec -T app php artisan migrate --force
@@ -82,6 +90,10 @@ Fluxo do script:
 - `php artisan migrate --force`
 - `optimize:clear` + `optimize`
 - restart de `app` e `queue`
+
+Pre-condicao:
+
+- `APP_KEY` precisa estar definida no `.env` antes do deploy. O runtime nao gera chave automaticamente.
 
 Opcional para reset completo do banco (destrutivo):
 
