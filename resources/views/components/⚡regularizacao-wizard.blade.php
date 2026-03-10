@@ -463,16 +463,37 @@ new class extends Component
 
                         <div class="grid gap-3 sm:grid-cols-3">
                             @foreach ([
-                                'PIX' => ['title' => 'PIX', 'copy' => 'QRCode e copia e cola'],
-                                'BOLETO' => ['title' => 'Boleto', 'copy' => 'Boleto Asaas para pagamento'],
-                                'CREDIT_CARD' => ['title' => 'Cartão', 'copy' => 'Pagamento com cartão no Asaas'],
+                                'PIX' => ['title' => 'PIX', 'copy' => 'QRCode e copia e cola', 'icon_bg' => 'bg-emerald-100', 'icon_text' => 'text-emerald-700'],
+                                'BOLETO' => ['title' => 'Boleto', 'copy' => 'Boleto Asaas para pagamento', 'icon_bg' => 'bg-amber-100', 'icon_text' => 'text-amber-700'],
+                                'CREDIT_CARD' => ['title' => 'Cartão', 'copy' => 'Pagamento com cartão no Asaas', 'icon_bg' => 'bg-sky-100', 'icon_text' => 'text-sky-700'],
                             ] as $method => $meta)
                                 <button
                                     type="button"
                                     wire:click="$set('payment_method', '{{ $method }}')"
                                     class="rounded-xl border p-4 text-left transition {{ $payment_method === $method ? 'border-cyan-500 bg-cyan-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300' }}"
                                 >
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-cyan-700">{{ $meta['title'] }}</p>
+                                    <div class="flex items-start justify-between gap-3">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-cyan-700">{{ $meta['title'] }}</p>
+                                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl {{ $meta['icon_bg'] }} {{ $meta['icon_text'] }}">
+                                            @if ($method === 'PIX')
+                                                <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5" aria-hidden="true">
+                                                    <path d="M8.5 5.5 12 9l3.5-3.5a2.6 2.6 0 0 1 3.68 0l1.32 1.32a2.6 2.6 0 0 1 0 3.68L17 14l3.5 3.5a2.6 2.6 0 0 1 0 3.68l-1.32 1.32a2.6 2.6 0 0 1-3.68 0L12 19l-3.5 3.5a2.6 2.6 0 0 1-3.68 0L3.5 21.18a2.6 2.6 0 0 1 0-3.68L7 14l-3.5-3.5a2.6 2.6 0 0 1 0-3.68L4.82 5.5a2.6 2.6 0 0 1 3.68 0Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                                                    <path d="M9.7 12 12 14.3 14.3 12 12 9.7 9.7 12Z" fill="currentColor"/>
+                                                </svg>
+                                            @elseif ($method === 'BOLETO')
+                                                <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5" aria-hidden="true">
+                                                    <rect x="4" y="5" width="16" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+                                                    <path d="M7.5 8v8M10.5 8v8M14.5 8v8M17 8v8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                                </svg>
+                                            @else
+                                                <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5" aria-hidden="true">
+                                                    <rect x="3.5" y="6" width="17" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+                                                    <path d="M3.5 10.5h17" stroke="currentColor" stroke-width="1.7"/>
+                                                    <path d="M7.5 15h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                                                </svg>
+                                            @endif
+                                        </span>
+                                    </div>
                                     <p class="mt-1 text-sm font-bold text-slate-800">{{ $meta['copy'] }}</p>
                                 </button>
                             @endforeach

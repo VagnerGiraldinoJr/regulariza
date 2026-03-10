@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Order;
 use App\Models\User;
+use App\Services\LeadUserResolverService;
 use App\Services\ZApiService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -18,23 +19,22 @@ class EnviarAcessoPortalWhatsApp implements ShouldQueue
     {
     }
 
-    public function handle(ZApiService $zApiService): void
+    public function handle(ZApiService $zApiService, LeadUserResolverService $leadUserResolverService): void
     {
         $this->order->loadMissing('lead');
         $lead = $this->order->lead;
         $user = User::find($this->order->user_id);
 
-        if (! $user) {
-            $user = User::create([
-                'name' => $lead?->nome ?: 'Cliente CPF Clean',
-                'email' => $lead?->email ?: 'cliente+'.Str::lower(Str::random(12)).'@regulariza.local',
-                'role' => 'cliente',
-                'cpf_cnpj' => $lead?->cpf_cnpj,
-                'whatsapp' => $lead?->whatsapp,
-                'password' => Str::password(10),
-            ]);
+        if (! $user && $lead) {
+            $user = $leadUserResolverService->resolve($lead);
+        }
 
+        if ($user && (int) $this->order->user_id !== (int) $user->id) {
             $this->order->update(['user_id' => $user->id]);
+        }
+
+        if (! $user) {
+            return;
         }
 
         if (empty($user->whatsapp)) {

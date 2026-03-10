@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Lead;
 use App\Models\Service;
+use App\Models\User;
 use App\Services\CheckoutService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -180,5 +181,87 @@ class CheckoutServicePaymentMethodsTest extends TestCase
         $this->assertSame('CREDIT_CARD', $checkout['billing_type']);
         $this->assertSame('https://asaas.local/f/pay_card', $checkout['payment_url']);
         $this->assertNull($checkout['pix']);
+    }
+
+    public function test_checkout_reuses_existing_user_by_cpf_when_lead_has_no_email(): void
+    {
+        config()->set('services.asaas.base_url', 'https://sandbox.asaas.com/api/v3');
+        config()->set('services.asaas.api_key', 'asaas_test_token');
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $url = $request->url();
+
+            if ($request->method() === 'GET' && str_contains($url, '/customers')) {
+                return Http::response(['data' => []], 200);
+            }
+
+            if ($request->method() === 'POST' && str_ends_with($url, '/customers')) {
+                return Http::response(['id' => 'cus_existing'], 200);
+            }
+
+            if ($request->method() === 'POST' && str_ends_with($url, '/payments')) {
+                return Http::response([
+                    'id' => 'pay_existing',
+                    'billingType' => 'PIX',
+                    'invoiceUrl' => 'https://asaas.local/f/pay_existing',
+                    'value' => 200.00,
+                    'dueDate' => now()->toDateString(),
+                ], 200);
+            }
+
+            if ($request->method() === 'GET' && str_ends_with($url, '/payments/pay_existing/pixQrCode')) {
+                return Http::response([
+                    'encodedImage' => 'existingimage',
+                    'payload' => 'pixpayloadexisting',
+                    'expirationDate' => now()->addDay()->toIso8601String(),
+                ], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $service = Service::query()->create([
+            'nome' => 'Pesquisa CPF Clean Brasil',
+            'slug' => 'pesquisa-cpf-clean-brasil-existing-user',
+            'preco' => 200.00,
+            'ativo' => true,
+        ]);
+
+        $existingUser = User::factory()->create([
+            'role' => 'cliente',
+            'name' => 'Cliente Existente',
+            'email' => 'cliente.existente@example.com',
+            'cpf_cnpj' => '36745465825',
+            'whatsapp' => '11900000000',
+        ]);
+        $seller = User::factory()->create([
+            'role' => 'vendedor',
+        ]);
+
+        $lead = Lead::query()->create([
+            'cpf_cnpj' => '36745465825',
+            'tipo_documento' => 'cpf',
+            'nome' => 'Cliente Checkout',
+            'email' => null,
+            'whatsapp' => '11996190016',
+            'service_id' => $service->id,
+            'etapa' => 'servico',
+            'referred_by_user_id' => $seller->id,
+        ]);
+
+        $checkout = app(CheckoutService::class)->createCheckoutSession($lead, $service, 'PIX');
+
+        $this->assertSame('PIX', $checkout['billing_type']);
+        $this->assertSame(1, User::query()->where('cpf_cnpj', '36745465825')->count());
+        $this->assertDatabaseHas('orders', [
+            'id' => $checkout['order_id'],
+            'user_id' => $existingUser->id,
+            'lead_id' => $lead->id,
+        ]);
+        $this->assertDatabaseHas('users', [
+            'id' => $existingUser->id,
+            'email' => 'cliente.existente@example.com',
+            'cpf_cnpj' => '36745465825',
+        ]);
     }
 }

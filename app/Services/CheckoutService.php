@@ -9,7 +9,6 @@ use App\Models\User;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 class CheckoutService
@@ -18,7 +17,8 @@ class CheckoutService
 
     public function __construct(
         private readonly ReferralService $referralService,
-        private readonly SellerCommissionService $sellerCommissionService
+        private readonly SellerCommissionService $sellerCommissionService,
+        private readonly LeadUserResolverService $leadUserResolverService
     ) {}
 
     public function createCheckoutSession(Lead $lead, Service $service, string $billingType = 'PIX'): array
@@ -309,25 +309,7 @@ class CheckoutService
 
     protected function resolveUserFromLead(Lead $lead): User
     {
-        $email = $lead->email ?: 'cliente+'.Str::lower(Str::random(12)).'@regulariza.local';
-
-        $user = User::firstOrCreate(
-            ['email' => $email],
-            [
-                'name' => $lead->nome ?: 'Cliente Regulariza',
-                'cpf_cnpj' => $lead->cpf_cnpj,
-                'whatsapp' => $lead->whatsapp,
-                'referred_by_user_id' => $lead->referred_by_user_id,
-                'role' => 'cliente',
-                'password' => Str::password(12),
-            ]
-        );
-
-        if (! $user->referred_by_user_id && $lead->referred_by_user_id && $user->id !== $lead->referred_by_user_id) {
-            $user->update(['referred_by_user_id' => $lead->referred_by_user_id]);
-        }
-
-        return $user;
+        return $this->leadUserResolverService->resolve($lead);
     }
 
     protected function hasAsaasConfigured(): bool
