@@ -594,6 +594,52 @@ class AdminManagementController extends Controller
         ]);
     }
 
+    public function updateUser(Request $request, User $user, AdminAuditService $adminAuditService): RedirectResponse
+    {
+        abort_unless(in_array($user->role, ['admin', 'atendente', 'analista', 'vendedor'], true), 404);
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user->id)],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ], [
+            'password.min' => 'A nova senha deve ter no mínimo 8 caracteres.',
+            'password.confirmed' => 'A confirmação da nova senha não confere.',
+        ]);
+
+        $changes = [];
+        $normalizedEmail = mb_strtolower(trim((string) $data['email']));
+
+        if ($user->name !== $data['name']) {
+            $changes['name'] = [$user->name, $data['name']];
+            $user->name = $data['name'];
+        }
+
+        if ((string) $user->email !== $normalizedEmail) {
+            $changes['email'] = [$user->email, $normalizedEmail];
+            $user->email = $normalizedEmail;
+        }
+
+        if (filled($data['password'] ?? null)) {
+            $changes['password'] = ['updated' => true];
+            $user->password = Hash::make((string) $data['password']);
+        }
+
+        $user->save();
+
+        if ($changes !== []) {
+            $adminAuditService->record(
+                $request->user(),
+                'user_credentials_updated',
+                $user,
+                'Dados de acesso do usuário atualizados no admin.',
+                ['changes' => $changes]
+            );
+        }
+
+        return back()->with('success', "Dados de acesso atualizados para {$user->name}.");
+    }
+
     private function buildResetUrl(User $user): string
     {
         $token = Password::broker()->createToken($user);

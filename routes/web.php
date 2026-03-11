@@ -283,6 +283,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/management')->name('adm
     Route::post('/orphan-leads/{lead}/assign', [AdminManagementController::class, 'assignLead'])->name('orphan-leads.assign');
     Route::get('/users', [AdminManagementController::class, 'users'])->name('users');
     Route::post('/users', [AdminManagementController::class, 'storeUser'])->name('users.store');
+    Route::patch('/users/{user}', [AdminManagementController::class, 'updateUser'])->name('users.update');
     Route::post('/users/{user}/send-reset-link', [AdminManagementController::class, 'sendResetLink'])->name('users.send-reset-link');
     Route::get('/vendors', [AdminManagementController::class, 'vendors'])->name('vendors');
     Route::post('/vendors', [AdminManagementController::class, 'storeVendor'])->name('vendors.store');

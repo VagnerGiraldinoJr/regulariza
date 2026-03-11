@@ -5,6 +5,9 @@
         @if (session('success'))
             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
         @endif
+        @if ($errors->any() && ! $errors->has('reset_link'))
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $errors->first() }}</div>
+        @endif
         @error('reset_link')
             <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $message }}</div>
         @enderror
@@ -41,12 +44,42 @@
                                 <td class="px-4 py-3">{{ $u->role }}</td>
                                 <td class="px-4 py-3">{{ $u->pix_key ?: '-' }}</td>
                                 <td class="px-4 py-3 text-right">
-                                    <form method="POST" action="{{ route('admin.management.users.send-reset-link', $u) }}">
-                                        @csrf
-                                        <button type="submit" class="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700">
-                                            Enviar reset
-                                        </button>
-                                    </form>
+                                    <div class="flex justify-end gap-2">
+                                        <details class="group relative text-left">
+                                            <summary class="list-none rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                                                Editar acesso
+                                            </summary>
+                                            <div class="absolute right-4 z-10 mt-2 w-[22rem] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+                                                <form method="POST" action="{{ route('admin.management.users.update', $u) }}" class="space-y-3">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    <div>
+                                                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Nome</label>
+                                                        <input name="name" value="{{ old('name', $u->name) }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">E-mail</label>
+                                                        <input name="email" type="email" value="{{ old('email', $u->email) }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Nova senha</label>
+                                                        <input name="password" type="password" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Deixe em branco para manter">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Confirmar nova senha</label>
+                                                        <input name="password_confirmation" type="password" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Repita a nova senha">
+                                                    </div>
+                                                    <button type="submit" class="btn-primary w-full text-sm">Salvar edição</button>
+                                                </form>
+                                            </div>
+                                        </details>
+                                        <form method="POST" action="{{ route('admin.management.users.send-reset-link', $u) }}">
+                                            @csrf
+                                            <button type="submit" class="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700">
+                                                Enviar reset
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
