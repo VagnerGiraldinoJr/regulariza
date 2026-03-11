@@ -6,8 +6,10 @@ use App\Models\Lead;
 use App\Models\Order;
 use App\Models\Service;
 use App\Models\User;
+use App\Services\CheckoutService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Mockery;
 use Tests\TestCase;
 
 class RegularizacaoWizardPaidOrderTest extends TestCase
@@ -53,5 +55,68 @@ class RegularizacaoWizardPaidOrderTest extends TestCase
         $response->assertOk();
         $response->assertSee('Pagamento confirmado');
         $response->assertSee('PED-PAID-001');
+    }
+
+    public function test_pending_pix_order_enables_automatic_status_polling(): void
+    {
+        $service = Service::query()->create([
+            'nome' => 'Regularização PF',
+            'slug' => 'regularizacao-pf-pix-polling',
+            'preco' => 10.00,
+            'ativo' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'role' => 'cliente',
+            'cpf_cnpj' => '36745465825',
+            'whatsapp' => '11996190016',
+        ]);
+
+        $lead = Lead::query()->create([
+            'cpf_cnpj' => '36745465825',
+            'tipo_documento' => 'cpf',
+            'whatsapp' => '11996190016',
+        ]);
+
+        $order = Order::query()->create([
+            'protocolo' => 'PED-PIX-001',
+            'user_id' => $user->id,
+            'service_id' => $service->id,
+            'lead_id' => $lead->id,
+            'status' => 'pendente',
+            'valor' => 10.00,
+            'pagamento_status' => 'aguardando',
+            'asaas_payment_id' => 'pay_pix_test_001',
+        ]);
+
+        $checkoutService = Mockery::mock(CheckoutService::class);
+        $checkoutService->shouldReceive('getCheckoutSessionForOrder')
+            ->once()
+            ->andReturn([
+                'order_id' => $order->id,
+                'payment_id' => 'pay_pix_test_001',
+                'billing_type' => 'PIX',
+                'payment_url' => 'https://asaas.local/f/pay_pix_test_001',
+                'invoice_url' => 'https://asaas.local/f/pay_pix_test_001',
+                'bank_slip_url' => null,
+                'pix' => [
+                    'encoded_image' => 'base64pix',
+                    'payload' => '000201pixpayload',
+                    'expiration_date' => now()->addDay()->toIso8601String(),
+                ],
+                'status' => 'PENDING',
+                'value' => 10.00,
+                'description' => 'Regularização PF',
+                'due_date' => now()->toDateString(),
+            ]);
+
+        $this->app->instance(CheckoutService::class, $checkoutService);
+
+        $response = $this->get(route('regularizacao.index', ['order_id' => $order->id]));
+
+        $response->assertOk();
+        $response->assertSee('wire:poll.5s="sincronizarPagamentoPix"', false);
+        $response->assertSee('Aguardando pagamento Pix');
+        $response->assertSee('Monitoramento automatico ativo');
     }
 }

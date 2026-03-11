@@ -241,6 +241,47 @@ new class extends Component
         return null;
     }
 
+    public function sincronizarPagamentoPix(CheckoutService $checkoutService): void
+    {
+        if (! $this->order_id || $this->etapa !== 3) {
+            return;
+        }
+
+        if (($this->payment_session['billing_type'] ?? null) !== 'PIX') {
+            return;
+        }
+
+        $order = Order::query()->with(['service', 'lead', 'user'])->find($this->order_id);
+
+        if (! $order) {
+            return;
+        }
+
+        if ($order->pagamento_status === 'pago') {
+            $this->hydrateFromOrder($order->id);
+
+            return;
+        }
+
+        try {
+            $session = app(CheckoutService::class)->getCheckoutSessionForOrder($order);
+
+            $order->refresh();
+
+            if ($order->pagamento_status === 'pago') {
+                $this->hydrateFromOrder($order->id);
+
+                return;
+            }
+
+            if ($session) {
+                $this->payment_session = $session;
+            }
+        } catch (\Throwable) {
+            // Mantém a cobrança visível mesmo se uma verificação pontual falhar.
+        }
+    }
+
     protected function isValidCpf(string $cpf): bool
     {
         if (strlen($cpf) !== 11 || preg_match('/^(\d)\1{10}$/', $cpf)) {
@@ -520,7 +561,28 @@ new class extends Component
                                 </div>
 
                                 @if (($payment_session['billing_type'] ?? '') === 'PIX' && ! empty($payment_session['pix']))
-                                    <div class="mt-4 grid gap-4 lg:grid-cols-[220px_1fr]">
+                                    <div wire:poll.5s="sincronizarPagamentoPix" class="mt-4 space-y-4">
+                                        <div class="rounded-2xl border border-cyan-200 bg-cyan-50/80 p-4">
+                                            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                                <div>
+                                                    <p class="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Aguardando pagamento Pix</p>
+                                                    <p class="mt-1 text-sm text-slate-700">Estamos verificando automaticamente o recebimento a cada 5 segundos. Assim que o Pix cair, esta tela avança sozinha.</p>
+                                                </div>
+                                                <div class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-semibold text-cyan-700 shadow-sm">
+                                                    <span class="h-2.5 w-2.5 animate-pulse rounded-full bg-cyan-500"></span>
+                                                    Monitoramento automatico ativo
+                                                </div>
+                                            </div>
+                                            <div wire:loading.flex wire:target="sincronizarPagamentoPix" class="mt-3 hidden items-center gap-2 text-xs font-semibold text-cyan-800">
+                                                <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.2" stroke-width="3"></circle>
+                                                    <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+                                                </svg>
+                                                Verificando pagamento Pix...
+                                            </div>
+                                        </div>
+
+                                        <div class="grid gap-4 lg:grid-cols-[220px_1fr]">
                                         <div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
                                             @if (! empty($payment_session['pix']['encoded_image']))
                                                 <img src="data:image/png;base64,{{ $payment_session['pix']['encoded_image'] }}" alt="QR Code Pix" class="mx-auto h-48 w-48 rounded-lg border border-slate-200 bg-white p-2" />
@@ -535,7 +597,9 @@ new class extends Component
                                                 @if (! empty($payment_session['payment_url']))
                                                     <a href="{{ $payment_session['payment_url'] }}" target="_blank" rel="noopener noreferrer" class="btn-dark">Abrir fatura Asaas</a>
                                                 @endif
-                                                <a href="{{ route('regularizacao.index', ['order_id' => $payment_session['order_id']]) }}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Atualizar status</a>
+                                                <button type="button" wire:click="sincronizarPagamentoPix" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                                                    Atualizar status
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
