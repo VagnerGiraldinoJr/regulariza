@@ -16,8 +16,6 @@ class CheckoutService
     private const SUPPORTED_BILLING_TYPES = ['PIX', 'BOLETO', 'CREDIT_CARD'];
 
     public function __construct(
-        private readonly ReferralService $referralService,
-        private readonly SellerCommissionService $sellerCommissionService,
         private readonly LeadUserResolverService $leadUserResolverService
     ) {}
 
@@ -60,19 +58,7 @@ class CheckoutService
         }
 
         if (! $this->hasAsaasConfigured()) {
-            return [
-                'order_id' => $order->id,
-                'payment_id' => (string) ($order->asaas_payment_id ?? ''),
-                'billing_type' => 'MOCK',
-                'payment_url' => (string) ($order->payment_link_url ?? ''),
-                'invoice_url' => (string) ($order->payment_link_url ?? ''),
-                'bank_slip_url' => null,
-                'pix' => null,
-                'status' => (string) $order->pagamento_status,
-                'value' => (float) $order->valor,
-                'description' => (string) ($order->service?->nome ?? ''),
-                'due_date' => now()->toDateString(),
-            ];
+            return null;
         }
 
         if (! filled($order->asaas_payment_id)) {
@@ -104,21 +90,7 @@ class CheckoutService
         }
 
         if (! $this->hasAsaasConfigured()) {
-            $redirectUrl = $this->approveLocally($order, $lead, isResend: true);
-
-            return [
-                'order_id' => $order->id,
-                'payment_id' => '',
-                'billing_type' => 'MOCK',
-                'payment_url' => $redirectUrl,
-                'invoice_url' => $redirectUrl,
-                'bank_slip_url' => null,
-                'pix' => null,
-                'status' => 'pago',
-                'value' => (float) $order->valor,
-                'description' => $service->nome,
-                'due_date' => now()->toDateString(),
-            ];
+            throw new RuntimeException('Asaas não configurado. Atualize a integração antes de gerar a cobrança.');
         }
 
         $customerId = $this->ensureAsaasCustomer($lead, $user);
@@ -285,26 +257,6 @@ class CheckoutService
         }
 
         return $customerId;
-    }
-
-    protected function approveLocally(Order $order, ?Lead $lead, bool $isResend = false): string
-    {
-        $order->update([
-            'pagamento_status' => 'pago',
-            'status' => 'em_andamento',
-            'pago_em' => now(),
-        ]);
-
-        if ($lead) {
-            $lead->update(['etapa' => 'concluido']);
-        }
-
-        $this->referralService->applyCreditForPaidOrder($order);
-        $this->sellerCommissionService->registerResearchCommission($order);
-
-        $suffix = $isResend ? '&resend=1' : '';
-
-        return route('regularizacao.sucesso').'?order_id='.$order->id.'&mock_checkout=1'.$suffix;
     }
 
     protected function resolveUserFromLead(Lead $lead): User
