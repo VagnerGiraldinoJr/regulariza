@@ -8,7 +8,6 @@ use App\Models\Service;
 use App\Models\User;
 use App\Services\CheckoutService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
 use Mockery;
 use Tests\TestCase;
@@ -19,7 +18,7 @@ class RegularizacaoWizardPaidOrderTest extends TestCase
 
     public function test_paid_order_opens_wizard_on_success_step_even_on_regularizacao_route(): void
     {
-        Route::get('/portal-test', static fn () => 'ok')->name('portal.welcome');
+        config()->set('services.cpfclean.site_url', 'https://cpfclean.com.br');
 
         $service = Service::query()->create([
             'nome' => 'Regularização PF',
@@ -56,6 +55,8 @@ class RegularizacaoWizardPaidOrderTest extends TestCase
         $response->assertOk();
         $response->assertSee('Pagamento confirmado');
         $response->assertSee('PED-PAID-001');
+        $response->assertSee('Ir para o site');
+        $response->assertSee('https://cpfclean.com.br', false);
     }
 
     public function test_pending_pix_order_enables_automatic_status_polling(): void

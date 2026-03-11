@@ -49,6 +49,7 @@ return [
     ],
 
     'cpfclean' => [
+        'site_url' => env('CPFCLEAN_SITE_URL', 'https://cpfclean.com.br'),
         'whatsapp_number' => env('CPFCLEAN_WHATSAPP_NUMBER', '5531998428448'),
     ],
 

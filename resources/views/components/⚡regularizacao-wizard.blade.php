@@ -682,7 +682,7 @@ new class extends Component
                             <p class="mt-1 text-lg font-black text-slate-900">{{ $protocolo }}</p>
                         </div>
 
-                        <a href="{{ \Illuminate\Support\Facades\Route::has('portal.welcome') ? route('portal.welcome') : route('regularizacao.index') }}" class="btn-dark inline-block">Fechar Janela</a>
+                        <a href="{{ (string) config('services.cpfclean.site_url', 'https://cpfclean.com.br') }}" class="btn-dark inline-block">Ir para o site</a>
                     </div>
                 @endif
 
