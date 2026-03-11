@@ -2,6 +2,8 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use App\Models\Order;
+use App\Services\PaidOrderReconciliationService;
 use App\Services\SellerCommissionService;
 use App\Services\ZApiService;
 
@@ -53,3 +55,33 @@ Artisan::command('whatsapp:avaliacao {phone} {--nome=Cliente} {--protocolo=SAC-T
 
     $this->info('Resultado: '.json_encode($result, JSON_UNESCAPED_UNICODE));
 })->purpose('Envia mensagem de avaliação de atendimento via WhatsApp');
+
+Artisan::command('orders:reconcile-paid {order_id?*}', function (PaidOrderReconciliationService $service) {
+    $ids = collect((array) $this->argument('order_id'))
+        ->filter(fn ($value) => is_numeric($value))
+        ->map(fn ($value) => (int) $value)
+        ->values();
+
+    $orders = Order::query()
+        ->with(['lead', 'user'])
+        ->where('pagamento_status', 'pago')
+        ->when($ids->isNotEmpty(), fn ($query) => $query->whereIn('id', $ids->all()))
+        ->orderBy('id')
+        ->get();
+
+    if ($orders->isEmpty()) {
+        $this->warn('Nenhum pedido pago encontrado para reconciliar.');
+
+        return;
+    }
+
+    $processed = 0;
+
+    foreach ($orders as $order) {
+        $service->reconcile($order, [], false);
+        $processed++;
+        $this->line("Pedido #{$order->id} reconciliado.");
+    }
+
+    $this->info("Pedidos reconciliados: {$processed}");
+})->purpose('Reprocessa pedidos pagos para garantir comissão, portal e status consistentes');

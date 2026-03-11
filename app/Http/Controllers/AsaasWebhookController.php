@@ -4,12 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Jobs\CriarUsuarioPortal;
 use App\Jobs\EnviarAcessoPortalWhatsApp;
-use App\Jobs\EnviarBoasVindasWhatsApp;
-use App\Jobs\NotificarEquipeInterna;
 use App\Models\ContractInstallment;
 use App\Models\Order;
 use App\Services\ContractService;
-use App\Services\ReferralService;
+use App\Services\PaidOrderReconciliationService;
 use App\Services\SellerCommissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,9 +16,9 @@ use Illuminate\Support\Facades\Log;
 class AsaasWebhookController extends Controller
 {
     public function __construct(
-        private readonly ReferralService $referralService,
         private readonly SellerCommissionService $sellerCommissionService,
-        private readonly ContractService $contractService
+        private readonly ContractService $contractService,
+        private readonly PaidOrderReconciliationService $paidOrderReconciliationService
     ) {}
 
     public function __invoke(Request $request): JsonResponse
@@ -95,28 +93,11 @@ class AsaasWebhookController extends Controller
             return;
         }
 
-        if ($order->pagamento_status === 'pago') {
-            return;
-        }
-
-        $order->update([
-            'payment_provider' => 'asaas',
-            'asaas_payment_id' => (string) ($payment['id'] ?? $order->asaas_payment_id),
-            'payment_link_url' => (string) ($payment['invoiceUrl'] ?? $order->payment_link_url),
-            'pagamento_status' => 'pago',
-            'status' => 'em_andamento',
-            'pago_em' => now(),
-        ]);
-
-        $this->referralService->applyCreditForPaidOrder($order);
-        $this->sellerCommissionService->registerResearchCommission($order);
-
-        if ($order->lead) {
-            $order->lead->update(['etapa' => 'concluido']);
-        }
-
-        EnviarBoasVindasWhatsApp::dispatch($order);
-        NotificarEquipeInterna::dispatch($order);
+        $this->paidOrderReconciliationService->reconcile(
+            $order,
+            $payment,
+            dispatchNotifications: $order->pagamento_status !== 'pago'
+        );
     }
 
     protected function handlePaymentFailed(array $payment, string $event): void
