@@ -26,6 +26,13 @@
             <p class="panel-subtitle mt-1">Visão operacional para equipe administrativa e SAC.</p>
         </section>
 
+        @if (session('success'))
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
+        @endif
+        @error('order_delete')
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $message }}</div>
+        @enderror
+
         <section class="grid gap-3 sm:grid-cols-3">
             <div class="metric-card metric-soft-blue">
                 <h3>{{ $stats['total'] }}</h3>
@@ -86,6 +93,9 @@
                             <th class="px-4 py-3">Valor</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Pagamento</th>
+                            @if (auth()->user()?->role === 'admin')
+                                <th class="px-4 py-3 text-right">Ações</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -117,10 +127,23 @@
                                 <td class="px-4 py-3 text-slate-700">
                                     <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold {{ $paymentInfo['class'] }}">{{ $paymentInfo['label'] }}</span>
                                 </td>
+                                @if (auth()->user()?->role === 'admin')
+                                    <td class="px-4 py-3 text-right">
+                                        @if ($order->pagamento_status !== 'pago')
+                                            <form method="POST" action="{{ route('admin.orders.destroy', $order) }}" onsubmit="return confirm('Excluir o pedido {{ $order->protocolo }}? Esta ação remove apenas pedidos não pagos.');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button class="btn-danger text-xs" type="submit">Excluir</button>
+                                            </form>
+                                        @else
+                                            <span class="text-xs text-slate-400">Pedido pago</span>
+                                        @endif
+                                    </td>
+                                @endif
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-4 py-6 text-center text-slate-500">Sem pedidos para exibir.</td>
+                                <td colspan="{{ auth()->user()?->role === 'admin' ? 7 : 6 }}" class="px-4 py-6 text-center text-slate-500">Sem pedidos para exibir.</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -150,6 +150,18 @@ body.page-leaving {
     background: #030e1f;
 }
 
+.btn-danger {
+    background: #dc2626;
+    color: #fff;
+    border-radius: 0.5rem;
+    padding: 0.55rem 0.9rem;
+    font-weight: 600;
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+}
+
 .app-shell {
     min-height: 100vh;
     position: relative;

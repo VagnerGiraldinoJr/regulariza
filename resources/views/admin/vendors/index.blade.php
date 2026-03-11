@@ -5,6 +5,13 @@
             <p class="panel-subtitle mt-1">Acompanhe quantos contratos cada vendedor trouxe e o valor total vendido.</p>
         </section>
 
+        @if (session('success'))
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
+        @endif
+        @error('order_delete')
+            <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $message }}</div>
+        @enderror
+
         <section class="grid gap-3 sm:grid-cols-3">
             <div class="metric-card metric-soft-blue">
                 <h3>{{ $totalSellers }}</h3>
@@ -46,6 +53,7 @@
                                     <th class="px-4 py-3">Valor</th>
                                     <th class="px-4 py-3">Status</th>
                                     <th class="px-4 py-3">WhatsApp</th>
+                                    <th class="px-4 py-3 text-right">Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -71,6 +79,17 @@
                                                 </a>
                                             @else
                                                 <span class="text-xs text-slate-400">Sem número</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            @if ($contrato['pagamento_status'] !== 'pago' && ! empty($contrato['order_id']))
+                                                <form method="POST" action="{{ route('admin.orders.destroy', $contrato['order_id']) }}" onsubmit="return confirm('Excluir a requisição {{ $contrato['protocolo'] ?: '#'.$contrato['order_id'] }}?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button class="btn-danger text-xs" type="submit">Excluir</button>
+                                                </form>
+                                            @else
+                                                <span class="text-xs text-slate-400">Sem ação</span>
                                             @endif
                                         </td>
                                     </tr>

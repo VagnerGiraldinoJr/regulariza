@@ -175,6 +175,41 @@
             font-size: 12px;
             line-height: 1.6;
         }
+        .contract-terms {
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: #fbfdfe;
+            padding: 18px;
+        }
+        .contract-terms h2 {
+            margin: 0 0 10px;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--primary);
+        }
+        .contract-terms__intro {
+            margin: 0 0 14px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .contract-terms__block,
+        .contract-terms__clause {
+            margin-top: 12px;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+        .contract-terms__clause h3 {
+            margin: 0 0 6px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--ink);
+        }
+        .contract-terms ul {
+            margin: 8px 0 0 18px;
+            padding: 0;
+        }
         .errors {
             margin: 16px 0 0;
             border-radius: 16px;
@@ -295,15 +330,20 @@
         </section>
 
         <section class="panel" style="margin-top: 18px;">
+            <h2>Instrumento Contratual</h2>
+            @include('contracts.partials.confession-terms', ['contract' => $contract])
+        </section>
+
+        <section class="panel" style="margin-top: 18px;">
             <h2>Declaração de Aceite</h2>
 
             @if($isAccepted)
                 <div class="notice success">
-                    O aceite deste contrato já foi registrado. Use os botões acima para consultar o contrato-base, baixar o PDF final e acessar as cobranças liberadas.
+                    O aceite deste contrato já foi registrado. Use os botões acima para consultar o contrato-base, baixar o PDF final e acessar as cobranças liberadas nesta própria página.
                 </div>
             @else
                 <div class="notice warning">
-                    Ao registrar o aceite, você confirma que leu os termos comerciais exibidos nesta página e, quando existente, o documento-base anexado pela equipe. As cobranças do contrato serão liberadas após essa confirmação.
+                    Ao registrar o aceite, você confirma que leu os termos comerciais e o instrumento contratual exibidos nesta página. Após a confirmação, a cobrança da entrada e das parcelas será liberada neste mesmo ambiente.
                 </div>
 
                 <form method="POST" action="{{ route('contracts.accept.store', $contract->acceptance_token) }}" style="margin-top: 16px;">

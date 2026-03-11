@@ -65,6 +65,11 @@ class ContractAcceptanceFlowTest extends TestCase
             'status' => 'aguardando_pagamento',
         ]);
 
+        $showResponse = $this->get(route('contracts.accept.show', $contract->acceptance_token));
+        $showResponse->assertOk();
+        $showResponse->assertSee('Confissão de Dívida');
+        $showResponse->assertSee('Cláusula 1', false);
+
         $response = $this->post(route('contracts.accept.store', $contract->acceptance_token), [
             'accepted_name' => 'Cliente de Teste',
             'accept_terms' => '1',

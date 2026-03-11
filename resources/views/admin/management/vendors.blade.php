@@ -69,7 +69,7 @@
                                 <td class="px-4 py-3 text-right">
                                     <form method="POST" action="{{ route('admin.management.users.send-reset-link', $v) }}">
                                         @csrf
-                                        <button type="submit" class="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700">
+                                        <button type="submit" class="btn-primary text-xs">
                                             Reenviar reset
                                         </button>
                                     </form>

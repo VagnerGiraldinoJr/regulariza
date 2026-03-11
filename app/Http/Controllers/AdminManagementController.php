@@ -79,6 +79,95 @@ class AdminManagementController extends Controller
         return view('admin/management/commissions', compact('commissions', 'totals', 'status'));
     }
 
+    public function releaseCommission(Request $request, SellerCommission $commission, AdminAuditService $adminAuditService): RedirectResponse
+    {
+        if ($commission->status !== 'pending') {
+            return back()->withErrors(['commission_action' => 'Só é possível liberar comissões que ainda estão em retenção.']);
+        }
+
+        $commission->update([
+            'status' => 'available',
+            'available_at' => now(),
+            'notes' => $this->appendAdminNote($commission->notes, 'Comissão liberada manualmente pelo admin.'),
+        ]);
+
+        $adminAuditService->record(
+            $request->user(),
+            'commission_released_manually',
+            $commission,
+            'Comissão liberada manualmente no admin.',
+            [
+                'seller_id' => $commission->seller_id,
+                'order_id' => $commission->order_id,
+                'amount' => (float) $commission->commission_amount,
+            ]
+        );
+
+        return back()->with('success', 'Comissão liberada para pagamento manual.');
+    }
+
+    public function markCommissionPaid(Request $request, SellerCommission $commission, AdminAuditService $adminAuditService): RedirectResponse
+    {
+        if ($commission->status === 'paid') {
+            return back()->withErrors(['commission_action' => 'Esta comissão já está marcada como paga.']);
+        }
+
+        if ($commission->status === 'canceled') {
+            return back()->withErrors(['commission_action' => 'Comissões canceladas não podem ser marcadas como pagas.']);
+        }
+
+        $commission->update([
+            'status' => 'paid',
+            'paid_at' => now(),
+            'available_at' => $commission->available_at ?: now(),
+            'notes' => $this->appendAdminNote($commission->notes, 'Pagamento manual registrado pelo admin.'),
+        ]);
+
+        $adminAuditService->record(
+            $request->user(),
+            'commission_paid_manually',
+            $commission,
+            'Comissão marcada como paga manualmente no admin.',
+            [
+                'seller_id' => $commission->seller_id,
+                'order_id' => $commission->order_id,
+                'amount' => (float) $commission->commission_amount,
+            ]
+        );
+
+        return back()->with('success', 'Pagamento manual da comissão registrado.');
+    }
+
+    public function cancelCommission(Request $request, SellerCommission $commission, AdminAuditService $adminAuditService): RedirectResponse
+    {
+        if ($commission->status === 'paid') {
+            return back()->withErrors(['commission_action' => 'Comissões já pagas não podem ser canceladas.']);
+        }
+
+        if ($commission->status === 'canceled') {
+            return back()->withErrors(['commission_action' => 'Esta comissão já está cancelada.']);
+        }
+
+        $commission->update([
+            'status' => 'canceled',
+            'notes' => $this->appendAdminNote($commission->notes, 'Comissão cancelada manualmente pelo admin.'),
+        ]);
+
+        $adminAuditService->record(
+            $request->user(),
+            'commission_canceled_manually',
+            $commission,
+            'Comissão cancelada manualmente no admin.',
+            [
+                'seller_id' => $commission->seller_id,
+                'order_id' => $commission->order_id,
+                'amount' => (float) $commission->commission_amount,
+            ]
+        );
+
+        return back()->with('success', 'Comissão cancelada com sucesso.');
+    }
+
     public function payoutRequests(Request $request): View
     {
         $status = (string) $request->query('status', '');
@@ -648,6 +737,17 @@ class AdminManagementController extends Controller
             'token' => $token,
             'email' => (string) $user->email,
         ]);
+    }
+
+    private function appendAdminNote(?string $current, string $note): string
+    {
+        $current = trim((string) $current);
+
+        if ($current === '') {
+            return $note;
+        }
+
+        return $current.' '.$note;
     }
 
     public function clients(): View

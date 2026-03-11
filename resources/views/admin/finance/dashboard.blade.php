@@ -7,31 +7,81 @@
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">Dashboard Financeiro</h1>
-            <p class="panel-subtitle mt-1">Indicadores de receita e performance de pagamentos.</p>
+            <p class="panel-subtitle mt-1">Separação entre o que foi gerado, o que realmente entrou e o que ainda está em aberto.</p>
         </section>
 
         <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div class="metric-card metric-soft-blue">
                 <h3>R$ {{ number_format($receitaTotal, 2, ',', '.') }}</h3>
-                <p>Receita total</p>
+                <p>Recebido consolidado</p>
             </div>
             <div class="metric-card metric-soft-green">
                 <h3>R$ {{ number_format($receitaMes, 2, ',', '.') }}</h3>
-                <p>Receita do mês</p>
+                <p>Recebido no mês</p>
             </div>
             <div class="metric-card metric-soft-amber">
                 <h3>R$ {{ number_format($ticketMedio, 2, ',', '.') }}</h3>
-                <p>Ticket médio</p>
+                <p>Ticket médio da pesquisa</p>
             </div>
             <div class="metric-card metric-soft-red">
-                <h3>{{ number_format($taxaPendencia, 1, ',', '.') }}%</h3>
-                <p>Taxa de pendência</p>
+                <h3>{{ number_format($taxaRecebimento, 1, ',', '.') }}%</h3>
+                <p>Taxa de recebimento</p>
+            </div>
+        </section>
+
+        <section class="grid gap-5 xl:grid-cols-2">
+            <div class="panel-card overflow-hidden">
+                <div class="border-b border-slate-300/55 bg-white/15 px-4 py-3">
+                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Pesquisas / pedidos</h2>
+                    <p class="mt-1 text-xs text-slate-500">Mostra o valor gerado no funil e o que já foi pago.</p>
+                </div>
+                <div class="grid gap-3 p-4 sm:grid-cols-3">
+                    <div class="rounded-2xl border border-slate-200/70 bg-white/60 p-4">
+                        <p class="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Gerado</p>
+                        <p class="mt-2 text-2xl font-black text-slate-900">R$ {{ number_format($ordersSummary['generated_total'], 2, ',', '.') }}</p>
+                        <p class="mt-1 text-xs text-slate-500">{{ $ordersSummary['generated_count'] }} pedido(s)</p>
+                    </div>
+                    <div class="rounded-2xl border border-emerald-200/70 bg-emerald-50/70 p-4">
+                        <p class="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Pago</p>
+                        <p class="mt-2 text-2xl font-black text-emerald-900">R$ {{ number_format($ordersSummary['paid_total'], 2, ',', '.') }}</p>
+                        <p class="mt-1 text-xs text-emerald-700">{{ $ordersSummary['paid_count'] }} pedido(s)</p>
+                    </div>
+                    <div class="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4">
+                        <p class="text-xs font-bold uppercase tracking-[0.14em] text-amber-700">Em aberto</p>
+                        <p class="mt-2 text-2xl font-black text-amber-900">R$ {{ number_format($ordersSummary['open_total'], 2, ',', '.') }}</p>
+                        <p class="mt-1 text-xs text-amber-700">Pedidos sem baixa financeira</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-card overflow-hidden">
+                <div class="border-b border-slate-300/55 bg-white/15 px-4 py-3">
+                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Parcelas de contratos</h2>
+                    <p class="mt-1 text-xs text-slate-500">Controle do que foi emitido após o aceite e do que efetivamente entrou.</p>
+                </div>
+                <div class="grid gap-3 p-4 sm:grid-cols-3">
+                    <div class="rounded-2xl border border-slate-200/70 bg-white/60 p-4">
+                        <p class="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Gerado</p>
+                        <p class="mt-2 text-2xl font-black text-slate-900">R$ {{ number_format($installmentsSummary['generated_total'], 2, ',', '.') }}</p>
+                        <p class="mt-1 text-xs text-slate-500">{{ $installmentsSummary['generated_count'] }} cobrança(s)</p>
+                    </div>
+                    <div class="rounded-2xl border border-emerald-200/70 bg-emerald-50/70 p-4">
+                        <p class="text-xs font-bold uppercase tracking-[0.14em] text-emerald-700">Pago</p>
+                        <p class="mt-2 text-2xl font-black text-emerald-900">R$ {{ number_format($installmentsSummary['paid_total'], 2, ',', '.') }}</p>
+                        <p class="mt-1 text-xs text-emerald-700">{{ $installmentsSummary['paid_count'] }} parcela(s)</p>
+                    </div>
+                    <div class="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4">
+                        <p class="text-xs font-bold uppercase tracking-[0.14em] text-amber-700">Em aberto</p>
+                        <p class="mt-2 text-2xl font-black text-amber-900">R$ {{ number_format($installmentsSummary['open_total'], 2, ',', '.') }}</p>
+                        <p class="mt-1 text-xs text-amber-700">Parcelas aguardando baixa</p>
+                    </div>
+                </div>
             </div>
         </section>
 
         <section class="panel-card p-4">
-            <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Gráfico de receita dos últimos 6 meses</h2>
-            <p class="panel-subtitle mt-1">Evolução mensal com base em pagamentos confirmados.</p>
+            <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Gráfico de recebimento dos últimos 6 meses</h2>
+            <p class="panel-subtitle mt-1">Soma de pesquisas pagas e parcelas efetivamente baixadas.</p>
 
             <div class="mt-3 rounded-xl border border-slate-300/55 bg-white/45 p-4">
                 <div class="grid h-56 grid-cols-6 gap-3">
@@ -54,7 +104,7 @@
         <section class="grid gap-5 xl:grid-cols-2">
             <div class="panel-card overflow-hidden">
                 <div class="border-b border-slate-300/55 bg-white/15 px-4 py-3">
-                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Receita por serviço</h2>
+                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Pesquisas pagas por serviço</h2>
                 </div>
 
                 <div class="divide-y divide-slate-200/60">
@@ -73,7 +123,7 @@
 
             <div class="panel-card overflow-hidden">
                 <div class="border-b border-slate-300/55 bg-white/15 px-4 py-3">
-                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Receita últimos 6 meses</h2>
+                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Recebimento últimos 6 meses</h2>
                 </div>
 
                 <div class="space-y-3 px-4 py-4">

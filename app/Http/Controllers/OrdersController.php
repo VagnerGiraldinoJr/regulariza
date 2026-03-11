@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ContractInstallment;
 use App\Models\Order;
 use App\Models\Lead;
 use App\Models\SacTicket;
 use App\Models\SellerCommission;
 use App\Models\WhatsappLog;
+use App\Services\AdminAuditService;
 use App\Services\CheckoutService;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class OrdersController extends Controller
@@ -180,17 +184,33 @@ class OrdersController extends Controller
         $inicioMes = now()->startOfMonth();
         $fimMes = now()->endOfMonth();
 
-        $receitaTotal = (float) Order::pagos()->sum('valor');
-        $receitaMes = (float) Order::pagos()
+        $ordersGeneratedTotal = (float) Order::query()->sum('valor');
+        $ordersPaidTotal = (float) Order::pagos()->sum('valor');
+        $ordersOpenTotal = max(0, $ordersGeneratedTotal - $ordersPaidTotal);
+        $ordersPaidCount = (int) Order::pagos()->count();
+        $ordersGeneratedCount = (int) Order::query()->count();
+
+        $installmentsGeneratedTotal = (float) ContractInstallment::query()->sum('amount');
+        $installmentsPaidTotal = (float) ContractInstallment::query()->where('status', 'pago')->sum('amount');
+        $installmentsOpenTotal = max(0, $installmentsGeneratedTotal - $installmentsPaidTotal);
+        $installmentsPaidCount = (int) ContractInstallment::query()->where('status', 'pago')->count();
+        $installmentsGeneratedCount = (int) ContractInstallment::query()->count();
+
+        $receitaTotal = $ordersPaidTotal + $installmentsPaidTotal;
+        $receitaMesPedidos = (float) Order::pagos()
             ->whereBetween('pago_em', [$inicioMes, $fimMes])
             ->sum('valor');
+        $receitaMesParcelas = (float) ContractInstallment::query()
+            ->where('status', 'pago')
+            ->whereBetween('paid_at', [$inicioMes, $fimMes])
+            ->sum('amount');
+        $receitaMes = $receitaMesPedidos + $receitaMesParcelas;
 
-        $pedidosPagos = (int) Order::pagos()->count();
-        $ticketMedio = $pedidosPagos > 0 ? $receitaTotal / $pedidosPagos : 0.0;
+        $ticketMedio = $ordersPaidCount > 0 ? $ordersPaidTotal / $ordersPaidCount : 0.0;
 
-        $pedidosPendentes = (int) Order::pendentes()->count();
-        $totalPedidos = (int) Order::count();
-        $taxaPendencia = $totalPedidos > 0 ? ($pedidosPendentes / $totalPedidos) * 100 : 0.0;
+        $geradoTotal = $ordersGeneratedTotal + $installmentsGeneratedTotal;
+        $emAbertoTotal = $ordersOpenTotal + $installmentsOpenTotal;
+        $taxaRecebimento = $geradoTotal > 0 ? ($receitaTotal / $geradoTotal) * 100 : 0.0;
 
         $receitaPorServico = Order::query()
             ->with('service')
@@ -206,10 +226,15 @@ class OrdersController extends Controller
                 $mes = now()->subMonths($i);
                 $inicio = $mes->copy()->startOfMonth();
                 $fim = $mes->copy()->endOfMonth();
+                $totalPedidos = (float) Order::pagos()->whereBetween('pago_em', [$inicio, $fim])->sum('valor');
+                $totalParcelas = (float) ContractInstallment::query()
+                    ->where('status', 'pago')
+                    ->whereBetween('paid_at', [$inicio, $fim])
+                    ->sum('amount');
 
                 return [
                     'label' => ucfirst(Carbon::parse($inicio)->translatedFormat('M/y')),
-                    'total' => (float) Order::pagos()->whereBetween('pago_em', [$inicio, $fim])->sum('valor'),
+                    'total' => $totalPedidos + $totalParcelas,
                 ];
             })
             ->push([
@@ -221,10 +246,70 @@ class OrdersController extends Controller
             'receitaTotal' => $receitaTotal,
             'receitaMes' => $receitaMes,
             'ticketMedio' => $ticketMedio,
-            'taxaPendencia' => $taxaPendencia,
+            'taxaRecebimento' => $taxaRecebimento,
             'receitaPorServico' => $receitaPorServico,
             'seriesMensal' => $seriesMensal,
+            'ordersSummary' => [
+                'generated_total' => $ordersGeneratedTotal,
+                'paid_total' => $ordersPaidTotal,
+                'open_total' => $ordersOpenTotal,
+                'generated_count' => $ordersGeneratedCount,
+                'paid_count' => $ordersPaidCount,
+            ],
+            'installmentsSummary' => [
+                'generated_total' => $installmentsGeneratedTotal,
+                'paid_total' => $installmentsPaidTotal,
+                'open_total' => $installmentsOpenTotal,
+                'generated_count' => $installmentsGeneratedCount,
+                'paid_count' => $installmentsPaidCount,
+            ],
         ]);
+    }
+
+    public function destroy(Request $request, Order $order, AdminAuditService $adminAuditService): RedirectResponse
+    {
+        abort_unless($request->user()?->role === 'admin', 403);
+
+        $order->loadMissing(['user', 'service', 'lead', 'contract']);
+
+        if ($order->pagamento_status === 'pago') {
+            return back()->withErrors(['order_delete' => 'Pedidos pagos não podem ser excluídos.']);
+        }
+
+        if ($order->contract()->exists()) {
+            return back()->withErrors(['order_delete' => 'Pedidos com contrato vinculado não podem ser excluídos.']);
+        }
+
+        if ($order->sellerCommissions()->exists()) {
+            return back()->withErrors(['order_delete' => 'Pedidos com comissão vinculada não podem ser excluídos.']);
+        }
+
+        DB::transaction(function () use ($order, $request, $adminAuditService): void {
+            foreach ($order->sacTickets()->get() as $ticket) {
+                $ticket->delete();
+            }
+
+            $order->whatsappLogs()->delete();
+
+            $adminAuditService->record(
+                $request->user(),
+                'order_deleted',
+                $order,
+                'Pedido não pago removido manualmente pelo admin.',
+                [
+                    'user_id' => $order->user_id,
+                    'service_id' => $order->service_id,
+                    'lead_id' => $order->lead_id,
+                    'status' => $order->status,
+                    'payment_status' => $order->pagamento_status,
+                    'value' => (float) $order->valor,
+                ]
+            );
+
+            $order->delete();
+        });
+
+        return back()->with('success', "Pedido {$order->protocolo} excluído com sucesso.");
     }
 
     public function adminSellers(Request $request)
@@ -266,6 +351,7 @@ class OrdersController extends Controller
             $whatsappLink = $whatsappDigits !== '' ? 'https://wa.me/'.$whatsappDigits : null;
 
             $sellerMap[$sellerId]['contratos'][] = [
+                'order_id' => $order->id,
                 'protocolo' => $order->protocolo,
                 'documento' => $documento,
                 'tipo_documento' => $tipoDocumento,

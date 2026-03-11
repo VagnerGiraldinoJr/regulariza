@@ -11,7 +11,7 @@
     <div class="space-y-4">
         <section>
             <h1 class="panel-title">Meus Contratos</h1>
-            <p class="panel-subtitle mt-1">Aceite o contrato quando estiver pendente e baixe o PDF final após a confirmação.</p>
+            <p class="panel-subtitle mt-1">Aceite o contrato quando estiver pendente. Após a entrada ser confirmada, as parcelas restantes ficam disponíveis aqui no portal com botão de pagamento.</p>
         </section>
         <section class="panel-card overflow-hidden">
             <div class="overflow-x-auto">

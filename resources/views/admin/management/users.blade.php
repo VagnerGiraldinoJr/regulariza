@@ -46,7 +46,7 @@
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex justify-end gap-2">
                                         <details class="group relative text-left">
-                                            <summary class="list-none rounded-md border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                                            <summary class="btn-dark list-none cursor-pointer text-xs">
                                                 Editar acesso
                                             </summary>
                                             <div class="absolute right-4 z-10 mt-2 w-[22rem] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
@@ -75,7 +75,7 @@
                                         </details>
                                         <form method="POST" action="{{ route('admin.management.users.send-reset-link', $u) }}">
                                             @csrf
-                                            <button type="submit" class="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700">
+                                            <button type="submit" class="btn-primary text-xs">
                                                 Enviar reset
                                             </button>
                                         </form>

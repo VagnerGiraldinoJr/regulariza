@@ -241,6 +241,9 @@ Route::middleware(['auth', 'role:cliente', 'client.portal'])->prefix('portal')->
 
 Route::middleware(['auth', 'role:admin,atendente,analista,vendedor'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/orders', [OrdersController::class, 'adminIndex'])->name('orders.index');
+    Route::delete('/orders/{order}', [OrdersController::class, 'destroy'])
+        ->middleware('role:admin')
+        ->name('orders.destroy');
     Route::get('/contracts', [ContractController::class, 'adminIndex'])
         ->middleware('role:admin')
         ->name('contracts.index');
@@ -266,6 +269,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/management')->name('adm
     Route::get('/dashboard', [AdminManagementController::class, 'dashboard'])->name('dashboard');
     Route::get('/contract-payments', [AdminManagementController::class, 'contractPayments'])->name('contract-payments');
     Route::get('/commissions', [AdminManagementController::class, 'commissions'])->name('commissions');
+    Route::post('/commissions/{commission}/release', [AdminManagementController::class, 'releaseCommission'])->name('commissions.release');
+    Route::post('/commissions/{commission}/mark-paid', [AdminManagementController::class, 'markCommissionPaid'])->name('commissions.mark-paid');
+    Route::post('/commissions/{commission}/cancel', [AdminManagementController::class, 'cancelCommission'])->name('commissions.cancel');
     Route::get('/payout-requests', [AdminManagementController::class, 'payoutRequests'])->name('payout-requests');
     Route::get('/integrations', [AdminManagementController::class, 'integrations'])->name('integrations');
     Route::post('/integrations', [AdminManagementController::class, 'updateIntegrations'])->name('integrations.update');

@@ -43,6 +43,34 @@
             padding: 12px;
             line-height: 1.55;
         }
+        .contract-terms h2 {
+            margin: 0 0 8px;
+            color: #145270;
+            font-size: 14px;
+            border-bottom: 1px solid #dbe6ee;
+            padding-bottom: 5px;
+        }
+        .contract-terms__intro {
+            margin: 0 0 10px;
+            color: #62788b;
+            font-size: 10px;
+        }
+        .contract-terms__block,
+        .contract-terms__clause {
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+        .contract-terms__clause h3 {
+            margin: 0 0 5px;
+            color: #123047;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        .contract-terms ul {
+            margin: 8px 0 0 18px;
+            padding: 0;
+        }
         .footer {
             margin-top: 18px;
             padding-top: 8px;
@@ -126,6 +154,10 @@
                 </tr>
             @endforeach
         </table>
+    </div>
+
+    <div class="section">
+        @include('contracts.partials.confession-terms', ['contract' => $contract])
     </div>
 
     <div class="section">

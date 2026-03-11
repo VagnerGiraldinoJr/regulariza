@@ -12,7 +12,7 @@
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">Módulo de Contratos</h1>
-            <p class="panel-subtitle mt-1">Contrato com link de aceite do cliente, PDF final de evidência e liberação de cobranças após o aceite.</p>
+            <p class="panel-subtitle mt-1">O cliente recebe o link de aceite, paga a entrada pelo próprio link e, após a entrada confirmada, passa a ver as parcelas restantes no portal dele.</p>
         </section>
 
         @if (session('success'))
@@ -53,6 +53,7 @@
                             <th class="px-4 py-3">Honorários</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Parcelas</th>
+                            <th class="px-4 py-3">Entrega ao cliente</th>
                             <th class="px-4 py-3">Ações</th>
                         </tr>
                     </thead>
@@ -94,6 +95,17 @@
                                 </div>
                             </td>
                             <td class="px-4 py-3">
+                                <div class="space-y-2 text-xs text-slate-600">
+                                    @if(!$contract->accepted_at)
+                                        <div class="rounded-lg border border-cyan-200 bg-cyan-50/70 px-3 py-2">Aguardando cliente aceitar o link para liberar cobranças.</div>
+                                    @elseif($contract->portal_access_sent_at)
+                                        <div class="rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2">Portal liberado. As parcelas aparecem no painel do cliente.</div>
+                                    @else
+                                        <div class="rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2">Entrada liberada no link de aceite. O portal libera após o pagamento da entrada.</div>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="px-4 py-3">
                                 <div class="space-y-2 text-xs">
                                     @if($acceptUrl)
                                         <a href="{{ $acceptUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex rounded-md bg-cyan-700 px-2.5 py-1.5 font-semibold text-white hover:bg-cyan-800">
@@ -117,7 +129,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="px-4 py-6 text-center text-slate-500">Sem contratos.</td></tr>
+                        <tr><td colspan="8" class="px-4 py-6 text-center text-slate-500">Sem contratos.</td></tr>
                     @endforelse
                     </tbody>
                 </table>
