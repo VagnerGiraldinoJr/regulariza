@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Contract;
+use App\Models\Order;
+use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -40,5 +43,44 @@ class PortalInviteTest extends TestCase
 
         $response->assertStatus(410);
         $this->assertGuest();
+    }
+
+    public function test_client_with_provisional_email_is_redirected_to_profile_before_using_portal(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'cliente',
+            'email' => 'cliente+abc123@cpfclean.com.br',
+        ]);
+
+        $service = Service::query()->create([
+            'nome' => 'Regularização PF',
+            'slug' => 'regularizacao-pf-portal-provisional-email',
+            'preco' => 299.90,
+            'ativo' => true,
+        ]);
+
+        $order = Order::query()->create([
+            'protocolo' => 'PED-PORTAL-001',
+            'user_id' => $user->id,
+            'service_id' => $service->id,
+            'status' => 'em_andamento',
+            'valor' => 299.90,
+            'pagamento_status' => 'pago',
+            'pago_em' => now(),
+        ]);
+
+        Contract::query()->create([
+            'order_id' => $order->id,
+            'user_id' => $user->id,
+            'fee_amount' => 299.90,
+            'entry_amount' => 149.95,
+            'status' => 'ativo',
+            'activated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('portal.dashboard'));
+
+        $response->assertRedirect(route('profile.edit'));
+        $response->assertSessionHas('profile_attention');
     }
 }

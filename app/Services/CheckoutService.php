@@ -206,7 +206,7 @@ class CheckoutService
     protected function ensureAsaasCustomer(?Lead $lead, ?User $user): string
     {
         $document = preg_replace('/\D+/', '', (string) ($lead?->cpf_cnpj ?: $user?->cpf_cnpj ?: ''));
-        $email = (string) ($lead?->email ?: $user?->email ?: '');
+        $email = $this->resolveAsaasCustomerEmail($lead?->email, $user?->email);
         $customerPayload = array_filter([
             'name' => (string) ($lead?->nome ?: $user?->name ?: 'Cliente Regulariza'),
             'email' => $email !== '' ? $email : null,
@@ -305,6 +305,29 @@ class CheckoutService
     protected function isLegacyFallbackEmail(string $email): bool
     {
         return str_ends_with(mb_strtolower(trim($email)), '@regulariza.local');
+    }
+
+    protected function resolveAsaasCustomerEmail(?string $leadEmail, ?string $userEmail): string
+    {
+        foreach ([$leadEmail, $userEmail] as $candidate) {
+            $normalized = mb_strtolower(trim((string) $candidate));
+
+            if ($normalized === '' || $this->isProvisionalCustomerEmail($normalized)) {
+                continue;
+            }
+
+            return $normalized;
+        }
+
+        return mb_strtolower(trim((string) config('services.cpfclean.default_customer_email', 'contato@cpfclean.com.br')));
+    }
+
+    protected function isProvisionalCustomerEmail(string $email): bool
+    {
+        return $email === ''
+            || $email === mb_strtolower(trim((string) config('services.cpfclean.default_customer_email', 'contato@cpfclean.com.br')))
+            || str_starts_with($email, 'cliente+')
+            || $this->isLegacyFallbackEmail($email);
     }
 
     protected function resolveUserFromLead(Lead $lead): User

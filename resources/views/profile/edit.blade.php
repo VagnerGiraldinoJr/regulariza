@@ -5,6 +5,10 @@
             <p class="panel-subtitle mt-1">Atualize seus dados pessoais e de acesso.</p>
         </section>
 
+        @if (session('profile_attention'))
+            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{{ session('profile_attention') }}</div>
+        @endif
+
         <section class="panel-card p-4 sm:p-5">
             <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="grid gap-4 lg:grid-cols-2">
                 @csrf
@@ -37,6 +41,9 @@
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">E-mail</label>
                     <input name="email" type="email" value="{{ old('email', $user->email) }}" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm" required>
+                    @if ($user->hasProvisionalEmail())
+                        <p class="mt-1 text-[11px] text-amber-700">Seu cadastro está com e-mail provisório. Informe seu e-mail principal para liberar o uso completo do portal.</p>
+                    @endif
                     @error('email')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
 

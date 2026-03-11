@@ -25,6 +25,11 @@ class EnsureClientPortalAccess
                 ->with('access_error', 'Seu acesso ao portal será liberado após a confirmação do pagamento da entrada do contrato.');
         }
 
+        if ($user->hasProvisionalEmail()) {
+            return redirect()->route('profile.edit')
+                ->with('profile_attention', 'Antes de continuar no portal, atualize seu e-mail principal para receber avisos, contrato e acesso com segurança.');
+        }
+
         return $next($request);
     }
 }

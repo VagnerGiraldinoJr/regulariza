@@ -321,7 +321,7 @@ class ContractService
     private function ensureAsaasCustomer(User $user): string
     {
         $document = preg_replace('/\D+/', '', (string) ($user->cpf_cnpj ?? ''));
-        $email = (string) ($user->email ?? '');
+        $email = $this->resolveAsaasCustomerEmail($user->email);
 
         if ($document !== '') {
             $existing = $this->asaasClient()->get('/customers', ['cpfCnpj' => $document]);
@@ -356,6 +356,22 @@ class ContractService
         }
 
         return (string) $response->json('id');
+    }
+
+    private function resolveAsaasCustomerEmail(?string $email): string
+    {
+        $normalized = mb_strtolower(trim((string) $email));
+
+        if (
+            $normalized === ''
+            || $normalized === mb_strtolower(trim((string) config('services.cpfclean.default_customer_email', 'contato@cpfclean.com.br')))
+            || str_starts_with($normalized, 'cliente+')
+            || str_ends_with($normalized, '@regulariza.local')
+        ) {
+            return mb_strtolower(trim((string) config('services.cpfclean.default_customer_email', 'contato@cpfclean.com.br')));
+        }
+
+        return $normalized;
     }
 
     private function hasAsaasConfigured(): bool

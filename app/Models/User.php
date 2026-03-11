@@ -125,4 +125,23 @@ class User extends Authenticatable
     {
         $this->notify(new ResetPasswordPtBrNotification($token));
     }
+
+    public function hasProvisionalEmail(): bool
+    {
+        $email = mb_strtolower(trim((string) $this->email));
+
+        if ($email === '') {
+            return true;
+        }
+
+        if ($email === mb_strtolower(trim((string) config('services.cpfclean.default_customer_email', 'contato@cpfclean.com.br')))) {
+            return true;
+        }
+
+        return str_starts_with($email, 'cliente+')
+            && (
+                str_ends_with($email, '@regulariza.local')
+                || str_ends_with($email, '@cpfclean.com.br')
+            );
+    }
 }

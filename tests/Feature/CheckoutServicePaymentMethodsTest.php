@@ -341,4 +341,72 @@ class CheckoutServicePaymentMethodsTest extends TestCase
                 && ($data['mobilePhone'] ?? null) === '11996190016';
         });
     }
+
+    public function test_checkout_uses_default_customer_email_for_asaas_when_client_has_only_provisional_email(): void
+    {
+        config()->set('services.asaas.base_url', 'https://sandbox.asaas.com/api/v3');
+        config()->set('services.asaas.api_key', 'asaas_test_token');
+        config()->set('services.cpfclean.default_customer_email', 'contato@cpfclean.com.br');
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $url = $request->url();
+
+            if ($request->method() === 'GET' && str_contains($url, '/customers')) {
+                return Http::response(['data' => []], 200);
+            }
+
+            if ($request->method() === 'POST' && str_ends_with($url, '/customers')) {
+                return Http::response(['id' => 'cus_default_email'], 200);
+            }
+
+            if ($request->method() === 'POST' && str_ends_with($url, '/payments')) {
+                return Http::response([
+                    'id' => 'pay_default_email',
+                    'billingType' => 'PIX',
+                    'invoiceUrl' => 'https://asaas.local/f/pay_default_email',
+                    'value' => 200.00,
+                    'dueDate' => now()->toDateString(),
+                ], 200);
+            }
+
+            if ($request->method() === 'GET' && str_ends_with($url, '/payments/pay_default_email/pixQrCode')) {
+                return Http::response([
+                    'encodedImage' => 'defaultimage',
+                    'payload' => 'pixpayloaddefault',
+                    'expirationDate' => now()->addDay()->toIso8601String(),
+                ], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $service = Service::query()->create([
+            'nome' => 'Pesquisa CPF Clean Brasil',
+            'slug' => 'pesquisa-cpf-clean-default-email',
+            'preco' => 200.00,
+            'ativo' => true,
+        ]);
+
+        $lead = Lead::query()->create([
+            'cpf_cnpj' => '36745465825',
+            'tipo_documento' => 'cpf',
+            'nome' => 'Cliente Sem Email Real',
+            'email' => null,
+            'whatsapp' => '11996190016',
+            'service_id' => $service->id,
+            'etapa' => 'servico',
+        ]);
+
+        app(CheckoutService::class)->createCheckoutSession($lead, $service, 'PIX');
+
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
+            if ($request->method() !== 'POST' || ! str_ends_with($request->url(), '/customers')) {
+                return false;
+            }
+
+            $data = $request->data();
+
+            return ($data['email'] ?? null) === 'contato@cpfclean.com.br';
+        });
+    }
 }
