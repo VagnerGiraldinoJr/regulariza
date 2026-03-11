@@ -207,6 +207,12 @@ class CheckoutService
     {
         $document = preg_replace('/\D+/', '', (string) ($lead?->cpf_cnpj ?: $user?->cpf_cnpj ?: ''));
         $email = (string) ($lead?->email ?: $user?->email ?: '');
+        $customerPayload = array_filter([
+            'name' => (string) ($lead?->nome ?: $user?->name ?: 'Cliente Regulariza'),
+            'email' => $email !== '' ? $email : null,
+            'cpfCnpj' => $document !== '' ? $document : null,
+            'mobilePhone' => $this->normalizePhone($lead?->whatsapp ?: $user?->whatsapp ?: ''),
+        ], static fn ($value) => $value !== null && $value !== '');
 
         if ($document !== '') {
             $existingByDoc = $this->asaasClient()->get('/customers', ['cpfCnpj' => $document]);
@@ -214,7 +220,10 @@ class CheckoutService
             if ($existingByDoc->successful()) {
                 $data = $existingByDoc->json('data');
                 if (is_array($data) && isset($data[0]['id'])) {
-                    return (string) $data[0]['id'];
+                    $customerId = (string) $data[0]['id'];
+                    $this->syncExistingAsaasCustomer($customerId, is_array($data[0]) ? $data[0] : [], $customerPayload);
+
+                    return $customerId;
                 }
             }
         }
@@ -225,26 +234,21 @@ class CheckoutService
             if ($existingByEmail->successful()) {
                 $data = $existingByEmail->json('data');
                 if (is_array($data) && isset($data[0]['id'])) {
-                    return (string) $data[0]['id'];
+                    $customerId = (string) $data[0]['id'];
+                    $this->syncExistingAsaasCustomer($customerId, is_array($data[0]) ? $data[0] : [], $customerPayload);
+
+                    return $customerId;
                 }
             }
         }
 
-        $createPayload = [
-            'name' => (string) ($lead?->nome ?: $user?->name ?: 'Cliente Regulariza'),
-            'email' => $email !== '' ? $email : null,
-            'cpfCnpj' => $document !== '' ? $document : null,
-            'mobilePhone' => $this->normalizePhone($lead?->whatsapp ?: $user?->whatsapp ?: ''),
-        ];
-
-        $createPayload = array_filter($createPayload, static fn ($value) => $value !== null && $value !== '');
-        $response = $this->asaasClient()->post('/customers', $createPayload);
+        $response = $this->asaasClient()->post('/customers', $customerPayload);
 
         if (! $response->successful()) {
             Log::error('Falha ao criar cliente no Asaas.', [
                 'status' => $response->status(),
                 'body' => $response->body(),
-                'payload' => $createPayload,
+                'payload' => $customerPayload,
             ]);
 
             throw new RuntimeException('Não foi possível cadastrar cliente no Asaas.');
@@ -257,6 +261,50 @@ class CheckoutService
         }
 
         return $customerId;
+    }
+
+    protected function syncExistingAsaasCustomer(string $customerId, array $existingCustomer, array $desiredCustomer): void
+    {
+        $updatePayload = [];
+
+        $desiredEmail = mb_strtolower(trim((string) ($desiredCustomer['email'] ?? '')));
+        $existingEmail = mb_strtolower(trim((string) ($existingCustomer['email'] ?? '')));
+
+        if ($desiredEmail !== '' && ($existingEmail === '' || $this->isLegacyFallbackEmail($existingEmail) || $existingEmail !== $desiredEmail)) {
+            $updatePayload['email'] = $desiredEmail;
+        }
+
+        $desiredName = trim((string) ($desiredCustomer['name'] ?? ''));
+        $existingName = trim((string) ($existingCustomer['name'] ?? ''));
+        if ($desiredName !== '' && $desiredName !== $existingName) {
+            $updatePayload['name'] = $desiredName;
+        }
+
+        $desiredPhone = trim((string) ($desiredCustomer['mobilePhone'] ?? ''));
+        $existingPhone = trim((string) ($existingCustomer['mobilePhone'] ?? ''));
+        if ($desiredPhone !== '' && $desiredPhone !== $existingPhone) {
+            $updatePayload['mobilePhone'] = $desiredPhone;
+        }
+
+        if ($updatePayload === []) {
+            return;
+        }
+
+        $response = $this->asaasClient()->post('/customers/'.$customerId, $updatePayload);
+
+        if (! $response->successful()) {
+            Log::warning('Falha ao sincronizar cliente existente no Asaas.', [
+                'customer_id' => $customerId,
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'payload' => $updatePayload,
+            ]);
+        }
+    }
+
+    protected function isLegacyFallbackEmail(string $email): bool
+    {
+        return str_ends_with(mb_strtolower(trim($email)), '@regulariza.local');
     }
 
     protected function resolveUserFromLead(Lead $lead): User

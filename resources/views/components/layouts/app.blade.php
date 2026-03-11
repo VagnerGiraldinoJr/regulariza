@@ -168,6 +168,10 @@
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16v12H4z"/><path d="M8 10h8M8 14h6"/></svg>
                                 <span class="sidebar-label">Mensagens Enviadas</span>
                             </a>
+                            <a href="{{ route('admin.management.audit-logs') }}" class="app-nav-link {{ request()->routeIs('admin.management.audit-logs') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 4v5c0 5-3.2 7.7-7 9-3.8-1.3-7-4-7-9V7l7-4Z"/><path d="M9 12l2 2 4-4"/></svg>
+                                <span class="sidebar-label">Auditoria</span>
+                            </a>
                             <a href="{{ route('admin.management.integrations') }}" class="app-nav-link {{ request()->routeIs('admin.management.integrations') ? 'is-active' : '' }}">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h6"/><path d="M14 12h6"/><circle cx="10" cy="12" r="2"/><circle cx="14" cy="12" r="2"/></svg>
                                 <span class="sidebar-label">Integrações</span>

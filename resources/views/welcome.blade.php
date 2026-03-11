@@ -198,6 +198,23 @@
                         <li>• Demonstração prática de funcionalidades</li>
                         <li>• Proposta personalizada por segmento</li>
                     </ul>
+                    <div class="mt-6 grid gap-3 sm:grid-cols-3">
+                        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-[#118ea0]">Passo 1</p>
+                            <p class="mt-2 text-sm font-semibold text-slate-800">Recebemos seu contexto</p>
+                            <p class="mt-1 text-xs leading-5 text-slate-500">Equipe comercial organiza a entrada antes do atendimento.</p>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-[#118ea0]">Passo 2</p>
+                            <p class="mt-2 text-sm font-semibold text-slate-800">Validamos o melhor fluxo</p>
+                            <p class="mt-1 text-xs leading-5 text-slate-500">Identificamos dossiê, consulta ou trilha mais adequada.</p>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+                            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-[#118ea0]">Passo 3</p>
+                            <p class="mt-2 text-sm font-semibold text-slate-800">Seguimos para onboarding</p>
+                            <p class="mt-1 text-xs leading-5 text-slate-500">Contato, proposta e operação iniciam sem ruído.</p>
+                        </div>
+                    </div>
                 </div>
 
                 <form class="panel-card space-y-3 p-5" method="POST" action="{{ route('public.whatsapp.store') }}">

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminActionLog;
 use App\Models\Lead;
 use App\Models\Contract;
 use App\Models\ContractInstallment;
@@ -13,6 +14,7 @@ use App\Models\SellerCommission;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\WhatsappLog;
+use App\Services\AdminAuditService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -142,7 +144,7 @@ class AdminManagementController extends Controller
         return view('admin/management/integrations', compact('integrations'));
     }
 
-    public function updateIntegrations(Request $request): RedirectResponse
+    public function updateIntegrations(Request $request, AdminAuditService $adminAuditService): RedirectResponse
     {
         $group = (string) $request->validate([
             'integration_group' => ['required', Rule::in(['asaas', 'apibrasil', 'zapi', 'regularizacao_service'])],
@@ -157,6 +159,18 @@ class AdminManagementController extends Controller
                 'service_slug' => $service->slug,
                 'admin_user_id' => (int) $request->user()->id,
             ]);
+
+            $adminAuditService->record(
+                $request->user(),
+                'service_price_updated',
+                $service,
+                'Valor do produto publico atualizado no admin.',
+                [
+                    'group' => $group,
+                    'price' => (float) $service->preco,
+                    'active' => (bool) $service->ativo,
+                ]
+            );
 
             return back()->with('success', 'Valor da pesquisa atualizado com sucesso.');
         }
@@ -176,6 +190,17 @@ class AdminManagementController extends Controller
             'keys' => array_keys($map),
             'admin_user_id' => (int) $request->user()->id,
         ]);
+
+        $adminAuditService->record(
+            $request->user(),
+            'integration_updated',
+            strtoupper($group),
+            'Configuracao de integracao atualizada no admin.',
+            [
+                'group' => $group,
+                'keys' => array_keys($map),
+            ]
+        );
 
         SystemSetting::applyRuntimeConfig();
         Cache::forget('apibrasil.balance.snapshot');
@@ -279,15 +304,136 @@ class AdminManagementController extends Controller
     public function messages(Request $request): View
     {
         $status = (string) $request->query('status', '');
+        $event = (string) $request->query('evento', '');
+        $search = trim((string) $request->query('busca', ''));
 
         $messages = WhatsappLog::query()
             ->with(['user', 'order'])
             ->when($status !== '', fn ($q) => $q->where('status', $status))
+            ->when($event !== '', fn ($q) => $q->where('evento', $event))
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($innerQuery) use ($search): void {
+                    $innerQuery
+                        ->where('telefone', 'like', '%'.$search.'%')
+                        ->orWhere('mensagem', 'like', '%'.$search.'%')
+                        ->orWhere('evento', 'like', '%'.$search.'%')
+                        ->orWhereHas('user', function ($userQuery) use ($search): void {
+                            $userQuery
+                                ->where('name', 'like', '%'.$search.'%')
+                                ->orWhere('email', 'like', '%'.$search.'%');
+                        })
+                        ->orWhereHas('order', function ($orderQuery) use ($search): void {
+                            $orderQuery
+                                ->where('protocolo', 'like', '%'.$search.'%')
+                                ->orWhere('id', is_numeric($search) ? (int) $search : 0);
+                        });
+                });
+            })
             ->latest('id')
             ->paginate(30)
             ->withQueryString();
 
-        return view('admin/management/messages', compact('messages', 'status'));
+        $stats = [
+            'total' => WhatsappLog::query()->count(),
+            'enviado' => WhatsappLog::query()->where('status', 'enviado')->count(),
+            'falhou' => WhatsappLog::query()->where('status', 'falhou')->count(),
+            'ultimas_24h' => WhatsappLog::query()->where('created_at', '>=', now()->subDay())->count(),
+        ];
+
+        $eventCounts = WhatsappLog::query()
+            ->selectRaw('evento, COUNT(*) as total')
+            ->groupBy('evento')
+            ->orderByDesc('total')
+            ->pluck('total', 'evento');
+
+        $recentAuditLogs = AdminActionLog::query()
+            ->with('admin')
+            ->whereIn('action', ['whatsapp_log_deleted'])
+            ->latest('id')
+            ->limit(8)
+            ->get();
+
+        return view('admin/management/messages', [
+            'messages' => $messages,
+            'status' => $status,
+            'event' => $event,
+            'search' => $search,
+            'stats' => $stats,
+            'eventCounts' => $eventCounts,
+            'recentAuditLogs' => $recentAuditLogs,
+        ]);
+    }
+
+    public function deleteMessage(Request $request, WhatsappLog $message, AdminAuditService $adminAuditService): RedirectResponse
+    {
+        $context = [
+            'user_id' => $message->user_id,
+            'order_id' => $message->order_id,
+            'telefone' => $message->telefone,
+            'evento' => $message->evento,
+            'status' => $message->status,
+            'created_at' => $message->created_at?->toIso8601String(),
+            'message_preview' => mb_strimwidth((string) $message->mensagem, 0, 180, '...'),
+        ];
+
+        $adminAuditService->record(
+            $request->user(),
+            'whatsapp_log_deleted',
+            $message,
+            'Log de WhatsApp removido manualmente pelo admin.',
+            $context
+        );
+
+        $message->delete();
+
+        return back()->with('success', 'Log de WhatsApp removido com auditoria.');
+    }
+
+    public function auditLogs(Request $request): View
+    {
+        $action = (string) $request->query('action', '');
+        $search = trim((string) $request->query('busca', ''));
+
+        $logs = AdminActionLog::query()
+            ->with('admin')
+            ->when($action !== '', fn ($query) => $query->where('action', $action))
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($innerQuery) use ($search): void {
+                    $innerQuery
+                        ->where('description', 'like', '%'.$search.'%')
+                        ->orWhere('target_type', 'like', '%'.$search.'%')
+                        ->orWhere('target_label', 'like', '%'.$search.'%')
+                        ->orWhereHas('admin', function ($adminQuery) use ($search): void {
+                            $adminQuery
+                                ->where('name', 'like', '%'.$search.'%')
+                                ->orWhere('email', 'like', '%'.$search.'%');
+                        });
+                });
+            })
+            ->latest('id')
+            ->paginate(30)
+            ->withQueryString();
+
+        $stats = [
+            'total' => AdminActionLog::query()->count(),
+            'today' => AdminActionLog::query()->whereDate('created_at', now()->toDateString())->count(),
+            'deletions' => AdminActionLog::query()->where('action', 'like', '%deleted%')->count(),
+            'integrations' => AdminActionLog::query()->whereIn('action', ['integration_updated', 'service_price_updated'])->count(),
+        ];
+
+        $availableActions = AdminActionLog::query()
+            ->select('action')
+            ->distinct()
+            ->orderBy('action')
+            ->pluck('action');
+
+        return view('admin/management/audit-logs', [
+            'logs' => $logs,
+            'action' => $action,
+            'search' => $search,
+            'stats' => $stats,
+            'availableActions' => $availableActions,
+        ]);
     }
 
     public function orphanLeads(): View

@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminActionLog;
 use App\Models\ApiBrasilConsultation;
 use App\Models\Order;
 use App\Models\ResearchReport;
 use App\Models\User;
+use App\Services\AdminAuditService;
 use App\Services\ApiBrasilService;
 use App\Services\PfResearchReportService;
 use App\Services\ResearchReportService;
@@ -73,6 +75,13 @@ class ApiBrasilConsultationController extends Controller
             'error_message' => null,
         ];
 
+        $overview = [
+            'total' => ApiBrasilConsultation::query()->count(),
+            'success' => ApiBrasilConsultation::query()->where('status', 'success')->count(),
+            'error' => ApiBrasilConsultation::query()->where('status', 'error')->count(),
+            'forwarded' => ApiBrasilConsultation::query()->whereNotNull('analyst_user_id')->count(),
+        ];
+
         if ($this->isConfigured()) {
             try {
                 $balance = Cache::remember('apibrasil.balance.snapshot', now()->addSeconds(45), function () use ($apiBrasilService) {
@@ -90,6 +99,13 @@ class ApiBrasilConsultationController extends Controller
             }
         }
 
+        $recentAuditLogs = AdminActionLog::query()
+            ->with('admin')
+            ->where('action', 'consultation_deleted')
+            ->latest('id')
+            ->limit(8)
+            ->get();
+
         return view('admin.management.apibrasil-consultations', [
             'consultations' => $consultations,
             'paidOrders' => $paidOrders,
@@ -99,7 +115,9 @@ class ApiBrasilConsultationController extends Controller
             'apibrasilConfigured' => $this->isConfigured(),
             'bundles' => $bundles,
             'balance' => $balance,
+            'overview' => $overview,
             'consultationCountByOrder' => $consultationCountByOrder,
+            'recentAuditLogs' => $recentAuditLogs,
         ]);
     }
 
@@ -205,6 +223,39 @@ class ApiBrasilConsultationController extends Controller
         }
 
         return back()->with('success', 'Consulta encaminhada ao analista com sucesso.');
+    }
+
+    public function destroy(Request $request, ApiBrasilConsultation $consultation, AdminAuditService $adminAuditService): RedirectResponse
+    {
+        $linkedReports = ResearchReport::query()
+            ->whereHas('items', fn ($query) => $query->where('apibrasil_consultation_id', $consultation->id))
+            ->pluck('id')
+            ->values()
+            ->all();
+
+        $context = [
+            'consultation_key' => $consultation->consultation_key,
+            'consultation_title' => $consultation->consultation_title,
+            'document_type' => $consultation->document_type,
+            'document_number' => $consultation->document_number,
+            'status' => $consultation->status,
+            'http_status' => $consultation->http_status,
+            'order_id' => $consultation->order_id,
+            'analyst_user_id' => $consultation->analyst_user_id,
+            'linked_reports' => $linkedReports,
+        ];
+
+        $adminAuditService->record(
+            $request->user(),
+            'consultation_deleted',
+            $consultation,
+            'Consulta operacional da API Brasil removida manualmente pelo admin.',
+            $context
+        );
+
+        $consultation->delete();
+
+        return back()->with('success', 'Consulta removida com auditoria.');
     }
 
     public function downloadPdf(ApiBrasilConsultation $consultation): Response

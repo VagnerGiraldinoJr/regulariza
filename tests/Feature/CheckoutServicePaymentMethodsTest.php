@@ -264,4 +264,81 @@ class CheckoutServicePaymentMethodsTest extends TestCase
             'cpf_cnpj' => '36745465825',
         ]);
     }
+
+    public function test_checkout_updates_existing_asaas_customer_when_legacy_email_is_found(): void
+    {
+        config()->set('services.asaas.base_url', 'https://sandbox.asaas.com/api/v3');
+        config()->set('services.asaas.api_key', 'asaas_test_token');
+
+        Http::fake(function (\Illuminate\Http\Client\Request $request) {
+            $url = $request->url();
+
+            if ($request->method() === 'GET' && str_contains($url, '/customers') && str_contains($url, 'cpfCnpj=36745465825')) {
+                return Http::response([
+                    'data' => [[
+                        'id' => 'cus_legacy',
+                        'name' => 'Cliente Regulariza',
+                        'email' => 'cliente+legacy@regulariza.local',
+                        'mobilePhone' => '11900000000',
+                    ]],
+                ], 200);
+            }
+
+            if ($request->method() === 'POST' && str_ends_with($url, '/customers/cus_legacy')) {
+                return Http::response(['id' => 'cus_legacy'], 200);
+            }
+
+            if ($request->method() === 'POST' && str_ends_with($url, '/payments')) {
+                return Http::response([
+                    'id' => 'pay_synced',
+                    'billingType' => 'PIX',
+                    'invoiceUrl' => 'https://asaas.local/f/pay_synced',
+                    'value' => 200.00,
+                    'dueDate' => now()->toDateString(),
+                ], 200);
+            }
+
+            if ($request->method() === 'GET' && str_ends_with($url, '/payments/pay_synced/pixQrCode')) {
+                return Http::response([
+                    'encodedImage' => 'syncedimage',
+                    'payload' => 'pixpayloadsynced',
+                    'expirationDate' => now()->addDay()->toIso8601String(),
+                ], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $service = Service::query()->create([
+            'nome' => 'Pesquisa CPF Clean Brasil',
+            'slug' => 'pesquisa-cpf-clean-sync-email',
+            'preco' => 200.00,
+            'ativo' => true,
+        ]);
+
+        $lead = Lead::query()->create([
+            'cpf_cnpj' => '36745465825',
+            'tipo_documento' => 'cpf',
+            'nome' => 'Cliente Atualizado',
+            'email' => 'cliente.real@cpfclean.com.br',
+            'whatsapp' => '11996190016',
+            'service_id' => $service->id,
+            'etapa' => 'servico',
+        ]);
+
+        $checkout = app(CheckoutService::class)->createCheckoutSession($lead, $service, 'PIX');
+
+        $this->assertSame('PIX', $checkout['billing_type']);
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
+            if ($request->method() !== 'POST' || ! str_ends_with($request->url(), '/customers/cus_legacy')) {
+                return false;
+            }
+
+            $data = $request->data();
+
+            return ($data['email'] ?? null) === 'cliente.real@cpfclean.com.br'
+                && ($data['name'] ?? null) === 'Cliente Atualizado'
+                && ($data['mobilePhone'] ?? null) === '11996190016';
+        });
+    }
 }

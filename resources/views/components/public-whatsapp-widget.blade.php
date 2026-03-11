@@ -22,9 +22,36 @@
         </span>
     </button>
 
-    <div id="whatsapp-panel" class="mt-3 hidden w-[320px] max-w-[calc(100vw-2.5rem)] rounded-xl border border-[#d1e4d7] bg-white p-4 shadow-2xl" data-has-errors="{{ $hasPublicWhatsappErrors ? '1' : '0' }}">
-        <p class="text-sm font-bold text-slate-800">Fale com nosso SAC</p>
-        <p class="mt-1 text-xs text-slate-500">Deixe e-mail e WhatsApp para entrarmos em contato.</p>
+    <div id="whatsapp-panel" class="mt-3 hidden w-[348px] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-[1.4rem] border border-[#c7e4ea] bg-white shadow-[0_30px_80px_rgba(6,31,55,0.24)]" data-has-errors="{{ $hasPublicWhatsappErrors ? '1' : '0' }}">
+        <div class="bg-[linear-gradient(135deg,#032640_0%,#0a4763_100%)] px-4 py-4 text-white">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-200">Atendimento</p>
+                    <p class="mt-1 text-base font-black">Fale com nosso SAC</p>
+                    <p class="mt-1 text-xs leading-5 text-cyan-100/90">Deixe seus dados. A equipe retorna com orientacao comercial e proximo passo.</p>
+                </div>
+                <span class="rounded-full border border-cyan-200/20 bg-white/10 px-2 py-1 text-[11px] font-bold text-cyan-100">Resposta humana</span>
+            </div>
+        </div>
+
+        <div class="bg-[#f4fbfd] px-4 py-3">
+            <div class="grid grid-cols-3 gap-2 text-center text-[11px] text-slate-600">
+                <div class="rounded-2xl bg-white px-2 py-2 shadow-sm">
+                    <div class="font-black text-slate-800">SAC</div>
+                    <div>captacao</div>
+                </div>
+                <div class="rounded-2xl bg-white px-2 py-2 shadow-sm">
+                    <div class="font-black text-slate-800">WhatsApp</div>
+                    <div>ou e-mail</div>
+                </div>
+                <div class="rounded-2xl bg-white px-2 py-2 shadow-sm">
+                    <div class="font-black text-slate-800">Triagem</div>
+                    <div>mais rapida</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4">
 
         @if (session('public_whatsapp_success'))
             <div class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700">
@@ -32,7 +59,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('public.whatsapp.store') }}" class="mt-3 space-y-2">
+        <form method="POST" action="{{ route('public.whatsapp.store') }}" class="mt-3 space-y-2.5">
             @csrf
             <input type="hidden" name="origem" value="{{ request()->path() }}">
 
@@ -41,7 +68,7 @@
                 name="nome"
                 value="{{ old('nome') }}"
                 placeholder="Nome (opcional)"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#20b6c7] focus:outline-none"
+                class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-[#20b6c7] focus:outline-none"
             />
 
             <input
@@ -50,7 +77,7 @@
                 value="{{ old('email') }}"
                 required
                 placeholder="E-mail *"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#20b6c7] focus:outline-none"
+                class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-[#20b6c7] focus:outline-none"
             />
 
             <input
@@ -60,7 +87,7 @@
                 required
                 maxlength="15"
                 placeholder="WhatsApp com DDD *"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#20b6c7] focus:outline-none"
+                class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-[#20b6c7] focus:outline-none"
                 data-whatsapp-mask
             />
 
@@ -78,17 +105,18 @@
                 name="mensagem"
                 rows="2"
                 placeholder="Mensagem (opcional)"
-                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-[#20b6c7] focus:outline-none"
+                class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-[#20b6c7] focus:outline-none"
             >{{ old('mensagem') }}</textarea>
 
-            <button type="submit" class="w-full rounded-lg bg-[#20b6c7] px-4 py-2 text-sm font-bold text-white hover:bg-[#1599a8]">
-                Enviar para o SAC
+            <button type="submit" class="w-full rounded-xl bg-[#20b6c7] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1599a8]">
+                Solicitar retorno
             </button>
         </form>
 
-        <a href="{{ $whatsappLink }}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+        <a href="{{ $whatsappLink }}" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex w-full items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">
             Abrir WhatsApp direto
         </a>
+        </div>
     </div>
 </div>
 

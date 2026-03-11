@@ -76,6 +76,11 @@ class User extends Authenticatable
         return $this->hasMany(WhatsappLog::class);
     }
 
+    public function adminActionLogs(): HasMany
+    {
+        return $this->hasMany(AdminActionLog::class, 'admin_user_id');
+    }
+
     public function sellerCommissions(): HasMany
     {
         return $this->hasMany(SellerCommission::class, 'seller_id');

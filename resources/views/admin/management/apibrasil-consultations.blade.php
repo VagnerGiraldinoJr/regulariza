@@ -51,7 +51,7 @@
             <p class="panel-subtitle mt-1">Selecione apenas o tipo de dossiê, execute o pacote de pesquisas e gere o PDF consolidado para o vendedor.</p>
         </section>
 
-        <section class="grid gap-4 md:grid-cols-2">
+        <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="panel-card p-4">
                 <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Saldo de Créditos API Brasil</h2>
                 @if (is_numeric($balance['balance'] ?? null))
@@ -79,6 +79,16 @@
                     </span>
                 </p>
                 <p class="mt-1 text-xs text-slate-500">Valide Base URL, Token e catálogo antes da pesquisa.</p>
+            </div>
+            <div class="panel-card p-4">
+                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Consultas Registradas</h2>
+                <p class="mt-3 text-2xl font-black text-slate-900">{{ number_format((int) $overview['total']) }}</p>
+                <p class="mt-1 text-xs text-slate-500">Historico operacional consolidado.</p>
+            </div>
+            <div class="panel-card p-4">
+                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Encaminhadas</h2>
+                <p class="mt-3 text-2xl font-black text-cyan-700">{{ number_format((int) $overview['forwarded']) }}</p>
+                <p class="mt-1 text-xs text-slate-500">Consultas ja distribuidas para analistas.</p>
             </div>
         </section>
 
@@ -156,6 +166,51 @@
         </section>
 
         @include('admin.management.partials.research-reports', ['reports' => $reports])
+
+        <section class="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+            <div class="panel-card p-4">
+                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Opcoes seguras de manutencao</h2>
+                <div class="mt-4 grid gap-3 md:grid-cols-3">
+                    <article class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Excluir com trilha</p>
+                        <p class="mt-2 text-sm leading-6 text-slate-600">Cada remocao de consulta deixa rastro do admin, pedido, documento e relatorios afetados.</p>
+                    </article>
+                    <article class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Revisao tecnica</p>
+                        <p class="mt-2 text-sm leading-6 text-slate-600">Antes de excluir, confira o JSON, HTTP status e se a consulta ja foi encaminhada.</p>
+                    </article>
+                    <article class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Visao de limpeza</p>
+                        <p class="mt-2 text-sm leading-6 text-slate-600">Use filtros por sucesso ou erro para higienizar lotes errados sem perder rastreabilidade.</p>
+                    </article>
+                </div>
+            </div>
+
+            <div class="panel-card p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Ultimas exclusoes auditadas</h2>
+                    <a href="{{ route('admin.management.audit-logs', ['action' => 'consultation_deleted']) }}" class="text-xs font-semibold text-cyan-700 hover:text-cyan-800">
+                        Abrir auditoria
+                    </a>
+                </div>
+                <div class="mt-4 space-y-3">
+                    @forelse ($recentAuditLogs as $auditLog)
+                        <article class="rounded-2xl border border-slate-200 bg-white/80 p-3">
+                            <p class="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">{{ $auditLog->created_at?->format('d/m/Y H:i') }}</p>
+                            <p class="mt-2 text-sm font-semibold text-slate-800">{{ $auditLog->description }}</p>
+                            <p class="mt-1 text-xs text-slate-500">
+                                {{ $auditLog->admin?->name ?: 'Sistema' }}
+                                @if ($auditLog->target_label)
+                                    • {{ $auditLog->target_label }}
+                                @endif
+                            </p>
+                        </article>
+                    @empty
+                        <p class="rounded-2xl border border-dashed border-slate-300 px-4 py-5 text-sm text-slate-500">Nenhuma exclusao auditada registrada.</p>
+                    @endforelse
+                </div>
+            </div>
+        </section>
 
         <section class="panel-card overflow-hidden">
             <div class="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
@@ -249,6 +304,14 @@
                                         </select>
                                         <button class="rounded-md bg-cyan-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700" @disabled($consultation->status !== 'success')>
                                             Encaminhar
+                                        </button>
+                                    </form>
+
+                                    <form method="POST" action="{{ route('admin.management.apibrasil-consultations.destroy', $consultation) }}" class="mt-2" onsubmit="return confirm('Excluir esta consulta? A acao sera auditada e os relatórios vinculados perderao apenas este item.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100">
+                                            Excluir com log
                                         </button>
                                     </form>
                                 </td>
