@@ -49,8 +49,10 @@ class AnalystPanelController extends Controller
 
         $referralCode = $analyst->ensureReferralCode();
         $referralLink = route('regularizacao.index', ['indicacao' => $referralCode]);
+        $referralWhatsappMessage = "Olá! Segue meu link comercial da CPF Clean Brasil para você iniciar sua análise com atendimento direto comigo:\n{$referralLink}";
+        $referralWhatsappLink = 'https://wa.me/?text='.rawurlencode($referralWhatsappMessage);
 
-        return view('analyst/dashboard', compact('stats', 'timeline', 'referralCode', 'referralLink'));
+        return view('analyst/dashboard', compact('stats', 'timeline', 'referralCode', 'referralLink', 'referralWhatsappLink'));
     }
 
     public function contracts(Request $request): View

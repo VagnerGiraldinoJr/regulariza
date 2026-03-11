@@ -17,6 +17,7 @@
                     <div class="mt-4 flex flex-wrap items-center gap-2 text-xs">
                         <span class="rounded-full border border-cyan-200/30 bg-cyan-50/10 px-3 py-1 font-semibold text-cyan-100">Código: {{ $referralCode }}</span>
                         <a class="rounded-full border border-cyan-200/30 bg-white/10 px-3 py-1 font-semibold text-white hover:bg-white/20" href="{{ $referralLink }}" target="_blank" rel="noopener">Abrir link comercial</a>
+                        <a class="rounded-full border border-emerald-200/40 bg-emerald-400/15 px-3 py-1 font-semibold text-emerald-50 hover:bg-emerald-400/25" href="{{ $referralWhatsappLink }}" target="_blank" rel="noopener">Compartilhar via WhatsApp</a>
                     </div>
                 </div>
 
