@@ -113,12 +113,17 @@ class User extends Authenticatable
         }
 
         do {
-            $code = 'CPF'.Str::upper(Str::random(6));
+            $code = 'cpf'.Str::lower(Str::random(6));
         } while (self::query()->where('referral_code', $code)->exists());
 
         $this->forceFill(['referral_code' => $code])->save();
 
         return $code;
+    }
+
+    public static function normalizeReferralCode(?string $code): string
+    {
+        return mb_strtolower(trim((string) $code));
     }
 
     public function sendPasswordResetNotification($token): void

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\ZApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,6 +31,14 @@ class ProfileController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user->id)],
             'whatsapp' => ['required', 'string', 'max:20'],
+            'referral_code' => [
+                'nullable',
+                'string',
+                'min:4',
+                'max:16',
+                'regex:/^[a-z0-9]+$/',
+                Rule::unique('users', 'referral_code')->ignore($user->id),
+            ],
             'avatar' => ['nullable', 'image', 'max:2048'],
         ];
 
@@ -42,7 +51,16 @@ class ProfileController extends Controller
             ]);
         }
 
-        $data = $request->validate($rules);
+        $normalizedReferralCode = User::normalizeReferralCode((string) $request->input('referral_code', ''));
+
+        $data = $request->merge([
+            'referral_code' => $normalizedReferralCode !== '' ? $normalizedReferralCode : null,
+        ])->validate($rules, [
+            'referral_code.min' => 'O código de indicação deve ter no mínimo 4 caracteres.',
+            'referral_code.max' => 'O código de indicação deve ter no máximo 16 caracteres.',
+            'referral_code.regex' => 'Use apenas letras minúsculas e números, sem espaços, acentos ou caracteres especiais.',
+            'referral_code.unique' => 'Este código de indicação já está em uso.',
+        ]);
 
         $oldWhatsapp = preg_replace('/\D+/', '', (string) $user->whatsapp);
         $newWhatsapp = preg_replace('/\D+/', '', (string) ($data['whatsapp'] ?? ''));
@@ -50,6 +68,9 @@ class ProfileController extends Controller
         $user->name = $data['name'];
         $user->email = mb_strtolower(trim((string) $data['email']));
         $user->whatsapp = $newWhatsapp;
+        $user->referral_code = filled($data['referral_code'] ?? null)
+            ? User::normalizeReferralCode((string) $data['referral_code'])
+            : null;
 
         if ($isSeller) {
             $user->pix_key = $data['pix_key'] ?? null;

@@ -54,6 +54,23 @@
                     @error('whatsapp')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                 </div>
 
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Código de indicação</label>
+                    <input
+                        name="referral_code"
+                        value="{{ old('referral_code', $user->referral_code) }}"
+                        class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                        placeholder="exemplo123"
+                        inputmode="text"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        pattern="[a-z0-9]+"
+                        oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9]/g, '')"
+                    >
+                    <p class="mt-1 text-[11px] text-slate-500">Use apenas letras minúsculas e números, sem espaços, acentos ou caracteres especiais.</p>
+                    @error('referral_code')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                </div>
+
                 @if($isSeller)
                     <div class="lg:col-span-2 mt-1 border-t border-slate-200 pt-4">
                         <h2 class="text-sm font-bold text-slate-700">Dados PIX para saque de comissão</h2>

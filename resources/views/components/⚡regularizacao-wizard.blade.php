@@ -76,7 +76,7 @@ new class extends Component
 
     private function resolveReferralFromQuery(): void
     {
-        $code = strtoupper(trim((string) request()->query('indicacao', '')));
+        $code = \App\Models\User::normalizeReferralCode((string) request()->query('indicacao', ''));
 
         $referrer = null;
 
