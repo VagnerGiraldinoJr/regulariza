@@ -145,6 +145,13 @@ new class extends Component
         return null;
     }
 
+    public function getHasActivePaymentSessionProperty(): bool
+    {
+        return $this->order_id !== null
+            && $this->payment_session !== []
+            && in_array((string) ($this->payment_session['status'] ?? ''), ['PENDING', 'RECEIVED_IN_CASH', 'CONFIRMED', 'OVERDUE', 'RECEIVED', 'AWAITING_PAYMENT', 'aguardando'], true);
+    }
+
     public function updatedCpfCnpj(string $value): void
     {
         $digits = preg_replace('/\D+/', '', $value);
@@ -225,6 +232,24 @@ new class extends Component
         try {
             if ($this->order_id) {
                 $order = Order::query()->with(['service', 'lead', 'user'])->findOrFail($this->order_id);
+
+                if ($order->pagamento_status === 'pago') {
+                    $this->hydrateFromOrder($order->id);
+
+                    return $this->redirect(route('regularizacao.sucesso', ['order_id' => $order->id]), navigate: false);
+                }
+
+                $existingSession = $checkoutService->getCheckoutSessionForOrder($order);
+
+                if ($existingSession && $order->pagamento_status !== 'falhou') {
+                    $this->payment_session = $existingSession;
+                    $this->payment_method = $existingSession['billing_type'] === 'BOLETO' || $existingSession['billing_type'] === 'CREDIT_CARD'
+                        ? $existingSession['billing_type']
+                        : 'PIX';
+
+                    return null;
+                }
+
                 $this->payment_session = $checkoutService->createCheckoutSessionForOrder($order, $this->payment_method);
             } else {
                 $lead = Lead::findOrFail($this->lead_id);
@@ -259,6 +284,8 @@ new class extends Component
 
         if ($order->pagamento_status === 'pago') {
             $this->hydrateFromOrder($order->id);
+
+            $this->redirect(route('regularizacao.sucesso', ['order_id' => $order->id]), navigate: false);
 
             return;
         }
@@ -513,7 +540,8 @@ new class extends Component
                                 <button
                                     type="button"
                                     wire:click="$set('payment_method', '{{ $method }}')"
-                                    class="rounded-xl border p-4 text-left transition {{ $payment_method === $method ? 'border-cyan-500 bg-cyan-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300' }}"
+                                    @disabled($this->hasActivePaymentSession)
+                                    class="rounded-xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60 {{ $payment_method === $method ? 'border-cyan-500 bg-cyan-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300' }}"
                                 >
                                     <div class="flex items-start justify-between gap-3">
                                         <p class="text-xs font-semibold uppercase tracking-wide text-cyan-700">{{ $meta['title'] }}</p>
@@ -544,9 +572,15 @@ new class extends Component
 
                         @error('service_id')<p class="text-sm text-red-600">{{ $message }}</p>@enderror
 
-                        <button wire:click="iniciarPagamento" class="btn-primary w-full">
-                            {{ $order_id ? 'Atualizar cobrança no Asaas' : 'Gerar cobrança no Asaas' }}
-                        </button>
+                        @if (! $this->hasActivePaymentSession)
+                            <button wire:click="iniciarPagamento" class="btn-primary w-full">
+                                {{ $order_id ? 'Atualizar cobrança no Asaas' : 'Gerar cobrança no Asaas' }}
+                            </button>
+                        @else
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                Ja existe uma cobranca ativa para este pedido. Aguarde a compensacao ou use os atalhos abaixo sem gerar uma nova cobranca.
+                            </div>
+                        @endif
 
                         @if (! empty($payment_session))
                             <div class="rounded-xl border border-slate-200 bg-white p-4">
