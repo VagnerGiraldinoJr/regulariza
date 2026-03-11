@@ -26,7 +26,7 @@
             </div>
         @endif
 
-        <section class="grid gap-4 lg:grid-cols-3">
+        <section class="grid gap-4 lg:grid-cols-4">
             <div class="panel-card p-4">
                 <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Gestão Asaas</h2>
                 <p class="mt-2 text-sm">
@@ -59,6 +59,13 @@
                 </p>
                 <p class="mt-1 text-xs text-slate-600">Instância: {{ $integrations['zapi']['instance'] ?: '-' }}</p>
                 <p class="text-xs text-slate-600">Número WhatsApp padrão: {{ $integrations['zapi']['whatsapp_number'] ?: '-' }}</p>
+            </div>
+            <div class="panel-card p-4">
+                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Produto Regularização</h2>
+                <p class="mt-2 text-sm text-slate-700">{{ $integrations['regularizacao_service']['name'] }}</p>
+                <p class="mt-1 text-xs text-slate-600">Slug: {{ $integrations['regularizacao_service']['slug'] }}</p>
+                <p class="mt-1 text-xs text-slate-600">Status: {{ $integrations['regularizacao_service']['active'] ? 'Ativo' : 'Inativo' }}</p>
+                <p class="mt-3 text-lg font-black text-slate-900">R$ {{ number_format((float) $integrations['regularizacao_service']['price'], 2, ',', '.') }}</p>
             </div>
         </section>
 
@@ -189,6 +196,34 @@
                 </div>
 
                 <button class="btn-primary w-full">Salvar Z-API</button>
+            </form>
+        </section>
+
+        <section>
+            <form method="POST" action="{{ route('admin.management.integrations.update') }}" class="panel-card p-4 space-y-3 max-w-xl">
+                @csrf
+                <input type="hidden" name="integration_group" value="regularizacao_service">
+
+                <div>
+                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Valor da Pesquisa Pública</h2>
+                    <p class="mt-1 text-xs text-slate-500">Atualize o preço usado no fluxo de regularização para novos pedidos.</p>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Preço atual</label>
+                    <input
+                        type="number"
+                        name="regularizacao_service_price"
+                        value="{{ old('regularizacao_service_price', number_format((float) $integrations['regularizacao_service']['price'], 2, '.', '')) }}"
+                        min="1"
+                        max="999999.99"
+                        step="0.01"
+                        class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm"
+                        required
+                    >
+                </div>
+
+                <button class="btn-primary w-full">Salvar valor da pesquisa</button>
             </form>
         </section>
     </div>

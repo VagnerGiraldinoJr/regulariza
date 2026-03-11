@@ -53,7 +53,7 @@ new class extends Component
         $this->whatsapp = $this->formatWhatsapp((string) ($order->lead?->whatsapp ?: $order->user?->whatsapp ?: ''));
         $this->tipo_documento = (string) ($order->lead?->tipo_documento ?: (strlen(preg_replace('/\D+/', '', $this->cpf_cnpj)) > 11 ? 'cnpj' : 'cpf'));
 
-        if ($order->pagamento_status === 'pago' && request()->routeIs('regularizacao.sucesso')) {
+        if ($order->pagamento_status === 'pago') {
             $this->etapa = 4;
 
             return;
@@ -114,13 +114,15 @@ new class extends Component
             ->where('slug', '!=', 'cpf-clean-brasil')
             ->update(['ativo' => false]);
 
+        $existingService = Service::query()->where('slug', 'cpf-clean-brasil')->first();
+
         $service = Service::query()->updateOrCreate(
             ['slug' => 'cpf-clean-brasil'],
             [
                 'nome' => 'pesquisa CPF CLEAN BRASIL',
                 'descricao' => 'Diagnóstico consultivo do CPF ou CNPJ com análise especializada e plano de direcionamento.',
                 'icone' => 'cpf clean',
-                'preco' => 200.00,
+                'preco' => (float) ($existingService?->preco ?? 200.00),
                 'ativo' => true,
             ]
         );
@@ -582,7 +584,7 @@ new class extends Component
                             <p class="mt-1 text-lg font-black text-slate-900">{{ $protocolo }}</p>
                         </div>
 
-                        <a href="{{ route('portal.welcome') }}" class="btn-dark inline-block">Fechar Janela</a>
+                        <a href="{{ \Illuminate\Support\Facades\Route::has('portal.welcome') ? route('portal.welcome') : route('regularizacao.index') }}" class="btn-dark inline-block">Fechar Janela</a>
                     </div>
                 @endif
 

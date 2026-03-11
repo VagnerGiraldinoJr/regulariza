@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\SystemSetting;
+use App\Models\Service;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -49,5 +50,25 @@ class AdminIntegrationsTest extends TestCase
         $this->assertSame('token_zapi', SystemSetting::getValue('zapi.token'));
         $this->assertSame('client_token_zapi', SystemSetting::getValue('zapi.client_token'));
         $this->assertSame('5511999999999', SystemSetting::getValue('cpfclean.whatsapp_number'));
+    }
+
+    public function test_admin_can_update_regularizacao_service_price(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->post(route('admin.management.integrations.update'), [
+            'integration_group' => 'regularizacao_service',
+            'regularizacao_service_price' => '25.50',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $service = Service::query()->where('slug', 'cpf-clean-brasil')->first();
+
+        $this->assertNotNull($service);
+        $this->assertSame('pesquisa CPF CLEAN BRASIL', $service->nome);
+        $this->assertSame('25.50', number_format((float) $service->preco, 2, '.', ''));
+        $this->assertTrue((bool) $service->ativo);
     }
 }

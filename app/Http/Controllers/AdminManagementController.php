@@ -30,6 +30,10 @@ class AdminManagementController extends Controller
 
     private const FAKE_CLIENT_EMAIL_DOMAIN = '@cpfclean.fake';
 
+    private const REGULARIZACAO_SERVICE_SLUG = 'cpf-clean-brasil';
+
+    private const REGULARIZACAO_SERVICE_DEFAULT_PRICE = 200.00;
+
     public function dashboard(): RedirectResponse
     {
         return redirect()->route('admin.orders.index');
@@ -96,6 +100,8 @@ class AdminManagementController extends Controller
 
     public function integrations(): View
     {
+        $regularizacaoService = Service::query()->where('slug', self::REGULARIZACAO_SERVICE_SLUG)->first();
+
         $integrations = [
             'asaas' => [
                 'enabled' => filled(config('services.asaas.api_key')),
@@ -125,6 +131,12 @@ class AdminManagementController extends Controller
                 'client_token' => (string) config('zapi.client_token'),
                 'whatsapp_number' => (string) config('services.cpfclean.whatsapp_number'),
             ],
+            'regularizacao_service' => [
+                'name' => (string) ($regularizacaoService?->nome ?: 'pesquisa CPF CLEAN BRASIL'),
+                'slug' => self::REGULARIZACAO_SERVICE_SLUG,
+                'price' => (float) ($regularizacaoService?->preco ?? self::REGULARIZACAO_SERVICE_DEFAULT_PRICE),
+                'active' => (bool) ($regularizacaoService?->ativo ?? true),
+            ],
         ];
 
         return view('admin/management/integrations', compact('integrations'));
@@ -133,8 +145,21 @@ class AdminManagementController extends Controller
     public function updateIntegrations(Request $request): RedirectResponse
     {
         $group = (string) $request->validate([
-            'integration_group' => ['required', Rule::in(['asaas', 'apibrasil', 'zapi'])],
+            'integration_group' => ['required', Rule::in(['asaas', 'apibrasil', 'zapi', 'regularizacao_service'])],
         ])['integration_group'];
+
+        if ($group === 'regularizacao_service') {
+            $service = $this->updateRegularizacaoService($request);
+
+            Log::info('Produto administrativo atualizado.', [
+                'group' => $group,
+                'service_id' => $service->id,
+                'service_slug' => $service->slug,
+                'admin_user_id' => (int) $request->user()->id,
+            ]);
+
+            return back()->with('success', 'Valor da pesquisa atualizado com sucesso.');
+        }
 
         $map = match ($group) {
             'asaas' => $this->asaasIntegrationMap($request),
@@ -227,6 +252,28 @@ class AdminManagementController extends Controller
             'zapi.client_token' => trim((string) ($data['zapi_client_token'] ?? '')) !== '' ? trim((string) $data['zapi_client_token']) : $currentClientToken,
             'cpfclean.whatsapp_number' => preg_replace('/\D+/', '', (string) ($data['cpfclean_whatsapp_number'] ?? '')),
         ];
+    }
+
+    private function updateRegularizacaoService(Request $request): Service
+    {
+        $data = $request->validate([
+            'regularizacao_service_price' => ['required', 'numeric', 'min:1', 'max:999999.99'],
+        ], [
+            'regularizacao_service_price.required' => 'Informe o valor da pesquisa.',
+            'regularizacao_service_price.numeric' => 'Informe um valor numérico válido para a pesquisa.',
+            'regularizacao_service_price.min' => 'O valor da pesquisa deve ser maior que zero.',
+        ]);
+
+        return Service::query()->updateOrCreate(
+            ['slug' => self::REGULARIZACAO_SERVICE_SLUG],
+            [
+                'nome' => 'pesquisa CPF CLEAN BRASIL',
+                'descricao' => 'Diagnóstico consultivo do CPF ou CNPJ com análise especializada e plano de direcionamento.',
+                'icone' => 'cpf clean',
+                'preco' => round((float) $data['regularizacao_service_price'], 2),
+                'ativo' => true,
+            ]
+        );
     }
 
     public function messages(Request $request): View

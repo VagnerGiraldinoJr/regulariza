@@ -8,6 +8,8 @@ use Illuminate\Support\Str;
 
 class LeadUserResolverService
 {
+    private const LEGACY_FALLBACK_DOMAIN = 'regulariza.local';
+
     public function resolve(Lead $lead, ?User $preferredUser = null): User
     {
         $document = $this->normalizeDocument((string) $lead->cpf_cnpj);
@@ -62,13 +64,22 @@ class LeadUserResolverService
         }
 
         if (
+            $email === null
+            && $this->isLegacyFallbackEmail($user->email)
+            && ($migratedFallback = $this->migrateFallbackEmail($user->email)) !== null
+            && ! User::withTrashed()->where('email', $migratedFallback)->whereKeyNot($user->id)->exists()
+        ) {
+            $updates['email'] = $migratedFallback;
+        }
+
+        if (
             $email !== null
             && $email !== ''
             && $email !== $user->email
             && (
                 $user->email === null
                 || trim((string) $user->email) === ''
-                || str_ends_with((string) $user->email, '@regulariza.local')
+                || $this->isFallbackEmail($user->email)
             )
             && ! User::withTrashed()->where('email', $email)->whereKeyNot($user->id)->exists()
         ) {
@@ -109,6 +120,53 @@ class LeadUserResolverService
 
     private function fallbackEmail(): string
     {
-        return 'cliente+'.Str::lower(Str::random(12)).'@regulariza.local';
+        return 'cliente+'.Str::lower(Str::random(12)).'@'.$this->fallbackEmailDomain();
+    }
+
+    private function isFallbackEmail(?string $email): bool
+    {
+        $normalized = mb_strtolower(trim((string) $email));
+
+        if ($normalized === '') {
+            return false;
+        }
+
+        return str_starts_with($normalized, 'cliente+')
+            && (
+                str_ends_with($normalized, '@'.self::LEGACY_FALLBACK_DOMAIN)
+                || str_ends_with($normalized, '@'.$this->fallbackEmailDomain())
+            );
+    }
+
+    private function isLegacyFallbackEmail(?string $email): bool
+    {
+        $normalized = mb_strtolower(trim((string) $email));
+
+        return $normalized !== ''
+            && str_starts_with($normalized, 'cliente+')
+            && str_ends_with($normalized, '@'.self::LEGACY_FALLBACK_DOMAIN);
+    }
+
+    private function migrateFallbackEmail(?string $email): ?string
+    {
+        $normalized = mb_strtolower(trim((string) $email));
+
+        if (! $this->isLegacyFallbackEmail($normalized)) {
+            return null;
+        }
+
+        return Str::before($normalized, '@').'@'.$this->fallbackEmailDomain();
+    }
+
+    private function fallbackEmailDomain(): string
+    {
+        $configured = mb_strtolower(trim((string) config('mail.from.address')));
+        $domain = str_contains($configured, '@') ? Str::after($configured, '@') : '';
+
+        if ($domain === '' || str_contains($domain, 'localhost') || str_ends_with($domain, '.local')) {
+            return 'cpfclean.com.br';
+        }
+
+        return $domain;
     }
 }
