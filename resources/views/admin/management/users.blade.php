@@ -45,34 +45,9 @@
                                 <td class="px-4 py-3">{{ $u->pix_key ?: '-' }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex justify-end gap-2">
-                                        <details class="group relative text-left">
-                                            <summary class="btn-dark list-none cursor-pointer text-xs">
-                                                Editar acesso
-                                            </summary>
-                                            <div class="absolute right-4 z-10 mt-2 w-[22rem] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
-                                                <form method="POST" action="{{ route('admin.management.users.update', $u) }}" class="space-y-3">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <div>
-                                                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Nome</label>
-                                                        <input name="name" value="{{ old('name', $u->name) }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">E-mail</label>
-                                                        <input name="email" type="email" value="{{ old('email', $u->email) }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Nova senha</label>
-                                                        <input name="password" type="password" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Deixe em branco para manter">
-                                                    </div>
-                                                    <div>
-                                                        <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Confirmar nova senha</label>
-                                                        <input name="password_confirmation" type="password" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Repita a nova senha">
-                                                    </div>
-                                                    <button type="submit" class="btn-primary w-full text-sm">Salvar edição</button>
-                                                </form>
-                                            </div>
-                                        </details>
+                                        <button type="button" class="btn-dark text-xs" data-modal-open="edit-user-modal-{{ $u->id }}">
+                                            Editar acesso
+                                        </button>
                                         <form method="POST" action="{{ route('admin.management.users.send-reset-link', $u) }}">
                                             @csrf
                                             <button type="submit" class="btn-primary text-xs">
@@ -90,5 +65,49 @@
             </div>
             <div class="border-t border-slate-200 px-4 py-3">{{ $users->links() }}</div>
         </section>
+
+        @foreach($users as $u)
+            <div id="edit-user-modal-{{ $u->id }}" class="app-modal" hidden>
+                <div class="app-modal__backdrop" data-modal-dismiss></div>
+                <div class="app-modal__dialog">
+                    <div class="app-modal__header">
+                        <div>
+                            <h2 class="app-modal__title">Editar acesso</h2>
+                            <p class="app-modal__subtitle">Atualize nome, e-mail e senha de {{ $u->name }} sem sair da tela.</p>
+                        </div>
+                        <button type="button" class="app-modal__close" data-modal-close aria-label="Fechar modal">
+                            ×
+                        </button>
+                    </div>
+
+                    <div class="app-modal__body">
+                        <form method="POST" action="{{ route('admin.management.users.update', $u) }}" class="space-y-3">
+                            @csrf
+                            @method('PATCH')
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Nome</label>
+                                <input name="name" value="{{ old('name', $u->name) }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">E-mail</label>
+                                <input name="email" type="email" value="{{ old('email', $u->email) }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Nova senha</label>
+                                <input name="password" type="password" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Deixe em branco para manter">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Confirmar nova senha</label>
+                                <input name="password_confirmation" type="password" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Repita a nova senha">
+                            </div>
+                            <div class="flex flex-wrap justify-end gap-2 pt-2">
+                                <button type="button" class="btn-dark text-sm" data-modal-close>Cancelar</button>
+                                <button type="submit" class="btn-primary text-sm">Salvar edição</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        @endforeach
     </div>
 </x-layouts.app>

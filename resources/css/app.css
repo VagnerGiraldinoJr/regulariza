@@ -162,6 +162,84 @@ body.page-leaving {
     background: #b91c1c;
 }
 
+.app-modal[hidden] {
+    display: none !important;
+}
+
+.app-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.app-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(7, 26, 47, 0.58);
+    backdrop-filter: blur(4px);
+}
+
+.app-modal__dialog {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 34rem);
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    border-radius: 1rem;
+    border: 1px solid rgba(203, 213, 225, 0.85);
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 30px 90px rgba(15, 23, 42, 0.28);
+}
+
+.app-modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.25rem 0.75rem;
+}
+
+.app-modal__title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.app-modal__subtitle {
+    margin: 0.35rem 0 0;
+    color: #64748b;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.app-modal__close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(203, 213, 225, 0.95);
+    background: #fff;
+    color: #334155;
+    font-size: 1.25rem;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.app-modal__close:hover {
+    background: #f8fafc;
+}
+
+.app-modal__body {
+    padding: 0 1.25rem 1.25rem;
+}
+
 .app-shell {
     min-height: 100vh;
     position: relative;

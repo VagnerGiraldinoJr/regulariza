@@ -47,8 +47,70 @@ function shouldHandleNavigation(event, link) {
     return true;
 }
 
+function setupAppModals() {
+    const body = document.body;
+
+    function closeModal(modal) {
+        if (!(modal instanceof HTMLElement)) {
+            return;
+        }
+
+        modal.hidden = true;
+        body.classList.remove('overflow-hidden');
+    }
+
+    function openModal(modal) {
+        if (!(modal instanceof HTMLElement)) {
+            return;
+        }
+
+        modal.hidden = false;
+        body.classList.add('overflow-hidden');
+
+        const firstInput = modal.querySelector('input, select, textarea, button');
+        if (firstInput instanceof HTMLElement) {
+            window.setTimeout(() => firstInput.focus(), 40);
+        }
+    }
+
+    document.querySelectorAll('[data-modal-open]').forEach((trigger) => {
+        trigger.addEventListener('click', () => {
+            const modalId = trigger.getAttribute('data-modal-open');
+            const modal = modalId ? document.getElementById(modalId) : null;
+            openModal(modal);
+        });
+    });
+
+    document.querySelectorAll('[data-modal-close]').forEach((trigger) => {
+        trigger.addEventListener('click', () => {
+            const modal = trigger.closest('.app-modal');
+            closeModal(modal);
+        });
+    });
+
+    document.querySelectorAll('.app-modal').forEach((modal) => {
+        modal.addEventListener('click', (event) => {
+            if (event.target instanceof HTMLElement && event.target.hasAttribute('data-modal-dismiss')) {
+                closeModal(modal);
+            }
+        });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') {
+            return;
+        }
+
+        const openedModal = document.querySelector('.app-modal:not([hidden])');
+        if (openedModal instanceof HTMLElement) {
+            closeModal(openedModal);
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     requestAnimationFrame(markReady);
+    setupAppModals();
 
     document.addEventListener('click', (event) => {
         const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
