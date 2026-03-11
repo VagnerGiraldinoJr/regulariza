@@ -83,6 +83,7 @@
                             <th class="px-4 py-3">Protocolo</th>
                             <th class="px-4 py-3">Cliente</th>
                             <th class="px-4 py-3">Serviço</th>
+                            <th class="px-4 py-3">Valor</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Pagamento</th>
                         </tr>
@@ -107,6 +108,9 @@
                                 <td class="px-4 py-3 text-slate-700">
                                     <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold {{ $serviceBadge }}">{{ $serviceName }}</span>
                                 </td>
+                                <td class="px-4 py-3 text-sm font-bold text-slate-800">
+                                    R$ {{ number_format((float) $order->valor, 2, ',', '.') }}
+                                </td>
                                 <td class="px-4 py-3 text-slate-700">
                                     <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold {{ $statusInfo['class'] }}">{{ $statusInfo['label'] }}</span>
                                 </td>
@@ -116,7 +120,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-4 py-6 text-center text-slate-500">Sem pedidos para exibir.</td>
+                                <td colspan="6" class="px-4 py-6 text-center text-slate-500">Sem pedidos para exibir.</td>
                             </tr>
                         @endforelse
                     </tbody>
