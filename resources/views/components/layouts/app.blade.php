@@ -158,7 +158,7 @@
                             </a>
                             <a href="{{ route('admin.management.vendors') }}" class="app-nav-link {{ request()->routeIs('admin.management.vendors*') ? 'is-active' : '' }}">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M3 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/><path d="M11 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/></svg>
-                                <span class="sidebar-label">Cadastrar Vendedor</span>
+                                <span class="sidebar-label">Cadastro Analista</span>
                             </a>
                             <a href="{{ route('admin.management.users') }}" class="app-nav-link {{ request()->routeIs('admin.management.users*') ? 'is-active' : '' }}">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M3 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/><path d="M11 20c.8-3 2.7-4.5 5-4.5s4.2 1.5 5 4.5"/></svg>
