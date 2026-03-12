@@ -41,5 +41,6 @@
             </div>
         </div>
     </div>
+    @include('components.security-audit-badge')
 </body>
 </html>

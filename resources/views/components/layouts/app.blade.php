@@ -269,7 +269,12 @@
         <main>
             {{ $slot }}
         </main>
+        @include('components.security-audit-badge')
         @include('components.public-whatsapp-widget')
+    @endauth
+
+    @auth
+        @include('components.security-audit-badge')
     @endauth
 
     <script>

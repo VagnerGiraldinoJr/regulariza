@@ -313,6 +313,7 @@
             </div>
         </div>
     </footer>
+    @include('components.security-audit-badge')
     @include('components.public-whatsapp-widget')
     <script>
         (function () {
