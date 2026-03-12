@@ -193,8 +193,7 @@
                 </nav>
 
                 <div class="app-sidebar-user border-t border-white/10 px-4 py-4">
-                    <p class="text-xs text-[var(--sidebar-muted)] sidebar-label">{{ $authUser->name }}</p>
-                    <p class="text-xs uppercase tracking-wide text-cyan-200 sidebar-label">{{ $authUser->role }}</p>
+                    @include('components.security-audit-badge', ['inline' => true])
                 </div>
             </aside>
 
@@ -271,10 +270,6 @@
         </main>
         @include('components.security-audit-badge')
         @include('components.public-whatsapp-widget')
-    @endauth
-
-    @auth
-        @include('components.security-audit-badge')
     @endauth
 
     <script>
