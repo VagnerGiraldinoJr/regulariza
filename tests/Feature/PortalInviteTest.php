@@ -83,4 +83,50 @@ class PortalInviteTest extends TestCase
         $response->assertRedirect(route('profile.edit'));
         $response->assertSessionHas('profile_attention');
     }
+
+    public function test_client_can_access_portal_after_contract_creation_before_entry_payment(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'cliente',
+            'email' => 'cliente.portal.liberado@example.com',
+            'portal_token' => 'portal-contrato-imediato-123',
+            'portal_token_expires_at' => now()->addDay(),
+        ]);
+
+        $service = Service::query()->create([
+            'nome' => 'Pesquisa CPF CLEAN BRASIL',
+            'slug' => 'pesquisa-cpf-clean-brasil-portal-imediato',
+            'preco' => 200.00,
+            'ativo' => true,
+        ]);
+
+        $order = Order::query()->create([
+            'protocolo' => 'PED-PORTAL-IMEDIATO-001',
+            'user_id' => $user->id,
+            'service_id' => $service->id,
+            'status' => 'em_andamento',
+            'valor' => 200.00,
+            'pagamento_status' => 'pago',
+            'pago_em' => now(),
+        ]);
+
+        Contract::query()->create([
+            'order_id' => $order->id,
+            'user_id' => $user->id,
+            'fee_amount' => 299.90,
+            'entry_amount' => 149.95,
+            'status' => 'aguardando_aceite',
+            'portal_access_sent_at' => now(),
+            'acceptance_token' => 'token-portal-imediato-aceite',
+        ]);
+
+        $response = $this->get(route('portal.invite', $user->portal_token));
+
+        $response->assertRedirect(route('portal.dashboard'));
+        $this->assertAuthenticatedAs($user);
+
+        $dashboardResponse = $this->actingAs($user)->get(route('portal.dashboard'));
+
+        $dashboardResponse->assertOk();
+    }
 }

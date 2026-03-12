@@ -49,7 +49,8 @@
                 <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                     @foreach ([
                         'boas_vindas' => 'Entrada apos pagamento e boas-vindas ao cliente',
-                        'pagamento_confirmado' => 'Acesso ao portal ou liberacao contratual',
+                        'portal_acesso' => 'Credenciais da area do cliente com link, login e senha provisoria',
+                        'contrato_aceite' => 'Envio do link para revisar e aceitar o contrato',
                         'status_atualizado' => 'Atualizacao manual ou automatica de etapa',
                         'lembrete' => 'Cobrança, pendencias ou follow-up',
                         'conclusao' => 'Encerramento do caso e proxima acao',
@@ -115,7 +116,7 @@
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Evento</label>
                     <select name="evento" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
                         <option value="">Todos</option>
-                        @foreach (['boas_vindas', 'pagamento_confirmado', 'status_atualizado', 'lembrete', 'conclusao'] as $messageEvent)
+                        @foreach (['boas_vindas', 'portal_acesso', 'contrato_aceite', 'status_atualizado', 'lembrete', 'conclusao'] as $messageEvent)
                             <option value="{{ $messageEvent }}" @selected($event === $messageEvent)>{{ str_replace('_', ' ', $messageEvent) }}</option>
                         @endforeach
                     </select>

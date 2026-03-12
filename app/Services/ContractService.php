@@ -16,6 +16,11 @@ use RuntimeException;
 
 class ContractService
 {
+    public function __construct(
+        private readonly LeadUserResolverService $leadUserResolverService
+    ) {
+    }
+
     public function createForOrder(
         Order $order,
         float $debtAmount,
@@ -24,6 +29,7 @@ class ContractService
         ?UploadedFile $documentFile = null
     ): Contract {
         $order->loadMissing(['user', 'lead']);
+        $resolvedUser = $this->ensureOrderUser($order);
 
         if ((float) $feeAmount <= 0) {
             throw new RuntimeException('O valor de honorários deve ser maior que zero.');
@@ -33,7 +39,7 @@ class ContractService
             throw new RuntimeException('Percentual de entrada inválido.');
         }
 
-        return DB::transaction(function () use ($order, $debtAmount, $feeAmount, $entryPercentage, $documentFile): Contract {
+        return DB::transaction(function () use ($order, $resolvedUser, $debtAmount, $feeAmount, $entryPercentage, $documentFile): Contract {
             $existing = Contract::query()->where('order_id', $order->id)->first();
             if ($existing) {
                 throw new RuntimeException('Já existe contrato vinculado a este pedido.');
@@ -48,7 +54,7 @@ class ContractService
 
             $contract = Contract::query()->create([
                 'order_id' => $order->id,
-                'user_id' => $order->user_id,
+                'user_id' => $resolvedUser?->id ?: $order->user_id,
                 'analyst_id' => $analystId,
                 'debt_amount' => round($debtAmount, 2),
                 'fee_amount' => round($feeAmount, 2),
@@ -64,7 +70,7 @@ class ContractService
                 'acceptance_expires_at' => now()->addDays(7),
             ]);
 
-            $entry = ContractInstallment::query()->create([
+            ContractInstallment::query()->create([
                 'contract_id' => $contract->id,
                 'order_id' => $order->id,
                 'installment_number' => 0,
@@ -80,7 +86,7 @@ class ContractService
                 $installmentNumber = $index + 1;
                 $days = $installmentNumber * 30;
 
-                $installment = ContractInstallment::query()->create([
+                ContractInstallment::query()->create([
                     'contract_id' => $contract->id,
                     'order_id' => $order->id,
                     'installment_number' => $installmentNumber,
@@ -257,6 +263,38 @@ class ContractService
             ?? User::query()->whereIn('role', ['analista', 'vendedor'])->orderBy('id')->first();
 
         return $defaultAnalyst?->id;
+    }
+
+    private function ensureOrderUser(Order $order): ?User
+    {
+        if ($order->user) {
+            if ($order->lead) {
+                $resolved = $this->leadUserResolverService->resolve($order->lead, $order->user);
+
+                if ((int) $resolved->id !== (int) $order->user_id) {
+                    $order->update(['user_id' => $resolved->id]);
+                    $order->setRelation('user', $resolved);
+                }
+
+                return $resolved;
+            }
+
+            return $order->user;
+        }
+
+        if (! $order->lead) {
+            return null;
+        }
+
+        $user = $this->leadUserResolverService->resolve($order->lead);
+
+        if ((int) $order->user_id !== (int) $user->id) {
+            $order->update(['user_id' => $user->id]);
+        }
+
+        $order->setRelation('user', $user);
+
+        return $user;
     }
 
     private function syncContractStatus(Contract $contract): void

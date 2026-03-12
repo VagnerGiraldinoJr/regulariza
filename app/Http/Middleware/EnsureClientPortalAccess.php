@@ -17,12 +17,16 @@ class EnsureClientPortalAccess
         }
 
         $hasPortalAccess = $user->contracts()
-            ->whereIn('status', ['ativo', 'concluido'])
+            ->where(function ($query): void {
+                $query
+                    ->whereNotNull('portal_access_sent_at')
+                    ->orWhereIn('status', ['ativo', 'concluido']);
+            })
             ->exists();
 
         if (! $hasPortalAccess) {
             return redirect()->route('regularizacao.index')
-                ->with('access_error', 'Seu acesso ao portal será liberado após a confirmação do pagamento da entrada do contrato.');
+                ->with('access_error', 'Seu acesso ao portal será liberado assim que o contrato for criado e enviado ao seu atendimento.');
         }
 
         if ($user->hasProvisionalEmail()) {

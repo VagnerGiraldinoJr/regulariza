@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\CriarUsuarioPortal;
 use App\Jobs\EnviarAcessoPortalWhatsApp;
 use App\Models\Contract;
 use App\Services\ContractService;
@@ -115,7 +114,6 @@ class ContractAcceptanceController extends Controller
             return;
         }
 
-        CriarUsuarioPortal::dispatch($contract->order);
         EnviarAcessoPortalWhatsApp::dispatch($contract->order);
         $contract->update(['portal_access_sent_at' => now()]);
     }

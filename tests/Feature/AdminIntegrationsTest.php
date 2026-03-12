@@ -52,23 +52,32 @@ class AdminIntegrationsTest extends TestCase
         $this->assertSame('5511999999999', SystemSetting::getValue('cpfclean.whatsapp_number'));
     }
 
-    public function test_admin_can_update_regularizacao_service_price(): void
+    public function test_admin_can_update_public_service_catalog_prices(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
 
         $response = $this->actingAs($admin)->post(route('admin.management.integrations.update'), [
             'integration_group' => 'regularizacao_service',
-            'regularizacao_service_price' => '25.50',
+            'service_prices' => [
+                'cpf-clean-brasil' => '25.50',
+                'cpron-cartorio' => '35.90',
+            ],
         ]);
 
         $response->assertRedirect();
         $response->assertSessionHas('success');
 
         $service = Service::query()->where('slug', 'cpf-clean-brasil')->first();
+        $cpronService = Service::query()->where('slug', 'cpron-cartorio')->first();
 
         $this->assertNotNull($service);
         $this->assertSame('pesquisa CPF CLEAN BRASIL', $service->nome);
         $this->assertSame('25.50', number_format((float) $service->preco, 2, '.', ''));
         $this->assertTrue((bool) $service->ativo);
+
+        $this->assertNotNull($cpronService);
+        $this->assertSame('Pesquisa CPRON - Cartório', $cpronService->nome);
+        $this->assertSame('35.90', number_format((float) $cpronService->preco, 2, '.', ''));
+        $this->assertTrue((bool) $cpronService->ativo);
     }
 }

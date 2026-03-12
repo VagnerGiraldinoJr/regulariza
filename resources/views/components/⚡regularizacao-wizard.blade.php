@@ -124,24 +124,33 @@ new class extends Component
 
     private function loadServices(): void
     {
-        Service::query()
-            ->where('slug', '!=', 'cpf-clean-brasil')
-            ->update(['ativo' => false]);
+        $definitions = config('cpfclean_services.public_catalog', []);
 
-        $existingService = Service::query()->where('slug', 'cpf-clean-brasil')->first();
+        foreach ($definitions as $slug => $definition) {
+            $existingService = Service::query()->where('slug', $slug)->first();
 
-        $service = Service::query()->updateOrCreate(
-            ['slug' => 'cpf-clean-brasil'],
-            [
-                'nome' => 'pesquisa CPF CLEAN BRASIL',
-                'descricao' => 'Diagnóstico consultivo do CPF ou CNPJ com análise especializada e plano de direcionamento.',
-                'icone' => 'cpf clean',
-                'preco' => (float) ($existingService?->preco ?? 200.00),
-                'ativo' => true,
-            ]
-        );
+            Service::query()->updateOrCreate(
+                ['slug' => $slug],
+                [
+                    'nome' => (string) ($existingService?->nome ?? $definition['name']),
+                    'descricao' => (string) ($existingService?->descricao ?? $definition['description']),
+                    'icone' => (string) ($existingService?->icone ?? $definition['icon']),
+                    'preco' => (float) ($existingService?->preco ?? $definition['default_price']),
+                    'ativo' => (bool) ($existingService?->ativo ?? ($definition['active'] ?? true)),
+                ]
+            );
+        }
 
-        $this->services = [$service->toArray()];
+        $serviceOrder = array_values(array_keys($definitions));
+
+        $this->services = Service::query()
+            ->whereIn('slug', array_keys($definitions))
+            ->where('ativo', true)
+            ->get()
+            ->sortBy(fn (Service $service) => array_search($service->slug, $serviceOrder, true))
+            ->map(fn (Service $service) => $service->toArray())
+            ->values()
+            ->all();
     }
 
     public function getSelectedServiceProperty(): ?array
@@ -513,19 +522,41 @@ new class extends Component
                     <div class="space-y-4">
                         <div>
                             <h2 class="text-base font-bold text-slate-800">2. Contratação da pesquisa</h2>
-                            <p class="mt-1 text-sm text-slate-500">Selecione a pesquisa para análise do seu caso e direcionamento estratégico.</p>
+                            <p class="mt-1 text-sm text-slate-500">Escolha o serviço abaixo. Ao clicar no card, você segue imediatamente para a etapa de pagamento.</p>
+                        </div>
+
+                        <div class="rounded-2xl border border-cyan-200 bg-cyan-50/90 px-4 py-3 text-sm text-cyan-900">
+                            <span class="font-black uppercase tracking-[0.16em] text-cyan-700">Atenção</span>
+                            <p class="mt-1">Clique em um dos serviços para continuar. O card selecionado já leva você para a próxima fase.</p>
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-2">
                             @foreach ($services as $service)
                                 <button
                                     wire:click="selecionarServico({{ $service['id'] }})"
-                                    class="rounded-xl border p-4 text-left transition {{ $service_id === $service['id'] ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300' }}"
+                                    class="rounded-xl border p-4 text-left transition {{ $service_id === $service['id'] ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-cyan-400 hover:bg-cyan-50/40' }}"
                                 >
-                                    <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">{{ $service['icone'] ?: 'serviço' }}</p>
+                                    <div class="flex items-start justify-between gap-3">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">{{ $service['icone'] ?: 'serviço' }}</p>
+                                        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full border-2 {{ $service_id === $service['id'] ? 'border-blue-600 bg-blue-600 text-white' : 'border-cyan-500 text-cyan-500' }}">
+                                            @if ($service_id === $service['id'])
+                                                <svg viewBox="0 0 20 20" fill="none" class="h-4 w-4" aria-hidden="true">
+                                                    <path d="m5 10 3 3 7-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                            @else
+                                                <span class="h-2.5 w-2.5 rounded-full bg-current"></span>
+                                            @endif
+                                        </span>
+                                    </div>
                                     <h3 class="mt-1 text-sm font-bold text-slate-800">{{ $service['nome'] }}</h3>
                                     <p class="mt-1 text-xs text-slate-500">{{ $service['descricao'] }}</p>
                                     <p class="mt-3 text-sm font-extrabold text-slate-800">Pagamento da pesquisa: R$ {{ number_format((float) $service['preco'], 2, ',', '.') }}</p>
+                                    <div class="mt-3 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-cyan-700">
+                                        <span>Clique para selecionar</span>
+                                        <svg viewBox="0 0 20 20" fill="none" class="h-4 w-4" aria-hidden="true">
+                                            <path d="M7 4l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </div>
                                 </button>
                             @endforeach
                         </div>

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\CriarUsuarioPortal;
 use App\Jobs\EnviarAcessoPortalWhatsApp;
 use App\Models\ContractInstallment;
 use App\Models\Order;
@@ -77,7 +76,6 @@ class AsaasWebhookController extends Controller
                 && $installment->contract->accepted_at !== null
                 && $installment->contract->portal_access_sent_at === null
             ) {
-                CriarUsuarioPortal::dispatch($installment->order);
                 EnviarAcessoPortalWhatsApp::dispatch($installment->order);
                 $installment->contract->update(['portal_access_sent_at' => now()]);
             }

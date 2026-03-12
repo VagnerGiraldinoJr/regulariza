@@ -1,8 +1,8 @@
 <x-layouts.app>
     <div class="space-y-5">
         <section>
-            <h1 class="panel-title">Cadastro de Vendedores</h1>
-            <p class="panel-subtitle mt-1">Criação de analistas/vendedores com envio automático de e-mail para definição de senha.</p>
+            <h1 class="panel-title">Cadastro de Analistas</h1>
+            <p class="panel-subtitle mt-1">Criação de analistas com envio automático de e-mail para definição de senha.</p>
         </section>
 
         @if (session('success'))
@@ -43,7 +43,7 @@
                 </select>
                 <input name="pix_holder_name" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Nome do titular PIX">
                 <input name="pix_holder_document" class="rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" placeholder="Documento titular PIX">
-                <button class="btn-primary sm:col-span-2 lg:col-span-4">Cadastrar vendedor</button>
+                <button class="btn-primary sm:col-span-2 lg:col-span-4">Cadastrar analista</button>
             </form>
         </section>
 
@@ -76,7 +76,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">Sem vendedores cadastrados.</td></tr>
+                            <tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">Sem analistas ou vendedores cadastrados.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

@@ -8,6 +8,7 @@ use App\Models\ResearchReport;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class ResearchReportService
@@ -110,6 +111,8 @@ class ResearchReportService
                 'normalized_payload' => $this->normalizePayload($report, $consultations),
                 'generated_at' => now(),
             ]);
+
+            $this->syncResolvedSubjectData($report->fresh(['order.user', 'order.lead', 'user', 'lead']), $consultations);
 
             return $report->fresh(['order', 'lead', 'user', 'admin', 'analyst', 'items.consultation']);
         });
@@ -279,5 +282,134 @@ class ResearchReportService
     private function documentTypeFromDigits(string $documentDigits): string
     {
         return strlen($documentDigits) === 14 ? 'cnpj' : 'cpf';
+    }
+
+    private function syncResolvedSubjectData(ResearchReport $report, Collection $consultations): void
+    {
+        $resolvedName = $this->resolveSubjectName($report, $consultations);
+        $resolvedEmail = $this->resolveSubjectEmail($report);
+
+        if ($resolvedName === null && $resolvedEmail === null) {
+            return;
+        }
+
+        $lead = $report->lead ?: $report->order?->lead;
+        $user = $report->user ?: $report->order?->user;
+
+        if ($lead) {
+            $leadUpdates = [];
+
+            if ($resolvedName !== null && $this->shouldOverwriteName($lead->nome)) {
+                $leadUpdates['nome'] = $resolvedName;
+            }
+
+            if ($resolvedEmail !== null && blank($lead->email)) {
+                $leadUpdates['email'] = $resolvedEmail;
+            }
+
+            if ($leadUpdates !== []) {
+                $lead->update($leadUpdates);
+            }
+        }
+
+        if ($user) {
+            $userUpdates = [];
+
+            if ($resolvedName !== null && $this->shouldOverwriteName($user->name)) {
+                $userUpdates['name'] = $resolvedName;
+            }
+
+            if ($resolvedEmail !== null && method_exists($user, 'hasProvisionalEmail') && $user->hasProvisionalEmail()) {
+                $userUpdates['email'] = $resolvedEmail;
+            }
+
+            if ($userUpdates !== []) {
+                $user->update($userUpdates);
+            }
+        }
+    }
+
+    private function resolveSubjectName(ResearchReport $report, Collection $consultations): ?string
+    {
+        $normalizedPayload = (array) $report->normalized_payload;
+        $documentType = $report->document_type;
+
+        $candidates = [];
+
+        if ($documentType === 'cpf') {
+            $candidates[] = trim((string) data_get($normalizedPayload, 'person.name'));
+        } else {
+            $candidates[] = trim((string) data_get($normalizedPayload, 'company.razao_social'));
+            $candidates[] = trim((string) data_get($normalizedPayload, 'company.nome_fantasia'));
+            $candidates[] = trim((string) data_get($normalizedPayload, 'person.name'));
+        }
+
+        foreach ($consultations as $consultation) {
+            if (! $consultation instanceof ApiBrasilConsultation || ! is_array($consultation->response_payload)) {
+                continue;
+            }
+
+            $responsePayload = $consultation->response_payload;
+            $candidates[] = $this->firstStringFromPayload($responsePayload, [
+                'nome',
+                'nome_completo',
+                'nm_completo',
+                'razao_social',
+                'nome_fantasia',
+                'empresa',
+            ]);
+        }
+
+        foreach ($candidates as $candidate) {
+            $name = trim((string) $candidate);
+
+            if ($this->isValidResolvedName($name)) {
+                return Str::title(mb_strtolower($name));
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveSubjectEmail(ResearchReport $report): ?string
+    {
+        $email = mb_strtolower(trim((string) data_get((array) $report->normalized_payload, 'contacts.main_email')));
+
+        return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
+    }
+
+    private function shouldOverwriteName(?string $currentName): bool
+    {
+        $currentName = trim((string) $currentName);
+
+        return $currentName === '' || $currentName === 'Cliente Regulariza';
+    }
+
+    private function isValidResolvedName(string $name): bool
+    {
+        if ($name === '' || $name === 'Cliente Regulariza') {
+            return false;
+        }
+
+        return mb_strlen($name) >= 4;
+    }
+
+    private function firstStringFromPayload(array $payload, array $keys): ?string
+    {
+        foreach ($payload as $key => $value) {
+            if (is_string($key) && in_array($key, $keys, true) && is_string($value) && trim($value) !== '') {
+                return trim($value);
+            }
+
+            if (is_array($value)) {
+                $nested = $this->firstStringFromPayload($value, $keys);
+
+                if ($nested !== null) {
+                    return $nested;
+                }
+            }
+        }
+
+        return null;
     }
 }

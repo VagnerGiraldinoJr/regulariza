@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\EnviarAcessoPortalWhatsApp;
+use App\Jobs\EnviarLinkAceiteContratoWhatsApp;
 use App\Models\Contract;
 use App\Models\Order;
 use App\Services\ContractService;
@@ -41,7 +43,7 @@ class ContractController extends Controller
         ]);
 
         $order = Order::query()->findOrFail((int) $data['order_id']);
-        $contractService->createForOrder(
+        $contract = $contractService->createForOrder(
             order: $order,
             debtAmount: (float) $data['debt_amount'],
             feeAmount: (float) $data['fee_amount'],
@@ -49,7 +51,13 @@ class ContractController extends Controller
             documentFile: $request->file('document')
         );
 
-        return back()->with('success', 'Contrato criado com link de aceite. As cobranças da entrada e das parcelas serão liberadas após o aceite.');
+        if ($contract->order) {
+            EnviarLinkAceiteContratoWhatsApp::dispatch($contract);
+            EnviarAcessoPortalWhatsApp::dispatch($contract->order);
+            $contract->update(['portal_access_sent_at' => now()]);
+        }
+
+        return back()->with('success', 'Contrato criado com sucesso. O link de aceite e os dados de acesso ao portal foram enviados ao cliente por WhatsApp e e-mail quando disponíveis.');
     }
 
     public function analystIndex(Request $request): View

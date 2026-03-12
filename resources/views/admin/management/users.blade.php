@@ -26,6 +26,14 @@
                 <input name="cpf_cnpj" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="CPF/CNPJ">
                 <input name="whatsapp" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="WhatsApp">
                 <input name="pix_key" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Chave PIX">
+                <select name="pix_key_type" class="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                    <option value="">Tipo da chave PIX</option>
+                    <option value="cpf">CPF</option>
+                    <option value="cnpj">CNPJ</option>
+                    <option value="email">E-mail</option>
+                    <option value="telefone">Telefone</option>
+                    <option value="aleatoria">Aleatória</option>
+                </select>
                 <button class="btn-primary">Criar usuário</button>
             </form>
         </section>
@@ -95,6 +103,19 @@
                             <div>
                                 <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Nova senha</label>
                                 <input name="password" type="password" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Deixe em branco para manter">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Chave PIX</label>
+                                <input name="pix_key" value="{{ old('pix_key', $u->pix_key) }}" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="CPF, e-mail, telefone ou aleatória">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Tipo da chave PIX</label>
+                                <select name="pix_key_type" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                                    <option value="">Selecione</option>
+                                    @foreach(['cpf' => 'CPF', 'cnpj' => 'CNPJ', 'email' => 'E-mail', 'telefone' => 'Telefone', 'aleatoria' => 'Aleatória'] as $key => $label)
+                                        <option value="{{ $key }}" @selected(old('pix_key_type', $u->pix_key_type) === $key)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Confirmar nova senha</label>

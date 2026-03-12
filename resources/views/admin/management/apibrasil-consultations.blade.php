@@ -10,7 +10,7 @@
                 <div class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-cyan-400 via-sky-500 to-cyan-300 opacity-90"></div>
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <p class="text-[0.68rem] font-black uppercase tracking-[0.26em] text-cyan-700">Processando dossiê</p>
+                        <p class="text-[0.68rem] font-black uppercase tracking-[0.26em] text-cyan-700">Processando análise</p>
                         <h2 class="mt-2 text-2xl font-black tracking-tight text-slate-900">Executando pacote de pesquisas</h2>
                         <p class="mt-2 text-sm leading-6 text-slate-600" data-loading-status>
                             Validando fontes e consolidando os dados para gerar o PDF final.
@@ -48,7 +48,7 @@
 
         <section>
             <h1 class="panel-title">Consultas API Brasil</h1>
-            <p class="panel-subtitle mt-1">Selecione apenas o tipo de dossiê, execute o pacote de pesquisas e gere o PDF consolidado para o vendedor.</p>
+            <p class="panel-subtitle mt-1">Selecione o tipo de análise, execute o pacote de pesquisas e gere o PDF consolidado para a operação.</p>
         </section>
 
         <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -104,7 +104,7 @@
 
         <section class="panel-card p-4">
             <div class="mb-3 flex items-center justify-between gap-2">
-                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Novo dossiê consolidado</h2>
+                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Nova análise consolidada</h2>
                 <span class="badge {{ $apibrasilConfigured ? 'badge-success' : 'badge-warning' }}">
                     {{ $apibrasilConfigured ? 'Integração configurada' : 'Configure API Brasil em Integrações' }}
                 </span>
@@ -112,16 +112,16 @@
             <form method="POST" action="{{ route('admin.management.apibrasil-consultations.store') }}" class="grid gap-3 md:grid-cols-2" data-apibrasil-form>
                 @csrf
                 <div class="space-y-1 md:col-span-2">
-                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Tipo de dossiê</label>
+                    <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Tipo de análise</label>
                     <select name="report_type" class="w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm" required data-report-type-selector>
-                        <option value="">Selecionar dossiê</option>
+                        <option value="">Selecionar análise</option>
                         @foreach ($bundles as $key => $bundle)
                             <option value="{{ $key }}" data-document-type="{{ $bundle['document_type'] ?? 'both' }}" @selected(old('report_type') === $key)>
                                 {{ $bundle['title'] }}
                             </option>
                         @endforeach
                     </select>
-                    <p class="text-xs text-slate-500">PF executa 2 fontes consolidadas prioritárias. PJ executa o pacote completo do dossiê empresarial.</p>
+                    <p class="text-xs text-slate-500">PF executa 2 fontes consolidadas prioritárias. PJ executa o pacote completo da análise empresarial.</p>
                 </div>
                 <div class="space-y-1">
                     <label class="text-xs font-bold uppercase tracking-wide text-slate-600">Pedido pago (opcional)</label>
@@ -155,7 +155,7 @@
                 </div>
                 <div class="md:col-span-2">
                     <button class="btn-primary inline-flex items-center gap-2" @disabled(!$apibrasilConfigured) data-submit-button>
-                        <span data-submit-label>Gerar dossiê</span>
+                        <span data-submit-label>Fazer análise</span>
                         <svg data-submit-spinner class="hidden h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
                             <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.3" stroke-width="3"></circle>
                             <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
@@ -294,7 +294,7 @@
 
                                     <form method="POST" action="{{ route('admin.management.apibrasil-consultations.forward', $consultation) }}" class="space-y-2">
                                         @csrf
-                                        <select name="analyst_user_id" class="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs">
+                                        <select name="analyst_user_id" class="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs" @disabled($consultation->status !== 'success' || $consultation->forwarded_at !== null)>
                                             <option value="">Encaminhar para analista</option>
                                             @foreach ($analysts as $analyst)
                                                 <option value="{{ $analyst->id }}" @selected((int) $consultation->analyst_user_id === (int) $analyst->id)>
@@ -302,8 +302,8 @@
                                                 </option>
                                             @endforeach
                                         </select>
-                                        <button class="rounded-md bg-cyan-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700" @disabled($consultation->status !== 'success')>
-                                            Encaminhar
+                                        <button class="rounded-md bg-cyan-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-60" @disabled($consultation->status !== 'success' || $consultation->forwarded_at !== null)>
+                                            {{ $consultation->forwarded_at ? 'Encaminhado' : 'Encaminhar' }}
                                         </button>
                                     </form>
 

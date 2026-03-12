@@ -29,4 +29,14 @@ class RegularizacaoServicePricePersistenceTest extends TestCase
 
         $this->assertSame('25.50', number_format((float) $service->preco, 2, '.', ''));
     }
+
+    public function test_regularizacao_page_exposes_cpron_service_and_selection_guidance(): void
+    {
+        $response = $this->get(route('regularizacao.index'));
+
+        $response->assertOk();
+        $response->assertSee('Pesquisa CPRON - Cartório');
+        $response->assertSee('Clique em um dos serviços para continuar.');
+        $response->assertSee('Clique para selecionar');
+    }
 }

@@ -12,7 +12,7 @@
     <div class="space-y-5">
         <section>
             <h1 class="panel-title">Módulo de Contratos</h1>
-            <p class="panel-subtitle mt-1">O cliente recebe o link de aceite, paga a entrada pelo próprio link e, após a entrada confirmada, passa a ver as parcelas restantes no portal dele.</p>
+            <p class="panel-subtitle mt-1">Ao criar o contrato, o cliente recebe o link de aceite e também o acesso à área do cliente por WhatsApp e e-mail quando disponíveis.</p>
         </section>
 
         @if (session('success'))
@@ -97,11 +97,11 @@
                             <td class="px-4 py-3">
                                 <div class="space-y-2 text-xs text-slate-600">
                                     @if(!$contract->accepted_at)
-                                        <div class="rounded-lg border border-cyan-200 bg-cyan-50/70 px-3 py-2">Aguardando cliente aceitar o link para liberar cobranças.</div>
+                                        <div class="rounded-lg border border-cyan-200 bg-cyan-50/70 px-3 py-2">Link de aceite enviado. O cliente já pode acessar o portal e concluir a contratação.</div>
                                     @elseif($contract->portal_access_sent_at)
-                                        <div class="rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2">Portal liberado. As parcelas aparecem no painel do cliente.</div>
+                                        <div class="rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2">Acesso ao portal enviado. O cliente consegue entrar na área dele com as credenciais provisórias.</div>
                                     @else
-                                        <div class="rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2">Entrada liberada no link de aceite. O portal libera após o pagamento da entrada.</div>
+                                        <div class="rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2">Cobranças liberadas. Se necessário, reenviar os acessos manualmente para o cliente.</div>
                                     @endif
                                 </div>
                             </td>

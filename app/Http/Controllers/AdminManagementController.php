@@ -32,10 +32,6 @@ class AdminManagementController extends Controller
 
     private const FAKE_CLIENT_EMAIL_DOMAIN = '@cpfclean.fake';
 
-    private const REGULARIZACAO_SERVICE_SLUG = 'cpf-clean-brasil';
-
-    private const REGULARIZACAO_SERVICE_DEFAULT_PRICE = 200.00;
-
     public function dashboard(): RedirectResponse
     {
         return redirect()->route('admin.orders.index');
@@ -191,7 +187,7 @@ class AdminManagementController extends Controller
 
     public function integrations(): View
     {
-        $regularizacaoService = Service::query()->where('slug', self::REGULARIZACAO_SERVICE_SLUG)->first();
+        $publicServices = $this->publicServicesForAdmin();
 
         $integrations = [
             'asaas' => [
@@ -223,10 +219,7 @@ class AdminManagementController extends Controller
                 'whatsapp_number' => (string) config('services.cpfclean.whatsapp_number'),
             ],
             'regularizacao_service' => [
-                'name' => (string) ($regularizacaoService?->nome ?: 'pesquisa CPF CLEAN BRASIL'),
-                'slug' => self::REGULARIZACAO_SERVICE_SLUG,
-                'price' => (float) ($regularizacaoService?->preco ?? self::REGULARIZACAO_SERVICE_DEFAULT_PRICE),
-                'active' => (bool) ($regularizacaoService?->ativo ?? true),
+                'services' => $publicServices,
             ],
         ];
 
@@ -240,28 +233,31 @@ class AdminManagementController extends Controller
         ])['integration_group'];
 
         if ($group === 'regularizacao_service') {
-            $service = $this->updateRegularizacaoService($request);
+            $services = $this->updateRegularizacaoService($request);
 
             Log::info('Produto administrativo atualizado.', [
                 'group' => $group,
-                'service_id' => $service->id,
-                'service_slug' => $service->slug,
+                'service_slugs' => $services->pluck('slug')->values()->all(),
                 'admin_user_id' => (int) $request->user()->id,
             ]);
 
             $adminAuditService->record(
                 $request->user(),
-                'service_price_updated',
-                $service,
-                'Valor do produto publico atualizado no admin.',
+                'service_catalog_updated',
+                'catalogo-publico',
+                'Catálogo de produtos publicos atualizado no admin.',
                 [
                     'group' => $group,
-                    'price' => (float) $service->preco,
-                    'active' => (bool) $service->ativo,
+                    'services' => $services->map(fn (Service $service) => [
+                        'slug' => $service->slug,
+                        'name' => $service->nome,
+                        'price' => (float) $service->preco,
+                        'active' => (bool) $service->ativo,
+                    ])->values()->all(),
                 ]
             );
 
-            return back()->with('success', 'Valor da pesquisa atualizado com sucesso.');
+            return back()->with('success', 'Catálogo público atualizado com sucesso.');
         }
 
         $map = match ($group) {
@@ -368,26 +364,71 @@ class AdminManagementController extends Controller
         ];
     }
 
-    private function updateRegularizacaoService(Request $request): Service
+    private function updateRegularizacaoService(Request $request): \Illuminate\Support\Collection
     {
-        $data = $request->validate([
-            'regularizacao_service_price' => ['required', 'numeric', 'min:1', 'max:999999.99'],
-        ], [
-            'regularizacao_service_price.required' => 'Informe o valor da pesquisa.',
-            'regularizacao_service_price.numeric' => 'Informe um valor numérico válido para a pesquisa.',
-            'regularizacao_service_price.min' => 'O valor da pesquisa deve ser maior que zero.',
-        ]);
+        $definitions = $this->publicServiceDefinitions();
 
-        return Service::query()->updateOrCreate(
-            ['slug' => self::REGULARIZACAO_SERVICE_SLUG],
-            [
-                'nome' => 'pesquisa CPF CLEAN BRASIL',
-                'descricao' => 'Diagnóstico consultivo do CPF ou CNPJ com análise especializada e plano de direcionamento.',
-                'icone' => 'cpf clean',
-                'preco' => round((float) $data['regularizacao_service_price'], 2),
-                'ativo' => true,
-            ]
-        );
+        $rules = [];
+        $messages = [];
+
+        foreach ($definitions as $slug => $definition) {
+            $field = 'service_prices.'.$slug;
+            $rules[$field] = ['required', 'numeric', 'min:5', 'max:999999.99'];
+            $messages[$field.'.required'] = 'Informe o valor do serviço '.$definition['name'].'.';
+            $messages[$field.'.numeric'] = 'Informe um valor numérico válido para '.$definition['name'].'.';
+            $messages[$field.'.min'] = 'O valor do serviço '.$definition['name'].' deve ser no mínimo R$ 5,00.';
+        }
+
+        /** @var array{service_prices: array<string, numeric-string|int|float>} $data */
+        $data = $request->validate($rules, $messages);
+
+        return collect($definitions)->map(function (array $definition, string $slug) use ($data) {
+            return Service::query()->updateOrCreate(
+                ['slug' => $slug],
+                [
+                    'nome' => (string) $definition['name'],
+                    'descricao' => (string) $definition['description'],
+                    'icone' => (string) $definition['icon'],
+                    'preco' => round((float) ($data['service_prices'][$slug] ?? $definition['default_price']), 2),
+                    'ativo' => (bool) ($definition['active'] ?? true),
+                ]
+            );
+        })->values();
+    }
+
+    /**
+     * @return array<string, array{name: string, description: string, icon: string, default_price: float, active: bool}>
+     */
+    private function publicServiceDefinitions(): array
+    {
+        /** @var array<string, array{name: string, description: string, icon: string, default_price: float, active: bool}> $definitions */
+        $definitions = config('cpfclean_services.public_catalog', []);
+
+        return $definitions;
+    }
+
+    /**
+     * @return array<int, array{slug: string, name: string, description: string, icon: string, price: float, active: bool}>
+     */
+    private function publicServicesForAdmin(): array
+    {
+        $definitions = $this->publicServiceDefinitions();
+
+        return collect($definitions)
+            ->map(function (array $definition, string $slug): array {
+                $service = Service::query()->where('slug', $slug)->first();
+
+                return [
+                    'slug' => $slug,
+                    'name' => (string) ($service?->nome ?: $definition['name']),
+                    'description' => (string) ($service?->descricao ?: $definition['description']),
+                    'icon' => (string) ($service?->icone ?: $definition['icon']),
+                    'price' => (float) ($service?->preco ?? $definition['default_price']),
+                    'active' => (bool) ($service?->ativo ?? ($definition['active'] ?? true)),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     public function messages(Request $request): View
@@ -587,6 +628,7 @@ class AdminManagementController extends Controller
             'cpf_cnpj' => ['nullable', 'string', 'max:20'],
             'whatsapp' => ['nullable', 'string', 'max:20'],
             'pix_key' => ['nullable', 'string', 'max:120'],
+            'pix_key_type' => ['nullable', Rule::in(['cpf', 'cnpj', 'email', 'telefone', 'aleatoria'])],
         ]);
 
         $user = User::create([
@@ -597,6 +639,7 @@ class AdminManagementController extends Controller
             'cpf_cnpj' => $data['cpf_cnpj'] ?: null,
             'whatsapp' => preg_replace('/\D+/', '', (string) ($data['whatsapp'] ?? '')),
             'pix_key' => $data['pix_key'] ?: null,
+            'pix_key_type' => $data['pix_key_type'] ?: null,
         ]);
 
         if (in_array($user->role, ['analista', 'vendedor'], true)) {
@@ -645,7 +688,7 @@ class AdminManagementController extends Controller
         $status = Password::sendResetLink(['email' => (string) $vendor->email]);
 
         if ($status === Password::RESET_LINK_SENT) {
-            $response = back()->with('success', "Vendedor criado e e-mail de definição de senha enviado para {$vendor->email}.");
+            $response = back()->with('success', "Cadastro de analista realizado e e-mail de definição de senha enviado para {$vendor->email}.");
 
             if (app()->isLocal()) {
                 $response->with('reset_preview', [
@@ -657,8 +700,8 @@ class AdminManagementController extends Controller
             return $response;
         }
 
-        return back()->with('success', 'Vendedor criado com sucesso.')
-            ->withErrors(['reset_link' => "Vendedor criado, mas não foi possível enviar reset agora para {$vendor->email}."]);
+        return back()->with('success', 'Cadastro de analista realizado com sucesso.')
+            ->withErrors(['reset_link' => "Cadastro realizado, mas não foi possível enviar reset agora para {$vendor->email}."]);
     }
 
     public function sendResetLink(User $user): RedirectResponse
@@ -691,6 +734,8 @@ class AdminManagementController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'pix_key' => ['nullable', 'string', 'max:120'],
+            'pix_key_type' => ['nullable', Rule::in(['cpf', 'cnpj', 'email', 'telefone', 'aleatoria'])],
         ], [
             'password.min' => 'A nova senha deve ter no mínimo 8 caracteres.',
             'password.confirmed' => 'A confirmação da nova senha não confere.',
@@ -712,6 +757,19 @@ class AdminManagementController extends Controller
         if (filled($data['password'] ?? null)) {
             $changes['password'] = ['updated' => true];
             $user->password = Hash::make((string) $data['password']);
+        }
+
+        $normalizedPixKey = trim((string) ($data['pix_key'] ?? '')) ?: null;
+        $normalizedPixType = trim((string) ($data['pix_key_type'] ?? '')) ?: null;
+
+        if ((string) ($user->pix_key ?? '') !== (string) ($normalizedPixKey ?? '')) {
+            $changes['pix_key'] = [$user->pix_key, $normalizedPixKey];
+            $user->pix_key = $normalizedPixKey;
+        }
+
+        if ((string) ($user->pix_key_type ?? '') !== (string) ($normalizedPixType ?? '')) {
+            $changes['pix_key_type'] = [$user->pix_key_type, $normalizedPixType];
+            $user->pix_key_type = $normalizedPixType;
         }
 
         $user->save();
