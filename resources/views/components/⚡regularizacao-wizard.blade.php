@@ -22,6 +22,7 @@ new class extends Component
     public ?int $referred_by_user_id = null;
     public ?string $referred_by_name = null;
     public ?string $referred_by_code = null;
+    public bool $existing_charge_notice = false;
     public array $payment_session = [];
     public array $services = [];
 
@@ -29,6 +30,7 @@ new class extends Component
     {
         $this->loadServices();
         $this->resolveReferralFromQuery();
+        $this->existing_charge_notice = request()->boolean('existing_charge');
 
         $this->order_id = request()->integer('order_id') ?: null;
 
@@ -72,6 +74,18 @@ new class extends Component
         } catch (\Throwable) {
             $this->payment_session = [];
         }
+    }
+
+    private function redirectToSuccess(int $orderId, bool $existingCharge = false)
+    {
+        if ($existingCharge) {
+            $this->existing_charge_notice = true;
+        }
+
+        return $this->redirect(route('regularizacao.sucesso', array_filter([
+            'order_id' => $orderId,
+            'existing_charge' => $this->existing_charge_notice ? 1 : null,
+        ], static fn ($value) => $value !== null)), navigate: false);
     }
 
     private function resolveReferralFromQuery(): void
@@ -236,12 +250,13 @@ new class extends Component
                 if ($order->pagamento_status === 'pago') {
                     $this->hydrateFromOrder($order->id);
 
-                    return $this->redirect(route('regularizacao.sucesso', ['order_id' => $order->id]), navigate: false);
+                    return $this->redirectToSuccess($order->id);
                 }
 
                 $existingSession = $checkoutService->getCheckoutSessionForOrder($order);
 
                 if ($existingSession && $order->pagamento_status !== 'falhou') {
+                    $this->existing_charge_notice = true;
                     $this->payment_session = $existingSession;
                     $this->payment_method = $existingSession['billing_type'] === 'BOLETO' || $existingSession['billing_type'] === 'CREDIT_CARD'
                         ? $existingSession['billing_type']
@@ -285,7 +300,7 @@ new class extends Component
         if ($order->pagamento_status === 'pago') {
             $this->hydrateFromOrder($order->id);
 
-            $this->redirect(route('regularizacao.sucesso', ['order_id' => $order->id]), navigate: false);
+            $this->redirectToSuccess($order->id, $this->hasActivePaymentSession);
 
             return;
         }
@@ -297,6 +312,8 @@ new class extends Component
 
             if ($order->pagamento_status === 'pago') {
                 $this->hydrateFromOrder($order->id);
+
+                $this->redirectToSuccess($order->id, true);
 
                 return;
             }
@@ -674,6 +691,9 @@ new class extends Component
                         <div>
                             <h2 class="text-base font-bold text-slate-800">4. Pedido finalizado</h2>
                             <p class="mt-1 text-sm text-slate-500">Seu protocolo foi gerado com sucesso.</p>
+                            @if ($existing_charge_notice)
+                                <p class="mt-1 text-sm text-slate-500">Identificamos uma cobrança já existente para este pedido. O pagamento foi compensado com sucesso e seu protocolo já foi liberado.</p>
+                            @endif
                             <p class="mt-1 text-sm text-slate-500">Um dos nossos analistas entrará em contato no numero WhatsApp que você informou em instantes.</p>
                         </div>
 
