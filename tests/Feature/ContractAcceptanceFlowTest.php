@@ -69,6 +69,9 @@ class ContractAcceptanceFlowTest extends TestCase
         $showResponse->assertOk();
         $showResponse->assertSee('Confissão de Dívida');
         $showResponse->assertSee('Cláusula 1', false);
+        $showResponse->assertSee('VEX INVEST LTDA / CPF Clean Brasil', false);
+        $showResponse->assertSee('contato@cpfclean.com.br', false);
+        $showResponse->assertDontSee('INSIGHT CONSULTORIA LTDA', false);
 
         $response = $this->post(route('contracts.accept.store', $contract->acceptance_token), [
             'accepted_name' => 'Cliente de Teste',
@@ -86,6 +89,14 @@ class ContractAcceptanceFlowTest extends TestCase
 
         $pdfResponse = $this->get(route('contracts.accept.pdf', $contract->acceptance_token));
         $pdfResponse->assertOk();
+
+        $pdfHtml = view('contracts.accepted-pdf', [
+            'contract' => $contract->fresh(['order', 'user', 'analyst', 'installments']),
+        ])->render();
+
+        $this->assertStringContainsString('VEX INVEST LTDA / CPF Clean Brasil', $pdfHtml);
+        $this->assertStringContainsString('contato@cpfclean.com.br', $pdfHtml);
+        $this->assertStringNotContainsString('INSIGHT CONSULTORIA LTDA', $pdfHtml);
     }
 
     public function test_contract_charges_are_only_issued_after_acceptance(): void

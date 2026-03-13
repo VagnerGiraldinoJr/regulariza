@@ -2,8 +2,6 @@
     $sortedInstallments = $contract->installments->sortBy('installment_number')->values();
     $entryInstallment = $sortedInstallments->firstWhere('installment_number', 0);
     $remainingInstallments = $sortedInstallments->filter(fn ($installment) => (int) $installment->installment_number > 0)->values();
-    $creditorName = 'INSIGHT CONSULTORIA LTDA - CPF Clean Brasil';
-    $creditorCnpj = '44.156.681/0001-57';
     $foro = trim((string) config('app.server_city', 'Ponta Grossa')).' / '.trim((string) config('app.server_uf', 'PR'));
     $serviceDescription = trim((string) ($contract->order?->service?->descricao ?: 'Assessoria consultiva, diagnóstico cadastral e condução operacional do processo de regularização contratado pelo cliente.'));
 @endphp
@@ -13,7 +11,7 @@
     <p class="contract-terms__intro">Instrumento particular com força de título executivo extrajudicial.</p>
 
     <div class="contract-terms__block">
-        <p><strong>CREDORA:</strong> {{ $creditorName }}, inscrita no CNPJ nº {{ $creditorCnpj }}, operação administrativa da CPF Clean Brasil.</p>
+        <p><strong>CREDORA:</strong> VEX INVEST LTDA / CPF Clean Brasil, inscrita no CNPJ nº 44.156.681/0001-57, operação administrativa da CPF Clean Brasil - email: contato@cpfclean.com.br</p>
         <p><strong>DEVEDOR(A):</strong> {{ $contract->user?->name ?: '-' }}, CPF/CNPJ {{ $contract->user?->cpf_cnpj ?: '-' }}, e-mail {{ $contract->user?->email ?: '-' }}, telefone {{ $contract->user?->whatsapp ?: '-' }}.</p>
     </div>
 
