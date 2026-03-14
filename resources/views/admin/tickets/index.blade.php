@@ -9,39 +9,68 @@
         $priorityMap = [
             'nova' => ['label' => 'Nova', 'class' => 'badge-neutral'],
             'baixa' => ['label' => 'Baixa', 'class' => 'badge-success'],
-            'media' => ['label' => 'Média', 'class' => 'badge-info'],
+            'media' => ['label' => 'Media', 'class' => 'badge-info'],
             'alta' => ['label' => 'Alta', 'class' => 'badge-warning'],
-            'critica' => ['label' => 'Crítica', 'class' => 'badge-danger'],
+            'critica' => ['label' => 'Critica', 'class' => 'badge-danger'],
         ];
     @endphp
+
     <div class="space-y-5">
-        <section>
-            <h1 class="panel-title">Dashboard SAC</h1>
-            <p class="panel-subtitle mt-1">Visão operacional de atendimento com foco nos tickets sem atendente.</p>
+        <section class="hero-card p-5 lg:p-6">
+            <div class="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+                <div>
+                    <p class="hero-card__eyebrow">Atendimento</p>
+                    <h1 class="hero-card__title">Dashboard SAC</h1>
+                    <p class="hero-card__lead">Fila operacional dos chamados sem atendente atribuido, com foco em distribuicao rapida e leitura de prioridade da carteira.</p>
+                    <div class="mt-5 flex flex-wrap gap-2">
+                        <span class="summary-pill">Fila aberta: {{ $abertos }}</span>
+                        <span class="summary-pill">Sem atendente: {{ $semAtendente }}</span>
+                        <span class="summary-pill">Resolvidos no mes: {{ $resolvidosMes }}</span>
+                    </div>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <article class="hero-stat">
+                        <p class="hero-stat__label">Criticos</p>
+                        <p class="hero-stat__value">{{ $criticos }}</p>
+                        <p class="hero-stat__meta">Tickets criticos ainda sem dono no SAC.</p>
+                    </article>
+                    <article class="hero-stat">
+                        <p class="hero-stat__label">Aguardando atribuicao</p>
+                        <p class="hero-stat__value">{{ $semAtendente }}</p>
+                        <p class="hero-stat__meta">Chamados prontos para alguem assumir agora.</p>
+                    </article>
+                </div>
+            </div>
         </section>
 
         <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div class="metric-card metric-soft-blue">
-                <h3>{{ $abertos }}</h3>
-                <p>Tickets abertos</p>
-            </div>
-            <div class="metric-card metric-soft-amber">
-                <h3>{{ $semAtendente }}</h3>
-                <p>Sem atendente</p>
-            </div>
-            <div class="metric-card metric-soft-red">
-                <h3>{{ $criticos }}</h3>
-                <p>Críticos na fila</p>
-            </div>
-            <div class="metric-card metric-soft-green">
-                <h3>{{ $resolvidosMes }}</h3>
-                <p>Resolvidos no mês</p>
-            </div>
+            <article class="insight-tile insight-tile--cyan">
+                <p class="insight-tile__label">Tickets abertos</p>
+                <p class="insight-tile__value">{{ $abertos }}</p>
+                <p class="insight-tile__meta">Base total da fila em aberto.</p>
+            </article>
+            <article class="insight-tile insight-tile--amber">
+                <p class="insight-tile__label">Sem atendente</p>
+                <p class="insight-tile__value">{{ $semAtendente }}</p>
+                <p class="insight-tile__meta">Ponto de atencao para distribuicao imediata.</p>
+            </article>
+            <article class="insight-tile insight-tile--rose">
+                <p class="insight-tile__label">Criticos</p>
+                <p class="insight-tile__value">{{ $criticos }}</p>
+                <p class="insight-tile__meta">Itens com potencial de maior impacto operacional.</p>
+            </article>
+            <article class="insight-tile insight-tile--emerald">
+                <p class="insight-tile__label">Resolvidos no mes</p>
+                <p class="insight-tile__value">{{ $resolvidosMes }}</p>
+                <p class="insight-tile__meta">Volume encerrado no periodo atual.</p>
+            </article>
         </section>
 
         <section class="panel-card overflow-hidden">
             <div class="border-b border-slate-300/50 bg-white/15 px-4 py-3">
-                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Tickets pendentes de atribuição</h2>
+                <p class="section-kicker">Fila pendente</p>
+                <h2 class="mt-2 text-sm font-black uppercase tracking-[0.18em] text-slate-700">Tickets sem atendente</h2>
             </div>
 
             <div class="overflow-x-auto">
@@ -53,7 +82,7 @@
                             <th class="px-4 py-3">Pedido</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Prioridade</th>
-                            <th class="px-4 py-3 text-right">Ações</th>
+                            <th class="px-4 py-3 text-right">Acoes</th>
                         </tr>
                     </thead>
                     <tbody>

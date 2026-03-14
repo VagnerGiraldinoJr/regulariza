@@ -22,9 +22,6 @@ class OrdersController extends Controller
     {
         $this->authorize('viewAny', Order::class);
 
-        $documento = preg_replace('/\D/', '', (string) $request->user()->cpf_cnpj);
-        $tipoDocumento = strlen($documento) === 14 ? 'cnpj' : 'cpf';
-
         $ordersQuery = $request->user()
             ->orders()
             ->with('service');
@@ -55,85 +52,43 @@ class OrdersController extends Controller
             'pendentes' => (clone $referralOrdersQuery)->where('pagamento_status', '!=', 'pago')->count(),
         ];
 
+        $contractsQuery = $request->user()->contracts();
+        $installmentsQuery = ContractInstallment::query()
+            ->whereHas('contract', fn ($query) => $query->where('user_id', $request->user()->id));
+        $ticketsQuery = $request->user()->sacTickets();
+
+        $portfolioSummary = [
+            'contracts_total' => (clone $contractsQuery)->count(),
+            'contracts_active' => (clone $contractsQuery)->whereIn('status', ['aguardando_aceite', 'aguardando_entrada', 'ativo'])->count(),
+            'open_installments' => (clone $installmentsQuery)->where('status', '!=', 'pago')->count(),
+            'open_installments_total' => (float) (clone $installmentsQuery)->where('status', '!=', 'pago')->sum('amount'),
+            'paid_installments_total' => (float) (clone $installmentsQuery)->where('status', 'pago')->sum('amount'),
+            'support_open' => (clone $ticketsQuery)->whereIn('status', ['aberto', 'em_atendimento', 'aguardando_cliente'])->count(),
+        ];
+
+        $supportSummary = [
+            'total' => (clone $ticketsQuery)->count(),
+            'open' => (clone $ticketsQuery)->whereIn('status', ['aberto', 'em_atendimento', 'aguardando_cliente'])->count(),
+            'resolved' => (clone $ticketsQuery)->whereIn('status', ['resolvido', 'fechado'])->count(),
+        ];
+
+        $upcomingInstallments = ContractInstallment::query()
+            ->whereHas('contract', fn ($query) => $query->where('user_id', $request->user()->id))
+            ->with(['contract.order', 'contract.analyst'])
+            ->where('status', '!=', 'pago')
+            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('due_date')
+            ->limit(4)
+            ->get();
+
         return view('portal.dashboard', [
             'orders' => $orders,
             'stats' => $stats,
-            'creditReport' => $this->sampleCreditReport($tipoDocumento, $request),
             'referralOrders' => $referralOrders,
             'referralStats' => $referralStats,
-        ]);
-    }
-
-    private function sampleCreditReport(string $tipoDocumento, Request $request): array
-    {
-        $base = [
-            'data_consulta' => now()->format('d/m/Y H:i'),
-            'diagnostico' => [
-                'risco' => 'Moderado',
-                'rating' => 'B',
-                'conclusao' => 'Negociação cautelosa',
-            ],
-            'indicadores' => [
-                'prob_inadimplencia' => 30.0,
-                'limite_sugerido' => 10695.00,
-                'renda_estimada' => 35650.00,
-                'score' => 686,
-                'pontualidade_pagamento' => 95.22,
-            ],
-            'resumo' => [
-                'saude_financeira' => 'Regular',
-                'capacidade_mensal' => 3208.50,
-                'limite_credito_mensal' => 10695.00,
-                'comprometimento_renda' => '30%',
-                'busca_credito_12m' => 'Moderada',
-                'endividamento_credito' => 'Baixo',
-            ],
-            'ocorrencias' => [
-                ['item' => 'RGI - Registro Geral de Inadimplentes', 'status' => 'Nada consta'],
-                ['item' => 'Cheque sem fundo Bacen', 'status' => 'Nada consta'],
-                ['item' => 'Protesto nacional', 'status' => 'Nada consta'],
-                ['item' => 'Total de pendências', 'status' => 'Nada consta'],
-            ],
-            'enderecos' => [
-                'Rui Barbosa, 169, Centro, Montes Claros - MG, CEP: 39400-051',
-                'João Anastácio, 207, Chácaras do Paiva, Sete Lagoas - MG, CEP: 35700-165',
-                'Atlântica, 1551, Centro, Alcobaça - BA, CEP: 04591-001',
-            ],
-        ];
-
-        if ($tipoDocumento === 'cnpj') {
-            return array_merge($base, [
-                'tipo' => 'CNPJ',
-                'dados_cadastrais' => [
-                    'razao_social' => $request->user()->name ?: 'EMPRESA EXEMPLO LTDA',
-                    'cnpj' => $request->user()->cpf_cnpj ?: '00.000.000/0001-00',
-                    'situacao_cnpj' => 'ATIVA',
-                    'porte' => 'Médio porte',
-                    'fundacao' => '12/08/2010',
-                    'quadro_social' => '3 sócios e 1 administrador',
-                    'cliente_premium' => 'SIM',
-                ],
-                'participacoes' => [],
-            ]);
-        }
-
-        return array_merge($base, [
-            'tipo' => 'CPF',
-            'dados_cadastrais' => [
-                'nome' => $request->user()->name ?: 'Cliente Regulariza',
-                'cpf' => $request->user()->cpf_cnpj ?: '000.000.000-00',
-                'data_nascimento' => '23/11/1958 - Domingo',
-                'situacao_cpf' => 'REGULAR',
-                'nome_mae' => 'EMILIA BOUQUARD BASTOS',
-                'classe_social' => 'A1',
-                'cliente_premium' => 'SIM',
-                'telefones' => '98245-5932, 99813-3051',
-            ],
-            'participacoes' => [
-                ['empresa' => 'PAIOL DE MINAS COMERCIO DE ALIMENTOS LTDA', 'cnpj' => '01.493.955/0001-90', 'participacao' => '100%'],
-                ['empresa' => 'EMPRESA BRASILEIRA DE HOTELARIA E INCORPORADORA LTDA', 'cnpj' => '03.566.041/0002-19', 'participacao' => '100%'],
-                ['empresa' => 'C.H.B. BASTOS LTDA', 'cnpj' => '46.626.329/0001-63', 'participacao' => '100%'],
-            ],
+            'portfolioSummary' => $portfolioSummary,
+            'supportSummary' => $supportSummary,
+            'upcomingInstallments' => $upcomingInstallments,
         ]);
     }
 
@@ -161,6 +116,9 @@ class OrdersController extends Controller
             'total' => (clone $ordersQuery)->count(),
             'pagos' => (clone $ordersQuery)->where('pagamento_status', 'pago')->count(),
             'pendentes' => (clone $ordersQuery)->where('status', 'pendente')->count(),
+            'em_andamento' => (clone $ordersQuery)->where('status', 'em_andamento')->count(),
+            'total_value' => (float) (clone $ordersQuery)->sum('valor'),
+            'paid_value' => (float) (clone $ordersQuery)->where('pagamento_status', 'pago')->sum('valor'),
             'commissions_pending' => (int) SellerCommission::query()->whereIn('status', ['pending', 'available'])->count(),
             'sac_open' => (int) SacTicket::query()->whereIn('status', ['aberto', 'em_atendimento', 'aguardando_cliente'])->count(),
             'leads_unassigned' => (int) Lead::query()->whereNull('referred_by_user_id')->count(),

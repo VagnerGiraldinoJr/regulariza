@@ -74,7 +74,8 @@ Route::get('/portal/convite/{token}', PortalInviteController::class)->middleware
 
 Route::get('/dashboard', function (Request $request) {
     return match ($request->user()?->role) {
-        'admin', 'atendente' => redirect()->route('admin.orders.index'),
+        'admin' => redirect()->route('admin.management.dashboard'),
+        'atendente' => redirect()->route('admin.orders.index'),
         'analista', 'vendedor' => redirect()->route('analyst.dashboard'),
         default => redirect()->route('portal.dashboard'),
     };

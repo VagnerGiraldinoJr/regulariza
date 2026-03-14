@@ -32,9 +32,73 @@ class AdminManagementController extends Controller
 
     private const FAKE_CLIENT_EMAIL_DOMAIN = '@cpfclean.fake';
 
-    public function dashboard(): RedirectResponse
+    public function dashboard(): View
     {
-        return redirect()->route('admin.orders.index');
+        $inicioMes = now()->startOfMonth();
+        $fimMes = now()->endOfMonth();
+
+        $monthlyRevenue = (float) Order::query()
+            ->where('pagamento_status', 'pago')
+            ->whereBetween('pago_em', [$inicioMes, $fimMes])
+            ->sum('valor')
+            + (float) ContractInstallment::query()
+                ->where('status', 'pago')
+                ->whereBetween('paid_at', [$inicioMes, $fimMes])
+                ->sum('amount');
+
+        $stats = [
+            'orders_total' => (int) Order::query()->count(),
+            'orders_paid' => (int) Order::query()->where('pagamento_status', 'pago')->count(),
+            'contracts_active' => (int) Contract::query()->whereIn('status', ['aguardando_aceite', 'aguardando_entrada', 'ativo'])->count(),
+            'contracts_acceptance_pending' => (int) Contract::query()->where('status', 'aguardando_aceite')->count(),
+            'sac_open' => (int) SacTicket::query()->whereIn('status', ['aberto', 'em_atendimento', 'aguardando_cliente'])->count(),
+            'leads_unassigned' => (int) Lead::query()->whereNull('referred_by_user_id')->count(),
+            'messages_pending' => (int) WhatsappLog::query()->where('status', 'pendente')->count(),
+            'monthly_revenue' => $monthlyRevenue,
+            'open_installments_total' => (float) ContractInstallment::query()->where('status', '!=', 'pago')->sum('amount'),
+            'payout_requests_open' => (int) SellerCommission::query()
+                ->whereNotNull('payout_requested_at')
+                ->where('status', 'available')
+                ->count(),
+        ];
+
+        $servicePerformance = Order::query()
+            ->with('service')
+            ->where('pagamento_status', 'pago')
+            ->selectRaw('service_id, COUNT(*) as total_count, SUM(valor) as total_value')
+            ->groupBy('service_id')
+            ->orderByDesc('total_value')
+            ->limit(5)
+            ->get();
+
+        $recentOrders = Order::query()
+            ->with(['user', 'service'])
+            ->latest('id')
+            ->limit(5)
+            ->get();
+
+        $priorityTickets = SacTicket::query()
+            ->with(['user', 'order'])
+            ->whereIn('status', ['aberto', 'em_atendimento', 'aguardando_cliente'])
+            ->orderByRaw("CASE prioridade WHEN 'critica' THEN 1 WHEN 'alta' THEN 2 WHEN 'media' THEN 3 WHEN 'baixa' THEN 4 ELSE 5 END")
+            ->latest('id')
+            ->limit(5)
+            ->get();
+
+        $pipeline = [
+            'aguardando_aceite' => (int) Contract::query()->where('status', 'aguardando_aceite')->count(),
+            'aguardando_entrada' => (int) Contract::query()->where('status', 'aguardando_entrada')->count(),
+            'ativo' => (int) Contract::query()->where('status', 'ativo')->count(),
+            'concluido' => (int) Contract::query()->where('status', 'concluido')->count(),
+        ];
+
+        return view('admin.management.dashboard', [
+            'stats' => $stats,
+            'servicePerformance' => $servicePerformance,
+            'recentOrders' => $recentOrders,
+            'priorityTickets' => $priorityTickets,
+            'pipeline' => $pipeline,
+        ]);
     }
 
     public function contractPayments(Request $request): View

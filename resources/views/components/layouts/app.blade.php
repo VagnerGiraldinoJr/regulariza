@@ -136,6 +136,10 @@
                         </a>
 
                         @if ($authUser->role === 'admin')
+                            <a href="{{ route('admin.management.dashboard') }}" class="app-nav-link {{ request()->routeIs('admin.management.dashboard') ? 'is-active' : '' }}">
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5"/><path d="M20 19H4"/><path d="M7 14l3-3 3 2 4-5"/></svg>
+                                <span class="sidebar-label">Dashboard</span>
+                            </a>
                             <a href="{{ route('admin.contracts.index') }}" class="app-nav-link {{ request()->routeIs('admin.contracts.*') ? 'is-active' : '' }}">
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10l3 3v13H4V4h3z"/><path d="M14 4v4h4"/></svg>
                                 <span class="sidebar-label">Contratos</span>

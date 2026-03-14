@@ -46,49 +46,77 @@
             </div>
         </div>
 
-        <section>
-            <h1 class="panel-title">Consultas API Brasil</h1>
-            <p class="panel-subtitle mt-1">Selecione o tipo de análise, execute o pacote de pesquisas e gere o PDF consolidado para a operação.</p>
+        @php
+            $successRate = ($overview['total'] ?? 0) > 0 ? (($overview['success'] ?? 0) / max(1, $overview['total'])) * 100 : 0;
+        @endphp
+
+        <section class="hero-card p-5 lg:p-6">
+            <div class="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+                <div>
+                    <p class="hero-card__eyebrow">Motor de analises</p>
+                    <h1 class="hero-card__title">Consultas API Brasil</h1>
+                    <p class="hero-card__lead">Selecione o tipo de analise, execute o pacote de pesquisas e gere o PDF consolidado da operacao. O painel combina credito, throughput, taxa de sucesso e distribuicao para analistas.</p>
+
+                    <div class="mt-5 flex flex-wrap gap-2">
+                        <span class="summary-pill">Taxa de sucesso: {{ number_format($successRate, 1, ',', '.') }}%</span>
+                        <span class="summary-pill">Consultas com erro: {{ number_format((int) $overview['error']) }}</span>
+                        <span class="summary-pill">Encaminhadas: {{ number_format((int) $overview['forwarded']) }}</span>
+                    </div>
+                </div>
+
+                <div class="grid gap-3 sm:grid-cols-2">
+                    <article class="hero-stat">
+                        <p class="hero-stat__label">Consultas registradas</p>
+                        <p class="hero-stat__value">{{ number_format((int) $overview['total']) }}</p>
+                        <p class="hero-stat__meta">Historico consolidado das execucoes operacionais.</p>
+                    </article>
+                    <article class="hero-stat">
+                        <p class="hero-stat__label">Integracao</p>
+                        <p class="hero-stat__value">{{ $apibrasilConfigured ? 'OK' : 'OFF' }}</p>
+                        <p class="hero-stat__meta">{{ $apibrasilConfigured ? 'Catalogo e token configurados.' : 'Revise token, base URL e catalogo.' }}</p>
+                    </article>
+                </div>
+            </div>
         </section>
 
         <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div class="panel-card p-4">
-                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Saldo de Créditos API Brasil</h2>
+            <div class="insight-tile insight-tile--emerald">
+                <p class="insight-tile__label">Saldo de creditos</p>
                 @if (is_numeric($balance['balance'] ?? null))
-                    <p class="mt-3 text-2xl font-black text-emerald-700">
+                    <p class="insight-tile__value text-emerald-700">
                         R$ {{ number_format((float) $balance['balance'], 2, ',', '.') }}
                     </p>
-                    <p class="mt-1 text-xs text-slate-500">
+                    <p class="insight-tile__meta">
                         Atualizado automaticamente a cada 45s.
                         @if (($balance['status'] ?? 'error') !== 'success')
                             (saldo recuperado do último retorno da API)
                         @endif
                     </p>
                 @else
-                    <p class="mt-3 text-sm font-semibold text-amber-700">Não foi possível ler o saldo agora.</p>
+                    <p class="mt-3 text-sm font-semibold text-amber-700">Nao foi possivel ler o saldo agora.</p>
                     @if (!empty($balance['error_message']))
                         <p class="mt-1 text-xs text-red-700">{{ \Illuminate\Support\Str::limit((string) $balance['error_message'], 160) }}</p>
                     @endif
                 @endif
             </div>
-            <div class="panel-card p-4">
-                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Status da Integração</h2>
+            <div class="insight-tile {{ $apibrasilConfigured ? 'insight-tile--cyan' : 'insight-tile--amber' }}">
+                <p class="insight-tile__label">Status da integracao</p>
                 <p class="mt-3 text-sm">
                     <span class="badge {{ $apibrasilConfigured ? 'badge-success' : 'badge-warning' }}">
                         {{ $apibrasilConfigured ? 'Configurada' : 'Pendente' }}
                     </span>
                 </p>
-                <p class="mt-1 text-xs text-slate-500">Valide Base URL, Token e catálogo antes da pesquisa.</p>
+                <p class="insight-tile__meta">Valide Base URL, Token e catalogo antes de iniciar a pesquisa.</p>
             </div>
-            <div class="panel-card p-4">
-                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Consultas Registradas</h2>
-                <p class="mt-3 text-2xl font-black text-slate-900">{{ number_format((int) $overview['total']) }}</p>
-                <p class="mt-1 text-xs text-slate-500">Historico operacional consolidado.</p>
+            <div class="insight-tile insight-tile--slate">
+                <p class="insight-tile__label">Consultas registradas</p>
+                <p class="insight-tile__value">{{ number_format((int) $overview['total']) }}</p>
+                <p class="insight-tile__meta">Historico operacional consolidado.</p>
             </div>
-            <div class="panel-card p-4">
-                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Encaminhadas</h2>
-                <p class="mt-3 text-2xl font-black text-cyan-700">{{ number_format((int) $overview['forwarded']) }}</p>
-                <p class="mt-1 text-xs text-slate-500">Consultas ja distribuidas para analistas.</p>
+            <div class="insight-tile insight-tile--cyan">
+                <p class="insight-tile__label">Encaminhadas</p>
+                <p class="insight-tile__value text-cyan-700">{{ number_format((int) $overview['forwarded']) }}</p>
+                <p class="insight-tile__meta">Consultas ja distribuidas para analistas.</p>
             </div>
         </section>
 
@@ -104,9 +132,12 @@
 
         <section class="panel-card p-4">
             <div class="mb-3 flex items-center justify-between gap-2">
-                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Nova análise consolidada</h2>
+                <div>
+                    <p class="section-kicker">Execucao</p>
+                    <h2 class="mt-2 text-sm font-black uppercase tracking-[0.18em] text-slate-700">Nova analise consolidada</h2>
+                </div>
                 <span class="badge {{ $apibrasilConfigured ? 'badge-success' : 'badge-warning' }}">
-                    {{ $apibrasilConfigured ? 'Integração configurada' : 'Configure API Brasil em Integrações' }}
+                    {{ $apibrasilConfigured ? 'Integracao configurada' : 'Configure API Brasil em Integracoes' }}
                 </span>
             </div>
             <form method="POST" action="{{ route('admin.management.apibrasil-consultations.store') }}" class="grid gap-3 md:grid-cols-2" data-apibrasil-form>
@@ -169,26 +200,30 @@
 
         <section class="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
             <div class="panel-card p-4">
-                <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Opcoes seguras de manutencao</h2>
+                <p class="section-kicker">Governanca</p>
+                <h2 class="mt-2 text-sm font-black uppercase tracking-[0.18em] text-slate-700">Opcoes seguras de manutencao</h2>
                 <div class="mt-4 grid gap-3 md:grid-cols-3">
-                    <article class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                        <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Excluir com trilha</p>
-                        <p class="mt-2 text-sm leading-6 text-slate-600">Cada remocao de consulta deixa rastro do admin, pedido, documento e relatorios afetados.</p>
+                    <article class="stack-card">
+                        <p class="stack-card__label">Excluir com trilha</p>
+                        <p class="stack-card__meta">Cada remocao de consulta deixa rastro do admin, pedido, documento e relatorios afetados.</p>
                     </article>
-                    <article class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                        <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Revisao tecnica</p>
-                        <p class="mt-2 text-sm leading-6 text-slate-600">Antes de excluir, confira o JSON, HTTP status e se a consulta ja foi encaminhada.</p>
+                    <article class="stack-card">
+                        <p class="stack-card__label">Revisao tecnica</p>
+                        <p class="stack-card__meta">Antes de excluir, confira o JSON, HTTP status e se a consulta ja foi encaminhada.</p>
                     </article>
-                    <article class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-                        <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Visao de limpeza</p>
-                        <p class="mt-2 text-sm leading-6 text-slate-600">Use filtros por sucesso ou erro para higienizar lotes errados sem perder rastreabilidade.</p>
+                    <article class="stack-card">
+                        <p class="stack-card__label">Visao de limpeza</p>
+                        <p class="stack-card__meta">Use filtros por sucesso ou erro para higienizar lotes errados sem perder rastreabilidade.</p>
                     </article>
                 </div>
             </div>
 
             <div class="panel-card p-4">
                 <div class="flex items-center justify-between gap-3">
-                    <h2 class="text-sm font-bold uppercase tracking-wide text-slate-700">Ultimas exclusoes auditadas</h2>
+                    <div>
+                        <p class="section-kicker">Auditoria</p>
+                        <h2 class="mt-2 text-sm font-black uppercase tracking-[0.18em] text-slate-700">Ultimas exclusoes auditadas</h2>
+                    </div>
                     <a href="{{ route('admin.management.audit-logs', ['action' => 'consultation_deleted']) }}" class="text-xs font-semibold text-cyan-700 hover:text-cyan-800">
                         Abrir auditoria
                     </a>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\EnviarAcessoPortalWhatsApp;
 use App\Jobs\EnviarLinkAceiteContratoWhatsApp;
 use App\Models\Contract;
+use App\Models\ContractInstallment;
 use App\Models\Order;
 use App\Services\ContractService;
 use Illuminate\Http\RedirectResponse;
@@ -29,7 +30,19 @@ class ContractController extends Controller
             ->limit(100)
             ->get();
 
-        return view('admin/contracts/index', compact('contracts', 'eligibleOrders'));
+        $stats = [
+            'total' => (int) Contract::query()->count(),
+            'aguardando_aceite' => (int) Contract::query()->where('status', 'aguardando_aceite')->count(),
+            'ativos' => (int) Contract::query()->where('status', 'ativo')->count(),
+            'aceitos' => (int) Contract::query()->whereNotNull('accepted_at')->count(),
+            'honorarios_total' => (float) Contract::query()->sum('fee_amount'),
+            'entradas_total' => (float) Contract::query()->sum('entry_amount'),
+            'parcelas_abertas' => (int) ContractInstallment::query()->where('status', '!=', 'pago')->count(),
+            'parcelas_abertas_total' => (float) ContractInstallment::query()->where('status', '!=', 'pago')->sum('amount'),
+            'pedidos_elegiveis' => (int) $eligibleOrders->count(),
+        ];
+
+        return view('admin/contracts/index', compact('contracts', 'eligibleOrders', 'stats'));
     }
 
     public function store(Request $request, ContractService $contractService): RedirectResponse
