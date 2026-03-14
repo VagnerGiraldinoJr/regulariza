@@ -1,4 +1,7 @@
 import './bootstrap';
+import { createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import Dashboard from './pages/Dashboard';
 
 const TRANSITION_MS = 170;
 
@@ -108,9 +111,24 @@ function setupAppModals() {
     });
 }
 
+function mountFinanceDashboard() {
+    const rootElement = document.querySelector('[data-finance-dashboard-root]');
+    if (!(rootElement instanceof HTMLElement)) {
+        return;
+    }
+
+    const payload = window.__FINANCE_DASHBOARD__;
+    if (!payload || typeof payload !== 'object') {
+        return;
+    }
+
+    createRoot(rootElement).render(createElement(Dashboard, payload));
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     requestAnimationFrame(markReady);
     setupAppModals();
+    mountFinanceDashboard();
 
     document.addEventListener('click', (event) => {
         const link = event.target instanceof Element ? event.target.closest('a[href]') : null;

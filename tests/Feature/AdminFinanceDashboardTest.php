@@ -91,9 +91,11 @@ class AdminFinanceDashboardTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.finance.dashboard'));
 
         $response->assertOk();
+        $response->assertSee('Dashboard Financeiro');
+        $response->assertSee('finance-dashboard-root');
         $response->assertSee('Recebido consolidado');
-        $response->assertSee('Pesquisas / pedidos');
         $response->assertSee('Parcelas de contratos');
+        $response->assertSee('Taxa de recebimento');
         $response->assertSee('R$ 500,00', false);
         $response->assertSee('R$ 200,00', false);
         $response->assertSee('R$ 300,00', false);

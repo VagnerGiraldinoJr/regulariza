@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminFinanceDashboardController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\AdminManagementController;
 use App\Http\Controllers\AnalystPanelController;
@@ -253,7 +254,7 @@ Route::middleware(['auth', 'role:admin,atendente,analista,vendedor'])->prefix('a
     Route::get('/vendedores', [OrdersController::class, 'adminSellers'])
         ->middleware('role:admin')
         ->name('vendors.index');
-    Route::get('/financeiro', [OrdersController::class, 'adminFinance'])
+    Route::get('/financeiro', AdminFinanceDashboardController::class)
         ->middleware('role:admin')
         ->name('finance.dashboard');
 
