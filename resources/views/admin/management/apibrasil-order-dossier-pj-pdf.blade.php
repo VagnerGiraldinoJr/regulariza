@@ -31,6 +31,16 @@
         .pill.danger { background: #fee6e2; color: #8e2218; }
         .note { margin-top: 8px; padding: 8px 10px; border: 1px solid #dce7ef; border-radius: 8px; background: #f8fbfd; color: #355066; font-size: 10px; line-height: 1.45; }
         .footer { margin-top: 18px; border-top: 1px solid #d9e4ef; padding-top: 8px; font-size: 9px; color: #64748b; }
+        .rating-board { width: 100%; border-collapse: separate; border-spacing: 10px; }
+        .rating-panel { border: 1px solid #dce7ef; border-radius: 10px; background: #f8fbfd; padding: 10px; }
+        .rating-panel-title { font-size: 10px; font-weight: 700; color: #36536b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+        .rating-current { font-size: 64px; line-height: 1; font-weight: 700; color: #8a5305; text-align: center; margin-top: 8px; }
+        .rating-scale-table { width: 100%; border-collapse: collapse; }
+        .rating-scale-table td { border: 0; padding: 2px 0; font-size: 11px; }
+        .rating-dot { display: inline-block; width: 14px; height: 12px; border-radius: 2px; margin-right: 6px; }
+        .rating-code { font-weight: 700; color: #243b53; }
+        .rating-current-row { background: #f8ecd8; }
+        .rating-hint { margin-top: 8px; font-size: 9px; color: #64748b; line-height: 1.35; }
     </style>
 </head>
 <body>
@@ -67,6 +77,21 @@
         'BBB+', 'BBB', 'BBB-', 'BB+', 'BB', 'BB-' => 'pill warn',
         default => 'pill danger',
     };
+    $ratingScale = [
+        ['code' => 'AAA', 'color' => '#1f8f3a'],
+        ['code' => 'AA', 'color' => '#2d9b40'],
+        ['code' => 'A', 'color' => '#3aa84a'],
+        ['code' => 'BBB', 'color' => '#5aa134'],
+        ['code' => 'BB', 'color' => '#7b9f2e'],
+        ['code' => 'B', 'color' => '#d08a1a'],
+        ['code' => 'CCC', 'color' => '#d96f16'],
+        ['code' => 'CC', 'color' => '#ce4a19'],
+        ['code' => 'C', 'color' => '#b8321a'],
+        ['code' => 'D', 'color' => '#a1221b'],
+        ['code' => 'E', 'color' => '#8c1515'],
+    ];
+    $ratingCurrent = strtoupper(trim((string) ($rating['sp'] ?? '')));
+    $ratingCurrent = in_array($ratingCurrent, array_column($ratingScale, 'code'), true) ? $ratingCurrent : '-';
     $generatedAt = $meta['generated_at'] ?? now();
     if (is_string($generatedAt) && $generatedAt !== '') {
         $generatedAt = \Illuminate\Support\Carbon::parse($generatedAt);
@@ -132,6 +157,33 @@
 
 <div class="section">
     <h2 class="section-title">Classificação do Risco de Crédito</h2>
+    <table class="rating-board">
+        <tr>
+            <td style="width: 34%;">
+                <div class="rating-panel">
+                    <div class="rating-panel-title">Rating atual</div>
+                    <div class="rating-current">{{ $ratingCurrent }}</div>
+                </div>
+            </td>
+            <td style="width: 66%;">
+                <div class="rating-panel">
+                    <div class="rating-panel-title">Escala de classificação</div>
+                    <table class="rating-scale-table">
+                        @foreach($ratingScale as $scale)
+                            @php $isCurrent = $scale['code'] === $ratingCurrent; @endphp
+                            <tr class="{{ $isCurrent ? 'rating-current-row' : '' }}">
+                                <td style="width:22px;"><span class="rating-dot" style="background: {{ $scale['color'] }}"></span></td>
+                                <td class="rating-code">{{ $scale['code'] }}</td>
+                            </tr>
+                        @endforeach
+                    </table>
+                    <div class="rating-hint">
+                        A faixa de classificação auxilia na estimativa de risco com base no score consolidado.
+                    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
     <table class="table">
         <tr><th>Classificação</th><th>Moody's</th><th>Standard &amp; Poor's</th><th>Fitch</th></tr>
         <tr><td>{{ $rating['classification'] }}</td><td>{{ $rating['moodys'] }}</td><td>{{ $rating['sp'] }}</td><td>{{ $rating['fitch'] }}</td></tr>
