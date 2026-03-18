@@ -275,6 +275,7 @@ class PjResearchReportService
         }
 
         $dados = $this->firstArray([
+            data_get($payload, 'data'),
             data_get($payload, 'response.dados'),
             data_get($payload, 'response.data.dados'),
             data_get($payload, 'response.response.dados'),
