@@ -160,14 +160,7 @@ class ApiBrasilConsultationController extends Controller
             try {
                 $balance = $apiBrasilService->consultarSaldo();
                 $balanceValue = $this->parseMoney($balance['balance'] ?? null);
-
-                if ($balanceValue === null) {
-                    return back()->withErrors([
-                        'apibrasil' => 'Não foi possível validar o saldo da API Brasil agora. Tente novamente em instantes.',
-                    ])->withInput();
-                }
-
-                if ($balanceValue <= 0) {
+                if ($balanceValue !== null && $balanceValue <= 0) {
                     return back()->withErrors([
                         'apibrasil' => 'Saldo insuficiente na API Brasil para executar a análise. Recarregue os créditos e tente novamente.',
                     ])->withInput();
@@ -179,10 +172,6 @@ class ApiBrasilConsultationController extends Controller
                     'report_type' => $reportType,
                     'document' => $documentDigits,
                 ]);
-
-                return back()->withErrors([
-                    'apibrasil' => 'Não foi possível validar o saldo da API Brasil agora. Tente novamente em instantes.',
-                ])->withInput();
             }
         }
 
