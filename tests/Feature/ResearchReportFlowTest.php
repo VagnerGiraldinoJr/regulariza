@@ -131,9 +131,7 @@ class ResearchReportFlowTest extends TestCase
         Http::fake([
             'https://apibrasil.test/api/v2/consulta/cnpj/credits' => Http::sequence()
                 ->push(['data' => ['empresa' => 'Empresa XPTO']], 200)
-                ->push(['error' => 'falha'], 500)
-                ->push(['response' => ['data' => ['dados' => ['resultado' => ['dadoscadastrais' => ['razaosocial' => 'Empresa XPTO LTDA']]]]]], 200)
-                ->push(['response' => ['data' => ['dados' => ['resultado' => ['score' => ['score' => 702]]]]]], 200),
+                ->push(['response' => ['data' => ['dados' => ['resultado' => ['dadoscadastrais' => ['razaosocial' => 'Empresa XPTO LTDA']]]]]], 200),
         ]);
 
         $admin = User::factory()->create(['role' => 'admin']);
@@ -152,13 +150,13 @@ class ResearchReportFlowTest extends TestCase
         $this->assertNotNull($report);
         $this->assertNull($report->order_id);
         $this->assertSame('pj', $report->report_type);
-        $this->assertSame(4, $report->source_count);
-        $this->assertSame(3, $report->success_count);
-        $this->assertSame(1, $report->failure_count);
-        $this->assertSame('partial', $report->status);
-        $this->assertCount(4, $report->items);
+        $this->assertSame(2, $report->source_count);
+        $this->assertSame(2, $report->success_count);
+        $this->assertSame(0, $report->failure_count);
+        $this->assertSame('success', $report->status);
+        $this->assertCount(2, $report->items);
         $this->assertSame(
-            4,
+            2,
             $report->items()->distinct('provider')->count('provider')
         );
 
@@ -167,7 +165,7 @@ class ResearchReportFlowTest extends TestCase
         );
 
         $pdfResponse->assertOk();
-        Http::assertSentCount(4);
+        Http::assertSentCount(2);
     }
 
     private function pfAcertaPayload(): array

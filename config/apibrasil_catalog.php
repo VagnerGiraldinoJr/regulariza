@@ -47,14 +47,6 @@ return [
                     'provider' => 'bureau',
                     'consultation_key' => 'serasa_premium_pj',
                 ],
-                [
-                    'provider' => 'fiscal',
-                    'consultation_key' => 'compliance_complete_pj',
-                ],
-                [
-                    'provider' => 'registry',
-                    'consultation_key' => 'compliance_basic_pj',
-                ],
             ],
         ],
     ],
