@@ -41,7 +41,7 @@ return [
             'sources' => [
                 [
                     'provider' => 'bacen',
-                    'consultation_key' => 'scr_bacen_score_pj',
+                    'consultation_key' => 'analise_credito_business_pj',
                 ],
                 [
                     'provider' => 'bureau',
@@ -147,6 +147,27 @@ return [
                 'scr_bacen_score_pj',
             ],
             'description' => 'Consulta SCR Bacen e score para pessoa jurídica.',
+        ],
+        'analise_credito_business_pj' => [
+            'title' => 'Análise de Crédito Business PJ',
+            'category' => 'analise_credito',
+            'document_type' => 'cnpj',
+            'method' => 'POST',
+            'path' => '/api/v2/consulta/cnpj/credits',
+            'body' => [
+                'tipo' => 'analise-credito-business',
+                'cnpj' => '{document}',
+                'homolog' => true,
+            ],
+            'tipo_fallbacks' => [
+                'analise-credito-business',
+                'analise_credito_business',
+                'analise-credito-business-pj',
+                'analise_credito_business_pj',
+                'credito-business-pj',
+                'credito_business_pj',
+            ],
+            'description' => 'Consulta de crédito empresarial com score, cadastro completo, sócios, restrições e indicadores.',
         ],
         'serasa_premium_pj' => [
             'title' => 'Serasa Premium PJ',
