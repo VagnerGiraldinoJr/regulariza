@@ -142,9 +142,26 @@ class ResearchReportFlowTest extends TestCase
                 'balance' => '120,500',
             ], 200),
             'https://apibrasil.test/api/v2/consulta/cnpj/credits' => Http::sequence()
-                ->push(['data' => ['resultado' => ['score' => ['numero_score' => 642]]], 'message' => 'ok'], 200)
-                ->push(['data' => ['empresa' => 'Empresa XPTO']], 200)
-                ->push(['response' => ['data' => ['dados' => ['resultado' => ['dadoscadastrais' => ['razaosocial' => 'Empresa XPTO LTDA']]]]]], 200),
+                ->push(['data' => ['resultado' => ['score' => ['numero_score' => 642]]], 'message' => 'ok'], 200),
+            'https://apibrasil.test/api/v2/quod/cnpj/credits' => Http::response([
+                'response' => [
+                    'dados' => [
+                        'dados_receita_federal' => [
+                            'razao_social' => 'Empresa XPTO LTDA',
+                            'situacao_receita' => 'ATIVA',
+                        ],
+                        'scores' => [
+                            'ocorrencias' => [
+                                [
+                                    'score' => '642',
+                                    'descr_score' => 'SCORE POSITIVO',
+                                    'probabilidade_inadimplencia' => '12',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ], 200),
         ]);
 
         $admin = User::factory()->create(['role' => 'admin']);
@@ -163,13 +180,13 @@ class ResearchReportFlowTest extends TestCase
         $this->assertNotNull($report);
         $this->assertNull($report->order_id);
         $this->assertSame('pj', $report->report_type);
-        $this->assertSame(3, $report->source_count);
-        $this->assertSame(3, $report->success_count);
+        $this->assertSame(2, $report->source_count);
+        $this->assertSame(2, $report->success_count);
         $this->assertSame(0, $report->failure_count);
         $this->assertSame('success', $report->status);
-        $this->assertCount(3, $report->items);
+        $this->assertCount(2, $report->items);
         $this->assertSame(
-            3,
+            2,
             $report->items()->distinct('provider')->count('provider')
         );
 
@@ -178,7 +195,7 @@ class ResearchReportFlowTest extends TestCase
         );
 
         $pdfResponse->assertOk();
-        Http::assertSentCount(4);
+        Http::assertSentCount(3);
     }
 
     public function test_admin_cannot_generate_report_when_apibrasil_balance_is_zero(): void

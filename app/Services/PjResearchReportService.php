@@ -22,7 +22,9 @@ class PjResearchReportService
         $businessCreditPayload = $this->payloadArray($byKey->get('analise_credito_business_pj'));
         $basicCreditPayload = $this->payloadArray($byKey->get('analise_credito_basic_pj'));
         $creditPjPayload = $this->firstArray([$businessCreditPayload, $basicCreditPayload]);
+        $quodPayload = $this->payloadArray($byKey->get('spc_quod_pj'));
         $serasaPayload = $this->payloadArray($byKey->get('serasa_premium_pj'));
+        $bureauPayload = $this->firstArray([$quodPayload, $serasaPayload]);
         $complianceCompletePayload = $this->payloadArray($byKey->get('compliance_complete_pj'));
         $complianceBasicPayload = $this->payloadArray($byKey->get('compliance_basic_pj'));
         $defineRiscoPayload = $this->payloadArray($byKey->get('define_risco_pj'));
@@ -37,7 +39,7 @@ class PjResearchReportService
             $complianceCompletePayload,
             $basicCreditPayload,
             $businessCreditPayload,
-            $serasaPayload,
+            $bureauPayload,
             $defineRiscoPayload,
             $limitePayload,
         ]);
@@ -45,7 +47,7 @@ class PjResearchReportService
             $basicCreditPayload,
             $businessCreditPayload,
             $complianceBasicPayload,
-            $serasaPayload,
+            $bureauPayload,
             $defineRiscoPayload,
             $limitePayload,
         ]);
@@ -59,7 +61,7 @@ class PjResearchReportService
         $companyName = $this->firstString([
             $this->findStringByKeys($completeResult, ['razao_social_nome_empresarial', 'razao_social', 'razaosocial', 'nome_empresa', 'nomeEmpresarial', 'empresa', 'nome']),
             $this->findStringByKeys($basicResult, ['razao_social_nome_empresarial', 'razao_social', 'razaosocial', 'nome_empresa', 'nomeEmpresarial', 'empresa', 'nome']),
-            $this->findStringByKeys($serasaPayload, ['razao_social_nome_empresarial', 'razao_social', 'razaosocial', 'nome_empresa', 'nomeEmpresarial', 'empresa', 'nome']),
+            $this->findStringByKeys($bureauPayload, ['razao_social_nome_empresarial', 'razao_social', 'razaosocial', 'nome_empresa', 'nomeEmpresarial', 'empresa', 'nome']),
             (string) ($order->user?->name ?: ''),
         ], '-');
 
@@ -71,14 +73,16 @@ class PjResearchReportService
         $scoreValue = $this->firstScalar([
             data_get($scrPayload, 'data.score'),
             data_get($scrPayload, 'score'),
-            data_get($serasaPayload, 'data.score'),
-            data_get($serasaPayload, 'score'),
-            data_get($serasaPayload, 'data.cnpj.score'),
-            data_get($serasaPayload, 'data.cnpj.scores.ocorrencias.0.score'),
-            data_get($serasaPayload, 'response.data.dados.resultado.score.score'),
+            data_get($quodPayload, 'response.dados.scores.ocorrencias.0.score'),
+            data_get($quodPayload, 'response.data.dados.scores.ocorrencias.0.score'),
+            data_get($bureauPayload, 'data.score'),
+            data_get($bureauPayload, 'score'),
+            data_get($bureauPayload, 'data.cnpj.score'),
+            data_get($bureauPayload, 'data.cnpj.scores.ocorrencias.0.score'),
+            data_get($bureauPayload, 'response.data.dados.resultado.score.score'),
             data_get($scrPayload, 'response.data.dados.resultado.score.score'),
-            data_get($serasaPayload, 'response.data.dados.resultado.score.score'),
-            data_get($serasaPayload, 'response.dados.scores.ocorrencias.0.score'),
+            data_get($bureauPayload, 'response.data.dados.resultado.score.score'),
+            data_get($bureauPayload, 'response.dados.scores.ocorrencias.0.score'),
             data_get($basicCreditPayload, 'data.resultado.score.numero_score'),
             data_get($businessCreditPayload, 'data.resultado.score.0.score'),
             data_get($businessCreditPayload, 'response.data.resultado.score.0.score'),
@@ -92,10 +96,13 @@ class PjResearchReportService
 
         $riskClass = $this->firstString([
             (string) data_get($scrPayload, 'data.classeRisco'),
-            (string) data_get($serasaPayload, 'data.classeRisco'),
-            (string) data_get($serasaPayload, 'data.cnpj.scores.ocorrencias.0.descr_score'),
-            (string) data_get($serasaPayload, 'data.cnpj.scores.ocorrencias.0.risco'),
-            (string) data_get($serasaPayload, 'response.dados.scores.ocorrencias.0.descr_score'),
+            (string) data_get($quodPayload, 'response.dados.scores.ocorrencias.0.descr_score'),
+            (string) data_get($quodPayload, 'response.dados.scores.ocorrencias.0.risco'),
+            (string) data_get($quodPayload, 'response.dados.scores.ocorrencias.0.texto'),
+            (string) data_get($bureauPayload, 'data.classeRisco'),
+            (string) data_get($bureauPayload, 'data.cnpj.scores.ocorrencias.0.descr_score'),
+            (string) data_get($bureauPayload, 'data.cnpj.scores.ocorrencias.0.risco'),
+            (string) data_get($bureauPayload, 'response.dados.scores.ocorrencias.0.descr_score'),
             (string) data_get($basicCreditPayload, 'data.resultado.score.descricao'),
             (string) data_get($businessCreditPayload, 'data.resultado.score.0.classificacao_alfabetica'),
             (string) data_get($businessCreditPayload, 'data.resultado.decisao.descricao'),
@@ -111,17 +118,18 @@ class PjResearchReportService
             (string) data_get($completeResult, 'score.descricao_probabilidade_pagamento'),
             (string) data_get($basicResult, 'score.probabilidade_pagamento'),
             (string) data_get($basicCreditPayload, 'data.resultado.score.probabilidade_pagamento'),
-            (string) data_get($serasaPayload, 'data.cnpj.scores.ocorrencias.0.probabilidade_inadimplencia'),
+            (string) data_get($quodPayload, 'response.dados.scores.ocorrencias.0.probabilidade_inadimplencia'),
+            (string) data_get($bureauPayload, 'data.cnpj.scores.ocorrencias.0.probabilidade_inadimplencia'),
             (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.score.probabilidade'),
             (string) data_get($limitePayload, 'response.data.dados.resultado.score.probabilidade'),
-            (string) data_get($serasaPayload, 'response.dados.scores.ocorrencias.0.probabilidade_inadimplencia'),
+            (string) data_get($bureauPayload, 'response.dados.scores.ocorrencias.0.probabilidade_inadimplencia'),
             (string) data_get($businessCreditPayload, 'data.resultado.score.0.probabilidade'),
         ], '-');
 
         $creditSituation = $this->firstString([
             (string) data_get($scrPayload, 'data.situacao'),
             (string) data_get($scrPayload, 'data.status'),
-            (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.situacao_receita'),
+            (string) data_get($bureauPayload, 'response.dados.dados_receita_federal.situacao_receita'),
             (string) data_get($basicCreditPayload, 'data.resultado.dados_cadastrais.status_empresa'),
             (string) data_get($businessCreditPayload, 'data.resultado.identificacao_completo.situacao_cnpj'),
             (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
@@ -154,27 +162,27 @@ class PjResearchReportService
             data_get($businessCreditPayload, 'data.resultado.scrBacen.consolidado.creditoAVencer.valor'),
             data_get($completeResult, 'firmografico.valor_faturamento_presumido'),
             data_get($basicResult, 'firmografico.valor_faturamento_presumido'),
-            data_get($serasaPayload, 'response.dados.faturamento_presumido.valor_presumido'),
+            data_get($bureauPayload, 'response.dados.faturamento_presumido.valor_presumido'),
         ], '-');
 
         $overdueCredit = $this->firstScalar([
             data_get($scrPayload, 'data.carteiraCredito.valorVencida'),
             data_get($scrPayload, 'response.data.dados.scrBacen.scrBacen.consolidado.creditoVencido.valor'),
             data_get($businessCreditPayload, 'data.resultado.scrBacen.consolidado.creditoVencido.valor'),
-            data_get($serasaPayload, 'response.dados.protesto_sintetico.valor_total'),
+            data_get($bureauPayload, 'response.dados.protesto_sintetico.valor_total'),
         ], '-');
 
-        $businessMetrics = $this->buildBusinessMetrics($completeResult, $basicResult, $serasaPayload, $creditPjPayload);
+        $businessMetrics = $this->buildBusinessMetrics($completeResult, $basicResult, $bureauPayload, $creditPjPayload);
         $creditBehavior = $this->buildCreditBehavior($completeResult, $basicResult, $creditPjPayload);
-        $contacts = $this->buildContacts($completeResult, $basicResult, $serasaPayload, $creditPjPayload);
+        $contacts = $this->buildContacts($completeResult, $basicResult, $bureauPayload, $creditPjPayload);
         $publicDebts = $this->buildPublicDebts($completeResult, $basicResult);
-        $negativeMetrics = $this->buildNegativeMetrics($completeResult, $basicResult, $serasaPayload, $creditPjPayload);
+        $negativeMetrics = $this->buildNegativeMetrics($completeResult, $basicResult, $bureauPayload, $creditPjPayload);
         $compliance = $this->buildComplianceSummary($byKey, $completeResult, $basicResult);
         $complianceEntries = $this->buildComplianceEntries($completeResult, $basicResult);
-        $partners = $this->buildPartners($completeResult, $basicResult, $serasaPayload, $creditPjPayload);
+        $partners = $this->buildPartners($completeResult, $basicResult, $bureauPayload, $creditPjPayload);
         $businessIndicators = $this->buildBusinessIndicators($completeResult);
         $consultationHistory = $this->buildConsultationHistory($completeResult, $basicResult, $creditPjPayload);
-        $registration = $this->buildRegistration($completeResult, $basicResult, $serasaPayload, $creditPjPayload);
+        $registration = $this->buildRegistration($completeResult, $basicResult, $bureauPayload, $creditPjPayload);
         $patrimony = $this->buildPatrimony($completeResult, $basicResult);
 
         if (($businessMetrics['company_name'] ?? '') !== '') {

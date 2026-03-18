@@ -40,16 +40,12 @@ return [
             'document_type' => 'cnpj',
             'sources' => [
                 [
-                    'provider' => 'fiscal',
-                    'consultation_key' => 'compliance_complete_pj',
-                ],
-                [
                     'provider' => 'bacen',
                     'consultation_key' => 'analise_credito_basic_pj',
                 ],
                 [
                     'provider' => 'bureau',
-                    'consultation_key' => 'serasa_premium_pj',
+                    'consultation_key' => 'spc_quod_pj',
                 ],
             ],
         ],
@@ -205,6 +201,17 @@ return [
                 'homolog' => true,
             ],
             'description' => 'Consulta completa Serasa Premium para CNPJ.',
+        ],
+        'spc_quod_pj' => [
+            'title' => 'SPC Quod PJ',
+            'category' => 'consulta_cnpj',
+            'document_type' => 'cnpj',
+            'method' => 'POST',
+            'path' => '/api/v2/quod/cnpj/credits',
+            'body' => [
+                'cnpj' => '{document}',
+            ],
+            'description' => 'Consulta Quod PJ com score, risco, probabilidade, dados cadastrais e indicadores financeiros.',
         ],
         'compliance_basic_pj' => [
             'title' => 'Compliance Basic PJ',
