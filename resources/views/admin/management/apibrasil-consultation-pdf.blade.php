@@ -104,6 +104,16 @@
         .socios { width: 100%; border-collapse: collapse; margin-top: 5px; }
         .socios th, .socios td { border: 1px solid #e5ecf3; padding: 6px 8px; font-size: 10px; text-align: left; }
         .socios th { background: #f8fbff; color: #48627a; font-weight: 700; }
+        .rating-board { width: 100%; border-collapse: separate; border-spacing: 10px; }
+        .rating-panel { border: 1px solid #d9e4ee; border-radius: 8px; background: #f8fbff; padding: 10px; }
+        .rating-panel-title { font-size: 10px; color: #36536b; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; margin-bottom: 8px; }
+        .rating-current { font-size: 64px; line-height: 1; font-weight: 700; color: #d08a1a; text-align: center; margin-top: 8px; }
+        .rating-scale-table { width: 100%; border-collapse: collapse; }
+        .rating-scale-table td { border: 0; padding: 2px 0; font-size: 11px; }
+        .rating-dot { display: inline-block; width: 14px; height: 12px; border-radius: 2px; margin-right: 6px; }
+        .rating-code { font-weight: 700; color: #243b53; }
+        .rating-current-row { background: #f8ecd8; }
+        .rating-hint { margin-top: 8px; font-size: 9px; color: #64748b; line-height: 1.35; }
         .footer {
             margin-top: 18px;
             border-top: 1px solid #dce4ec;
@@ -136,6 +146,37 @@
     $documento = (string) ($cnpjData['cnpj'] ?? ($data['documentoConsultado'] ?? $consultation->document_number));
     $score = (string) ($data['score'] ?? '-');
     $classeRisco = (string) ($data['classeRisco'] ?? '-');
+    $scoreRaw = preg_replace('/\D+/', '', $score);
+    $scoreNumeric = $scoreRaw !== null && $scoreRaw !== '' ? (int) $scoreRaw : null;
+    $ratingCurrent = '-';
+    if ($scoreNumeric !== null) {
+        $ratingCurrent = match (true) {
+            $scoreNumeric >= 901 => 'AAA',
+            $scoreNumeric >= 801 => 'AA',
+            $scoreNumeric >= 701 => 'A',
+            $scoreNumeric >= 601 => 'BBB',
+            $scoreNumeric >= 501 => 'BB',
+            $scoreNumeric >= 401 => 'B',
+            $scoreNumeric >= 301 => 'CCC',
+            $scoreNumeric >= 201 => 'CC',
+            $scoreNumeric >= 101 => 'C',
+            $scoreNumeric >= 0 => 'D',
+            default => '-',
+        };
+    }
+    $ratingScale = [
+        ['code' => 'AAA', 'color' => '#1f8f3a'],
+        ['code' => 'AA', 'color' => '#2d9b40'],
+        ['code' => 'A', 'color' => '#3aa84a'],
+        ['code' => 'BBB', 'color' => '#5aa134'],
+        ['code' => 'BB', 'color' => '#7b9f2e'],
+        ['code' => 'B', 'color' => '#d08a1a'],
+        ['code' => 'CCC', 'color' => '#d96f16'],
+        ['code' => 'CC', 'color' => '#ce4a19'],
+        ['code' => 'C', 'color' => '#b8321a'],
+        ['code' => 'D', 'color' => '#a1221b'],
+        ['code' => 'E', 'color' => '#8c1515'],
+    ];
     $situacao = (string) ($data['situacao'] ?? ($cnpjData['situacao_cadastral'] ?? '-'));
     $statusConsulta = $consultation->status === 'success' ? 'Sucesso' : 'Erro';
     $consultaEmRaw = $data['consultaRealizadaEm'] ?? ($data['dataConsulta'] ?? null);
@@ -265,6 +306,37 @@
                 <div class="card border-red">
                     <div class="card-label">{{ $isPj ? 'Situação Cadastral' : 'Situação' }}</div>
                     <div class="card-value small text-red">{{ $situacao }}</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2 class="section-title">Classificação do Risco de Crédito</h2>
+    <table class="rating-board">
+        <tr>
+            <td style="width: 34%;">
+                <div class="rating-panel">
+                    <div class="rating-panel-title">Rating atual</div>
+                    <div class="rating-current">{{ $ratingCurrent }}</div>
+                </div>
+            </td>
+            <td style="width: 66%;">
+                <div class="rating-panel">
+                    <div class="rating-panel-title">Escala de classificação</div>
+                    <table class="rating-scale-table">
+                        @foreach($ratingScale as $scale)
+                            @php $isCurrent = $scale['code'] === $ratingCurrent; @endphp
+                            <tr class="{{ $isCurrent ? 'rating-current-row' : '' }}">
+                                <td style="width:22px;"><span class="rating-dot" style="background: {{ $scale['color'] }}"></span></td>
+                                <td class="rating-code">{{ $scale['code'] }}</td>
+                            </tr>
+                        @endforeach
+                    </table>
+                    <div class="rating-hint">
+                        Escala visual baseada no score retornado na consulta para manter o padrão do dossiê analítico.
+                    </div>
                 </div>
             </td>
         </tr>
