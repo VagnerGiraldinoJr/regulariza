@@ -8,6 +8,8 @@ use Illuminate\Support\Collection;
 
 class PjResearchReportService
 {
+    public function __construct(private readonly CreditRatingService $creditRatingService) {}
+
     public function build(Order $order, Collection $consultations): array
     {
         $consultations = $consultations
@@ -36,6 +38,7 @@ class PjResearchReportService
             data_get($serasaPayload, 'data.score'),
             data_get($serasaPayload, 'score'),
         ], '-');
+        $rating = $this->creditRatingService->resolveFromScore($scoreValue);
 
         $riskClass = $this->firstString([
             (string) data_get($scrPayload, 'data.classeRisco'),
@@ -102,10 +105,7 @@ class PjResearchReportService
                 'http_status' => $httpStatus,
                 'endpoint' => (string) ($consultation->endpoint ?: '-'),
                 'error_message' => (string) ($consultation->error_message ?: ''),
-                'message' => $this->firstString([
-                    (string) data_get($payload, 'message'),
-                    (string) data_get($payload, 'response.message'),
-                ], ''),
+                'message' => $status === 'success' ? '' : (string) ($consultation->error_message ?: ''),
                 'consulted_at' => $consultation->created_at?->format('d/m/Y H:i:s') ?: '-',
             ];
         })->values()->all();
@@ -125,6 +125,7 @@ class PjResearchReportService
             ],
             'credit' => [
                 'score' => $scoreValue,
+                'rating' => $rating,
                 'classe_risco' => $riskClass,
                 'situacao' => $creditSituation,
                 'instituicoes' => $institutions,

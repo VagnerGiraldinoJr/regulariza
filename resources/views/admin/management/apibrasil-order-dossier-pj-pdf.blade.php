@@ -8,7 +8,9 @@
         @page { margin: 18px 20px 24px; }
         body { margin: 0; font-family: DejaVu Sans, sans-serif; color: #102235; font-size: 11px; }
         .header { background: #0f3d59; color: #fff; padding: 12px 14px; border-radius: 10px; }
-        .title { margin: 0; font-size: 21px; font-weight: 700; }
+        .header-table { width: 100%; border-collapse: collapse; }
+        .header-table td { vertical-align: top; }
+        .title { margin: 0; font-size: 23px; font-weight: 700; letter-spacing: .02em; }
         .subtitle { margin: 4px 0 0; font-size: 10px; color: #cfeeff; }
         .protocol { margin-top: 8px; font-size: 9px; color: #d9f3ff; }
         .section { margin-top: 14px; }
@@ -18,21 +20,16 @@
         .table th { background: #eef7fb; color: #36536b; text-align: left; }
         .label { width: 200px; background: #f8fbfd; color: #48627a; font-weight: 700; }
         td, th { word-break: break-word; overflow-wrap: anywhere; }
+        .cards { width: 100%; border-collapse: separate; border-spacing: 8px; margin: 0 -8px; }
+        .card { border: 1px solid #dce7ef; border-radius: 10px; background: #f8fbfd; padding: 10px; min-height: 72px; }
+        .card-label { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: #64748b; font-weight: 700; }
+        .card-value { margin-top: 6px; font-size: 24px; font-weight: 700; color: #0f3d59; }
+        .card-value.small { font-size: 16px; line-height: 1.25; }
         .pill { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
         .pill.ok { background: #e6f8ec; color: #17603a; }
         .pill.warn { background: #fff0d8; color: #8a5305; }
-        .json-preview {
-            margin-top: 4px;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            background: #f8fbff;
-            font-size: 8.5px;
-            line-height: 1.35;
-            color: #334155;
-            padding: 6px;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
+        .pill.danger { background: #fee6e2; color: #8e2218; }
+        .note { margin-top: 8px; padding: 8px 10px; border: 1px solid #dce7ef; border-radius: 8px; background: #f8fbfd; color: #355066; font-size: 10px; line-height: 1.45; }
         .footer { margin-top: 18px; border-top: 1px solid #d9e4ef; padding-top: 8px; font-size: 9px; color: #64748b; }
     </style>
 </head>
@@ -47,6 +44,17 @@
     $creditBehavior = $report['credit_behavior'] ?? [];
     $partners = is_array($report['partners'] ?? null) ? $report['partners'] : [];
     $sources = is_array($report['sources'] ?? null) ? $report['sources'] : [];
+    $rating = array_replace([
+        'classification' => 'NÃO CLASSIFICADO',
+        'moodys' => '-',
+        'sp' => '-',
+        'fitch' => '-',
+    ], $credit['rating'] ?? []);
+    $riskPill = match ($rating['sp']) {
+        'AAA', 'AA+', 'AA', 'AA-', 'A+', 'A', 'A-' => 'pill ok',
+        'BBB+', 'BBB', 'BBB-', 'BB+', 'BB', 'BB-' => 'pill warn',
+        default => 'pill danger',
+    };
     $generatedAt = $meta['generated_at'] ?? now();
     if (is_string($generatedAt) && $generatedAt !== '') {
         $generatedAt = \Illuminate\Support\Carbon::parse($generatedAt);
@@ -54,14 +62,20 @@
 @endphp
 
 <div class="header">
-    <p class="title">DIAGNÓSTICO FINANCEIRO PJ</p>
-    <p class="subtitle">Consolidado empresarial com rastreabilidade por fonte</p>
-    <div class="protocol">
-        Protocolo comercial: {{ $meta['commercial_protocol'] ?? ($order->protocolo ?: '-') }}<br>
-        Documento: {{ $company['document'] ?? '-' }}<br>
-        Total de fontes: {{ $meta['consultation_count'] ?? count($sources) }}<br>
-        Emitido em: {{ $generatedAt instanceof \Illuminate\Support\Carbon ? $generatedAt->format('d/m/Y H:i:s') : (string) $generatedAt }}
-    </div>
+    <table class="header-table">
+        <tr>
+            <td>
+                <p class="title">DIAGNÓSTICO FINANCEIRO PJ</p>
+                <p class="subtitle">Consolidado empresarial no padrão executivo da análise PF</p>
+                <div class="protocol">
+                    Protocolo comercial: {{ $meta['commercial_protocol'] ?? ($order->protocolo ?: '-') }}<br>
+                    Documento: {{ $company['document'] ?? '-' }}<br>
+                    Total de fontes: {{ $meta['consultation_count'] ?? count($sources) }}<br>
+                    Emitido em: {{ $generatedAt instanceof \Illuminate\Support\Carbon ? $generatedAt->format('d/m/Y H:i:s') : (string) $generatedAt }}
+                </div>
+            </td>
+        </tr>
+    </table>
 </div>
 
 <div class="section">
@@ -76,6 +90,61 @@
         <tr><td class="label">Operações no SCR</td><td>{{ $credit['operacoes'] ?? '0' }}</td></tr>
         <tr><td class="label">Crédito a vencer</td><td>{{ $credit['credito_a_vencer'] ?? '-' }}</td></tr>
         <tr><td class="label">Crédito vencido</td><td>{{ $credit['credito_vencido'] ?? '-' }}</td></tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2 class="section-title">Indicadores Financeiros</h2>
+    <table class="cards">
+        <tr>
+            <td>
+                <div class="card">
+                    <div class="card-label">Score Principal</div>
+                    <div class="card-value">{{ $credit['score'] ?? '-' }}</div>
+                </div>
+            </td>
+            <td>
+                <div class="card">
+                    <div class="card-label">Rating S&amp;P / Fitch</div>
+                    <div class="card-value">{{ $rating['sp'] }} / {{ $rating['fitch'] }}</div>
+                </div>
+            </td>
+            <td>
+                <div class="card">
+                    <div class="card-label">Classe de Risco API</div>
+                    <div class="card-value small">{{ $credit['classe_risco'] ?? '-' }}</div>
+                </div>
+            </td>
+            <td>
+                <div class="card">
+                    <div class="card-label">Risco Consolidado</div>
+                    <div class="card-value small"><span class="{{ $riskPill }}">{{ $rating['classification'] }}</span></div>
+                </div>
+            </td>
+        </tr>
+    </table>
+    <div class="note">
+        <strong>Situação de crédito:</strong> {{ $credit['situacao'] ?? '-' }}<br>
+        <strong>Instituições/Operações no SCR:</strong> {{ $credit['instituicoes'] ?? '0' }} / {{ $credit['operacoes'] ?? '0' }}<br>
+        <strong>Crédito a vencer / vencido:</strong> {{ $credit['credito_a_vencer'] ?? '-' }} / {{ $credit['credito_vencido'] ?? '-' }}
+    </div>
+</div>
+
+<div class="section">
+    <h2 class="section-title">Classificação do Risco de Crédito</h2>
+    <table class="table">
+        <tr>
+            <th>Classificação</th>
+            <th>Moody's</th>
+            <th>Standard &amp; Poor's</th>
+            <th>Fitch</th>
+        </tr>
+        <tr>
+            <td>{{ $rating['classification'] }}</td>
+            <td>{{ $rating['moodys'] }}</td>
+            <td>{{ $rating['sp'] }}</td>
+            <td>{{ $rating['fitch'] }}</td>
+        </tr>
     </table>
 </div>
 
@@ -230,20 +299,6 @@
         @endif
     </div>
 @endif
-
-<div class="section">
-    <h2 class="section-title">Anexo Técnico Resumido</h2>
-    @foreach($consultations as $item)
-        @php
-            $payload = json_encode($item->response_payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-            $preview = \Illuminate\Support\Str::limit((string) $payload, 1300, "\n... [conteúdo truncado]");
-        @endphp
-        <div style="margin-bottom: 8px;">
-            <strong>{{ $item->consultation_title ?: $item->consultation_key }}</strong>
-            <div class="json-preview">{{ $preview }}</div>
-        </div>
-    @endforeach
-</div>
 
 <div class="footer">
     Documento Oficial CPF CLEAN BR • CNPJ 44.156.681/0001-57
