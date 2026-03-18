@@ -41,5 +41,27 @@ class ApiBrasilTipoFallbackTest extends TestCase
                 && ($body['tipo'] ?? null) === 'compliance_complete_pj';
         });
     }
-}
 
+    public function test_it_forces_homolog_false_in_production_even_when_setting_is_true(): void
+    {
+        config()->set('app.env', 'production');
+        config()->set('services.apibrasil.base_url', 'https://apibrasil.test');
+        config()->set('services.apibrasil.token', 'token-apibrasil');
+        config()->set('services.apibrasil.homolog', true);
+
+        Http::fake([
+            'https://apibrasil.test/api/v2/consulta/cnpj/credits' => Http::response(['error' => false], 200),
+        ]);
+
+        $service = app(ApiBrasilService::class);
+        $result = $service->consultarCatalogo('scr_bacen_score_pj', '10.650.534/0001-17');
+
+        $this->assertSame('success', $result['status']);
+        Http::assertSent(function (Request $request): bool {
+            $body = $request->data();
+
+            return $request->url() === 'https://apibrasil.test/api/v2/consulta/cnpj/credits'
+                && ($body['homolog'] ?? null) === false;
+        });
+    }
+}

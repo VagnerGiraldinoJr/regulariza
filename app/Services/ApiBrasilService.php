@@ -55,7 +55,7 @@ class ApiBrasilService
         $bodyTemplate = (array) ($definition['body'] ?? []);
         $payload = $this->resolveTemplate($bodyTemplate, $digits);
         if (array_key_exists('homolog', $payload)) {
-            $payload['homolog'] = (bool) config('services.apibrasil.homolog', false);
+            $payload['homolog'] = $this->resolvedHomologFlag();
         }
         $url = $this->baseUrl().'/'.ltrim($path, '/');
 
@@ -337,6 +337,16 @@ class ApiBrasilService
         $decoded = json_decode($json, true);
 
         return is_array($decoded) ? $decoded : ['document' => $document];
+    }
+
+    private function resolvedHomologFlag(): bool
+    {
+        $appEnv = mb_strtolower(trim((string) config('app.env', 'production')));
+        if ($appEnv === 'production') {
+            return false;
+        }
+
+        return (bool) config('services.apibrasil.homolog', false);
     }
 
     private function extractBalance(mixed $payload): ?float
