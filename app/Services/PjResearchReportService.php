@@ -175,6 +175,14 @@ class PjResearchReportService
             ];
         })->values()->all();
 
+        $hasComplianceSource = $consultations->contains(
+            fn (ApiBrasilConsultation $consultation) => in_array(
+                (string) $consultation->consultation_key,
+                ['compliance_complete_pj', 'compliance_basic_pj'],
+                true
+            )
+        );
+
         $judicialMetrics = $this->judicialMetrics($consultations);
 
         return [
@@ -198,9 +206,10 @@ class PjResearchReportService
                 'operacoes' => $operations,
                 'credito_a_vencer' => $creditToMature,
                 'credito_vencido' => $overdueCredit,
+                'has_scr' => array_key_exists('scr_bacen_score_pj', $byKey->all()),
             ],
-            'compliance' => $compliance,
-            'compliance_entries' => $complianceEntries,
+            'compliance' => $hasComplianceSource ? $compliance : [],
+            'compliance_entries' => $hasComplianceSource ? $complianceEntries : [],
             'judicial' => $judicialMetrics,
             'business' => $businessMetrics,
             'credit_behavior' => $creditBehavior,
@@ -444,11 +453,13 @@ class PjResearchReportService
             'main_activity' => $this->firstString([
                 (string) ($dadosCadastrais['ds_cnae_fiscal_principal'] ?? ''),
                 (string) ($dadosCadastrais['descricao_atividade_principal'] ?? ''),
+                (string) data_get($serasaPayload, 'response.dados.identificacao_completo.ramo_atividade_primario.atividade', ''),
                 (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.atividade_economica_principal', ''),
             ], '-'),
             'secondary_activity' => $this->firstString([
                 (string) ($dadosCadastrais['descricao_atividade_secundaria'] ?? ''),
                 (string) ($dadosCadastrais['ds_cnae_fiscal_secundarios.0'] ?? ''),
+                (string) data_get($serasaPayload, 'response.dados.identificacao_completo.ramo_atividade_secundario.atividade', ''),
                 (string) ($dadosCadastrais['descricao_atividade_secundaria'] ?? ''),
             ], '-'),
             'natureza_juridica' => $this->firstString([
@@ -470,6 +481,10 @@ class PjResearchReportService
             'faturamento_presumido' => $this->firstString([
                 (string) data_get($completeResult, 'firmografico.valor_faturamento_presumido', ''),
                 (string) data_get($serasaPayload, 'response.dados.faturamento_presumido.valor_presumido', ''),
+            ], '-'),
+            'foundation_date' => $this->firstString([
+                (string) data_get($serasaPayload, 'response.dados.identificacao_completo.data_fundacao', ''),
+                (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.data_nascimento_fundacao', ''),
             ], '-'),
         ];
     }
@@ -517,6 +532,10 @@ class PjResearchReportService
         if ($legacyEmail !== '') {
             $emails->push($legacyEmail);
         }
+        $serasaEmail = (string) data_get($basicResult, 'dados_receita_federal.email', '');
+        if ($serasaEmail !== '') {
+            $emails->push($serasaEmail);
+        }
 
         foreach ([
             data_get($completeResult, 'dados_contato.telefones', []),
@@ -538,6 +557,10 @@ class PjResearchReportService
         $legacyPhone = (string) data_get($basicResult, 'dados_cadastrais.numero_telefone', '');
         if ($legacyPhone !== '') {
             $phones->push($legacyPhone);
+        }
+        $serasaPhone = (string) data_get($basicResult, 'identificacao_completo.fgts.telefone', '');
+        if ($serasaPhone !== '') {
+            $phones->push($serasaPhone);
         }
 
         foreach ([
@@ -573,6 +596,19 @@ class PjResearchReportService
                 trim((string) ($legacyAddress['cidade'] ?? '')),
                 trim((string) ($legacyAddress['estado'] ?? '')),
                 trim((string) ($legacyAddress['codigo_postal'] ?? '')),
+            ]);
+            if ($parts !== []) {
+                $addresses->push(implode(', ', $parts));
+            }
+        }
+        $serasaMatrizAddress = trim((string) data_get($basicResult, 'localizacao_completo.matriz.endereco_matriz', ''));
+        if ($serasaMatrizAddress !== '') {
+            $parts = array_filter([
+                $serasaMatrizAddress,
+                trim((string) data_get($basicResult, 'localizacao_completo.matriz.bairro_matriz', '')),
+                trim((string) data_get($basicResult, 'localizacao_completo.matriz.cidade_matriz', '')),
+                trim((string) data_get($basicResult, 'localizacao_completo.matriz.uf_matriz', '')),
+                trim((string) data_get($basicResult, 'localizacao_completo.matriz.cep_matriz', '')),
             ]);
             if ($parts !== []) {
                 $addresses->push(implode(', ', $parts));

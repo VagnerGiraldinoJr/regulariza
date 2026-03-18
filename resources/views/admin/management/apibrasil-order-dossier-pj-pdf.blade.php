@@ -52,6 +52,7 @@
     $partners = is_array($report['partners'] ?? null) ? $report['partners'] : [];
     $businessIndicators = is_array($report['business_indicators'] ?? null) ? $report['business_indicators'] : [];
     $sources = is_array($report['sources'] ?? null) ? $report['sources'] : [];
+    $hasComplianceEntries = $complianceEntries !== [];
     $rating = array_replace([
         'classification' => 'NÃO CLASSIFICADO',
         'moodys' => '-',
@@ -123,6 +124,9 @@
         <strong>Situação de crédito:</strong> {{ $credit['situacao'] ?? '-' }}<br>
         <strong>Instituições/Operações no SCR:</strong> {{ $credit['instituicoes'] ?? '0' }} / {{ $credit['operacoes'] ?? '0' }}<br>
         <strong>Crédito a vencer / vencido:</strong> {{ $credit['credito_a_vencer'] ?? '-' }} / {{ $credit['credito_vencido'] ?? '-' }}
+        @if(($credit['has_scr'] ?? true) === false)
+            <br><strong>Observação:</strong> Fonte SCR/Bacen não foi consultada neste dossiê.
+        @endif
     </div>
 </div>
 
@@ -134,35 +138,37 @@
     </table>
 </div>
 
-<div class="section">
-    <h2 class="section-title">Compliance e Órgãos</h2>
-    <table class="table">
-        <tr>
-            <td class="label">Consolidado compliance</td>
-            <td>
-                <span class="pill {{ ($compliance['certidao'] ?? '') === 'Regular' ? 'ok' : 'warn' }}">{{ $compliance['certidao'] ?? '-' }}</span>
-                <div>{{ $compliance['certidao_detail'] ?? '-' }}</div>
-            </td>
-        </tr>
-        <tr>
-            <td class="label">Observação operacional</td>
-            <td>{{ $compliance['protesto_detail'] ?? '-' }}</td>
-        </tr>
-    </table>
+@if($hasComplianceEntries)
+    <div class="section">
+        <h2 class="section-title">Compliance e Órgãos</h2>
+        <table class="table">
+            <tr>
+                <td class="label">Consolidado compliance</td>
+                <td>
+                    <span class="pill {{ ($compliance['certidao'] ?? '') === 'Regular' ? 'ok' : 'warn' }}">{{ $compliance['certidao'] ?? '-' }}</span>
+                    <div>{{ $compliance['certidao_detail'] ?? '-' }}</div>
+                </td>
+            </tr>
+            <tr>
+                <td class="label">Observação operacional</td>
+                <td>{{ $compliance['protesto_detail'] ?? '-' }}</td>
+            </tr>
+        </table>
 
-    <table class="table" style="margin-top: 8px;">
-        <thead><tr><th>Órgão/Lista</th><th>Status</th><th>Ocorrências</th></tr></thead>
-        <tbody>
-            @foreach($complianceEntries as $entry)
-                <tr>
-                    <td>{{ $entry['title'] ?? '-' }}</td>
-                    <td><span class="pill {{ ($entry['status'] ?? 'Regular') === 'Regular' ? 'ok' : 'warn' }}">{{ $entry['status'] ?? '-' }}</span></td>
-                    <td>{{ $entry['quantity'] ?? 0 }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-</div>
+        <table class="table" style="margin-top: 8px;">
+            <thead><tr><th>Órgão/Lista</th><th>Status</th><th>Ocorrências</th></tr></thead>
+            <tbody>
+                @foreach($complianceEntries as $entry)
+                    <tr>
+                        <td>{{ $entry['title'] ?? '-' }}</td>
+                        <td><span class="pill {{ ($entry['status'] ?? 'Regular') === 'Regular' ? 'ok' : 'warn' }}">{{ $entry['status'] ?? '-' }}</span></td>
+                        <td>{{ $entry['quantity'] ?? 0 }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+@endif
 
 <div class="section">
     <h2 class="section-title">Cadastro, Porte e Contatos</h2>
