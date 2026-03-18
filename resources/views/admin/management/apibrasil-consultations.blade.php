@@ -227,6 +227,18 @@
                         <p class="stack-card__meta">Use filtros por sucesso ou erro para higienizar lotes errados sem perder rastreabilidade.</p>
                     </article>
                 </div>
+                <form
+                    method="POST"
+                    action="{{ route('admin.management.apibrasil-consultations.cleanup-partial') }}"
+                    class="mt-4"
+                    onsubmit="return confirm('Excluir todos os dossies com status parcial e as consultas vinculadas? Esta acao nao pode ser desfeita.');"
+                >
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="inline-flex items-center rounded-md bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700">
+                        Apagar requisicoes com falha (status parcial)
+                    </button>
+                </form>
             </div>
 
             <div class="panel-card p-4">

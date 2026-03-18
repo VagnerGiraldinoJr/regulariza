@@ -6,6 +6,7 @@ use App\Models\AdminActionLog;
 use App\Models\ApiBrasilConsultation;
 use App\Models\Order;
 use App\Models\ResearchReport;
+use App\Models\ResearchReportItem;
 use App\Models\User;
 use App\Services\AdminAuditService;
 use App\Services\ApiBrasilService;
@@ -17,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -279,6 +281,49 @@ class ApiBrasilConsultationController extends Controller
         $consultation->delete();
 
         return back()->with('success', 'Consulta removida com auditoria.');
+    }
+
+    public function cleanupPartial(Request $request, AdminAuditService $adminAuditService): RedirectResponse
+    {
+        $reportIds = collect();
+        $consultationIds = collect();
+
+        DB::transaction(function () use (&$reportIds, &$consultationIds) {
+            $reportIds = ResearchReport::query()
+                ->where('status', 'partial')
+                ->pluck('id')
+                ->values();
+
+            $consultationIds = ResearchReportItem::query()
+                ->whereIn('research_report_id', $reportIds)
+                ->whereNotNull('apibrasil_consultation_id')
+                ->pluck('apibrasil_consultation_id')
+                ->unique()
+                ->values();
+
+            ApiBrasilConsultation::query()->whereIn('id', $consultationIds)->delete();
+            ResearchReport::query()->whereIn('id', $reportIds)->delete();
+        });
+
+        $context = [
+            'deleted_reports_partial' => $reportIds->count(),
+            'deleted_consultations_linked' => $consultationIds->count(),
+            'report_ids' => $reportIds->all(),
+            'consultation_ids' => $consultationIds->all(),
+        ];
+
+        $adminAuditService->record(
+            $request->user(),
+            'consultation_cleanup_partial',
+            null,
+            'Limpeza em lote executada: relatórios com status partial e consultas vinculadas removidos.',
+            $context
+        );
+
+        return back()->with(
+            'success',
+            "Limpeza concluída. Dossiês parciais removidos: {$context['deleted_reports_partial']}; consultas vinculadas removidas: {$context['deleted_consultations_linked']}."
+        );
     }
 
     public function downloadPdf(ApiBrasilConsultation $consultation): Response

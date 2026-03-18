@@ -284,6 +284,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/management')->name('adm
     Route::get('/apibrasil-consultations/orders/{order}/pdf', [ApiBrasilConsultationController::class, 'downloadOrderPdf'])->name('apibrasil-consultations.order-pdf');
     Route::post('/apibrasil-consultations/{consultation}/forward', [ApiBrasilConsultationController::class, 'forward'])->name('apibrasil-consultations.forward');
     Route::delete('/apibrasil-consultations/{consultation}', [ApiBrasilConsultationController::class, 'destroy'])->name('apibrasil-consultations.destroy');
+    Route::delete('/apibrasil-consultations/cleanup/partial', [ApiBrasilConsultationController::class, 'cleanupPartial'])->name('apibrasil-consultations.cleanup-partial');
     Route::get('/messages', [AdminManagementController::class, 'messages'])->name('messages');
     Route::delete('/messages/{message}', [AdminManagementController::class, 'deleteMessage'])->name('messages.destroy');
     Route::get('/audit-logs', [AdminManagementController::class, 'auditLogs'])->name('audit-logs');
