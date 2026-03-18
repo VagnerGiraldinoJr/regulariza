@@ -328,6 +328,10 @@ class PjResearchReportService
     private function firstString(array $values, string $fallback): string
     {
         foreach ($values as $value) {
+            if (! is_scalar($value) && ! $value instanceof \Stringable) {
+                continue;
+            }
+
             $candidate = trim((string) $value);
             if ($candidate !== '') {
                 return $candidate;
@@ -976,7 +980,7 @@ class PjResearchReportService
             ], '-'),
             'data_inicio_atividade' => $this->firstString([
                 (string) data_get($completeResult, 'dados_cadastrais.data_inicio_atividade', ''),
-                (string) data_get($basicResult, 'dados_cadastrais.data_fundacao', ''),
+                $this->dateValue(data_get($basicResult, 'dados_cadastrais.data_fundacao')),
                 (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.data_nascimento_fundacao', ''),
                 (string) ($serasaCnpj['data_inicio_atividades'] ?? ''),
                 (string) data_get($businessCreditPayload, 'data.resultado.identificacao_completo.data_fundacao', ''),
@@ -1028,5 +1032,26 @@ class PjResearchReportService
         }
 
         return [];
+    }
+
+    private function dateValue(mixed $value): string
+    {
+        if (is_array($value)) {
+            $year = trim((string) ($value['ano'] ?? ''));
+            $month = trim((string) ($value['mes'] ?? ''));
+            $day = trim((string) ($value['dia'] ?? ''));
+
+            if ($year !== '' && $month !== '' && $day !== '') {
+                return str_pad($day, 2, '0', STR_PAD_LEFT).'/'.str_pad($month, 2, '0', STR_PAD_LEFT).'/'.$year;
+            }
+
+            return '';
+        }
+
+        if (! is_scalar($value) && ! $value instanceof \Stringable) {
+            return '';
+        }
+
+        return trim((string) $value);
     }
 }

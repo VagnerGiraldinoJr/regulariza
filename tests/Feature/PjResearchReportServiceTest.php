@@ -71,6 +71,7 @@ class PjResearchReportServiceTest extends TestCase
         $this->assertSame('EMPRESA FICTICIA LTDA', data_get($report, 'business.company_name'));
         $this->assertSame('FAKE COMERCIO', data_get($report, 'business.trade_name'));
         $this->assertSame('ATIVO', data_get($report, 'business.status'));
+        $this->assertSame('15/06/2019', data_get($report, 'registration.data_inicio_atividade'));
         $this->assertSame(1, data_get($report, 'credit_behavior.ultimos_30_dias'));
         $this->assertSame(2, data_get($report, 'credit_behavior.de_31_a_60_dias'));
         $this->assertSame('1', data_get($report, 'credit_behavior.status_cadastro_positivo'));
@@ -193,6 +194,11 @@ class PjResearchReportServiceTest extends TestCase
                         'nome_empresa' => 'EMPRESA FICTICIA LTDA',
                         'nome_fantasia' => 'FAKE COMERCIO',
                         'status_empresa' => 'ATIVO',
+                        'data_fundacao' => [
+                            'ano' => '2019',
+                            'mes' => '6',
+                            'dia' => '15',
+                        ],
                         'descricao_atividade_principal' => 'COMERCIO VAREJISTA DE MERCADORIAS',
                         'descricao_atividade_secundaria' => 'DESENVOLVIMENTO DE PROGRAMAS DE COMPUTADOR',
                         'numero_telefone' => '1133334444',
