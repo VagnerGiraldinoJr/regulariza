@@ -20,6 +20,8 @@ class PjResearchReportService
 
         $scrPayload = $this->payloadArray($byKey->get('scr_bacen_score_pj'));
         $businessCreditPayload = $this->payloadArray($byKey->get('analise_credito_business_pj'));
+        $basicCreditPayload = $this->payloadArray($byKey->get('analise_credito_basic_pj'));
+        $creditPjPayload = $this->firstArray([$businessCreditPayload, $basicCreditPayload]);
         $serasaPayload = $this->payloadArray($byKey->get('serasa_premium_pj'));
         $complianceCompletePayload = $this->payloadArray($byKey->get('compliance_complete_pj'));
         $complianceBasicPayload = $this->payloadArray($byKey->get('compliance_basic_pj'));
@@ -32,6 +34,7 @@ class PjResearchReportService
         }
 
         $completeResult = $this->firstResultPayload([
+            $basicCreditPayload,
             $businessCreditPayload,
             $complianceCompletePayload,
             $serasaPayload,
@@ -39,6 +42,7 @@ class PjResearchReportService
             $limitePayload,
         ]);
         $basicResult = $this->firstResultPayload([
+            $basicCreditPayload,
             $businessCreditPayload,
             $complianceBasicPayload,
             $serasaPayload,
@@ -72,6 +76,7 @@ class PjResearchReportService
             data_get($scrPayload, 'response.data.dados.resultado.score.score'),
             data_get($serasaPayload, 'response.data.dados.resultado.score.score'),
             data_get($serasaPayload, 'response.dados.scores.ocorrencias.0.score'),
+            data_get($basicCreditPayload, 'data.resultado.score.numero_score'),
             data_get($businessCreditPayload, 'data.resultado.score.0.score'),
             data_get($businessCreditPayload, 'response.data.resultado.score.0.score'),
             data_get($defineRiscoPayload, 'response.data.dados.resultado.score.score'),
@@ -85,6 +90,7 @@ class PjResearchReportService
         $riskClass = $this->firstString([
             (string) data_get($scrPayload, 'data.classeRisco'),
             (string) data_get($serasaPayload, 'data.classeRisco'),
+            (string) data_get($basicCreditPayload, 'data.resultado.score.descricao'),
             (string) data_get($businessCreditPayload, 'data.resultado.score.0.classificacao_alfabetica'),
             (string) data_get($businessCreditPayload, 'data.resultado.decisao.descricao'),
             (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.score.mensagem'),
@@ -98,6 +104,7 @@ class PjResearchReportService
             (string) data_get($completeResult, 'score.probabilidade_pagamento'),
             (string) data_get($completeResult, 'score.descricao_probabilidade_pagamento'),
             (string) data_get($basicResult, 'score.probabilidade_pagamento'),
+            (string) data_get($basicCreditPayload, 'data.resultado.score.probabilidade_pagamento'),
             (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.score.probabilidade'),
             (string) data_get($limitePayload, 'response.data.dados.resultado.score.probabilidade'),
             (string) data_get($serasaPayload, 'response.dados.scores.ocorrencias.0.probabilidade_inadimplencia'),
@@ -108,6 +115,7 @@ class PjResearchReportService
             (string) data_get($scrPayload, 'data.situacao'),
             (string) data_get($scrPayload, 'data.status'),
             (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.situacao_receita'),
+            (string) data_get($basicCreditPayload, 'data.resultado.dados_cadastrais.status_empresa'),
             (string) data_get($businessCreditPayload, 'data.resultado.identificacao_completo.situacao_cnpj'),
             (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
             (string) data_get($limitePayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
@@ -149,17 +157,17 @@ class PjResearchReportService
             data_get($serasaPayload, 'response.dados.protesto_sintetico.valor_total'),
         ], '-');
 
-        $businessMetrics = $this->buildBusinessMetrics($completeResult, $basicResult, $serasaPayload, $businessCreditPayload);
-        $creditBehavior = $this->buildCreditBehavior($completeResult, $basicResult, $businessCreditPayload);
-        $contacts = $this->buildContacts($completeResult, $basicResult, $serasaPayload, $businessCreditPayload);
+        $businessMetrics = $this->buildBusinessMetrics($completeResult, $basicResult, $serasaPayload, $creditPjPayload);
+        $creditBehavior = $this->buildCreditBehavior($completeResult, $basicResult, $creditPjPayload);
+        $contacts = $this->buildContacts($completeResult, $basicResult, $serasaPayload, $creditPjPayload);
         $publicDebts = $this->buildPublicDebts($completeResult, $basicResult);
-        $negativeMetrics = $this->buildNegativeMetrics($completeResult, $basicResult, $serasaPayload, $businessCreditPayload);
+        $negativeMetrics = $this->buildNegativeMetrics($completeResult, $basicResult, $serasaPayload, $creditPjPayload);
         $compliance = $this->buildComplianceSummary($byKey, $completeResult, $basicResult);
         $complianceEntries = $this->buildComplianceEntries($completeResult, $basicResult);
-        $partners = $this->buildPartners($completeResult, $basicResult, $serasaPayload, $businessCreditPayload);
+        $partners = $this->buildPartners($completeResult, $basicResult, $serasaPayload, $creditPjPayload);
         $businessIndicators = $this->buildBusinessIndicators($completeResult);
-        $consultationHistory = $this->buildConsultationHistory($completeResult, $basicResult, $businessCreditPayload);
-        $registration = $this->buildRegistration($completeResult, $basicResult, $serasaPayload, $businessCreditPayload);
+        $consultationHistory = $this->buildConsultationHistory($completeResult, $basicResult, $creditPjPayload);
+        $registration = $this->buildRegistration($completeResult, $basicResult, $serasaPayload, $creditPjPayload);
         $patrimony = $this->buildPatrimony($completeResult, $basicResult);
 
         if (($businessMetrics['company_name'] ?? '') !== '') {
@@ -221,7 +229,8 @@ class PjResearchReportService
                 'credito_a_vencer' => $creditToMature,
                 'credito_vencido' => $overdueCredit,
                 'has_scr' => array_key_exists('scr_bacen_score_pj', $byKey->all())
-                    || array_key_exists('analise_credito_business_pj', $byKey->all()),
+                    || array_key_exists('analise_credito_business_pj', $byKey->all())
+                    || array_key_exists('analise_credito_basic_pj', $byKey->all()),
             ],
             'compliance' => $hasComplianceSource ? $compliance : [],
             'compliance_entries' => $hasComplianceSource ? $complianceEntries : [],

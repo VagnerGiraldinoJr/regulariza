@@ -41,7 +41,7 @@ return [
             'sources' => [
                 [
                     'provider' => 'bacen',
-                    'consultation_key' => 'analise_credito_business_pj',
+                    'consultation_key' => 'analise_credito_basic_pj',
                 ],
                 [
                     'provider' => 'bureau',
@@ -168,6 +168,27 @@ return [
                 'credito_business_pj',
             ],
             'description' => 'Consulta de crédito empresarial com score, cadastro completo, sócios, restrições e indicadores.',
+        ],
+        'analise_credito_basic_pj' => [
+            'title' => 'Análise de Crédito Basic PJ',
+            'category' => 'analise_credito',
+            'document_type' => 'cnpj',
+            'method' => 'POST',
+            'path' => '/api/v2/consulta/cnpj/credits',
+            'body' => [
+                'tipo' => 'analise-credito-basic-pj',
+                'cnpj' => '{document}',
+                'homolog' => true,
+            ],
+            'tipo_fallbacks' => [
+                'analise-credito-basic-pj',
+                'analise_credito_basic_pj',
+                'analise-credito-basic',
+                'analise_credito_basic',
+                'credito-basic-pj',
+                'credito_basic_pj',
+            ],
+            'description' => 'Consulta de crédito basic PJ com cadastro, histórico de consultas, negativação, protestos e quadro societário.',
         ],
         'serasa_premium_pj' => [
             'title' => 'Serasa Premium PJ',
