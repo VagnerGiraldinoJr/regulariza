@@ -142,26 +142,26 @@ class ResearchReportFlowTest extends TestCase
                 'balance' => '120,500',
             ], 200),
             'https://apibrasil.test/api/v2/consulta/cnpj/credits' => Http::sequence()
-                ->push(['data' => ['resultado' => ['score' => ['numero_score' => 642]]], 'message' => 'ok'], 200)
-                ->push([
-                    'response' => [
-                        'dados' => [
-                            'dados_receita_federal' => [
-                                'razao_social' => 'Empresa XPTO LTDA',
-                                'situacao_receita' => 'ATIVA',
-                            ],
-                            'scores' => [
-                                'ocorrencias' => [
-                                    [
-                                        'score' => '642',
-                                        'descr_score' => 'SCORE POSITIVO',
-                                        'probabilidade_inadimplencia' => '12',
-                                    ],
+                ->push(['data' => ['resultado' => ['score' => ['numero_score' => 642]]], 'message' => 'ok'], 200),
+            'https://apibrasil.test/api/v2/quod/cnpj/credits' => Http::response([
+                'response' => [
+                    'dados' => [
+                        'dados_receita_federal' => [
+                            'razao_social' => 'Empresa XPTO LTDA',
+                            'situacao_receita' => 'ATIVA',
+                        ],
+                        'scores' => [
+                            'ocorrencias' => [
+                                [
+                                    'score' => '642',
+                                    'descr_score' => 'SCORE POSITIVO',
+                                    'probabilidade_inadimplencia' => '12',
                                 ],
                             ],
                         ],
                     ],
-                ], 200),
+                ],
+            ], 200),
         ]);
 
         $admin = User::factory()->create(['role' => 'admin']);
