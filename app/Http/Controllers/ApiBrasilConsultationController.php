@@ -126,8 +126,7 @@ class ApiBrasilConsultationController extends Controller
         Request $request,
         ResearchReportService $researchReportService,
         ApiBrasilService $apiBrasilService
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         $bundles = $this->bundles();
         $data = $request->validate([
             'order_id' => ['nullable', 'integer', Rule::exists('orders', 'id')],
