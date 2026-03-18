@@ -22,8 +22,8 @@ class PjResearchReportService
         $businessCreditPayload = $this->payloadArray($byKey->get('analise_credito_business_pj'));
         $basicCreditPayload = $this->payloadArray($byKey->get('analise_credito_basic_pj'));
         $creditPjPayload = $this->firstArray([$businessCreditPayload, $basicCreditPayload]);
-        $quodPayload = $this->payloadArray($byKey->get('spc_quod_pj'));
-        $serasaPayload = $this->payloadArray($byKey->get('serasa_premium_pj'));
+        $quodPayload = $this->normalizeBureauPayload($this->payloadArray($byKey->get('spc_quod_pj')));
+        $serasaPayload = $this->normalizeBureauPayload($this->payloadArray($byKey->get('serasa_premium_pj')));
         $bureauPayload = $this->firstArray([$quodPayload, $serasaPayload]);
         $complianceCompletePayload = $this->payloadArray($byKey->get('compliance_complete_pj'));
         $complianceBasicPayload = $this->payloadArray($byKey->get('compliance_basic_pj'));
@@ -268,6 +268,27 @@ class PjResearchReportService
         return is_array($consultation?->response_payload) ? $consultation->response_payload : [];
     }
 
+    private function normalizeBureauPayload(array $payload): array
+    {
+        if ($payload === []) {
+            return [];
+        }
+
+        $dados = $this->firstArray([
+            data_get($payload, 'response.dados'),
+            data_get($payload, 'response.data.dados'),
+            data_get($payload, 'response.response.dados'),
+            data_get($payload, 'response.response.data.dados'),
+            data_get($payload, 'data.dados'),
+        ]);
+
+        if ($dados !== []) {
+            data_set($payload, 'response.dados', $dados);
+        }
+
+        return $payload;
+    }
+
     private function sourceLabel(?ApiBrasilConsultation $consultation): string
     {
         if (! $consultation) {
@@ -289,6 +310,10 @@ class PjResearchReportService
                 'response.data.dados.resultado',
                 'response.dados',
                 'response.data.dados',
+                'response.response.dados.resultado',
+                'response.response.dados',
+                'response.response.data.dados.resultado',
+                'response.response.data.dados',
             ];
 
             foreach ($paths as $path) {
