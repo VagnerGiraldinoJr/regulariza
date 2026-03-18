@@ -161,9 +161,19 @@
                         @foreach ($paidOrders as $order)
                             @php
                                 $docValue = (string) ($order->lead?->cpf_cnpj ?: $order->user?->cpf_cnpj ?: '');
+                                $docDigits = preg_replace('/\D+/', '', $docValue);
+                                $documentType = strlen($docDigits) === 14 ? 'cnpj' : 'cpf';
+                                $reportType = $documentType === 'cnpj' ? 'pj' : 'pf';
+                                $documentTypeLabel = strtoupper($documentType);
                             @endphp
-                            <option value="{{ $order->id }}" data-document="{{ preg_replace('/\D+/', '', $docValue) }}" @selected((string) old('order_id') === (string) $order->id)>
-                                {{ $order->protocolo }} - {{ $order->user?->name ?? 'Cliente não encontrado' }}
+                            <option
+                                value="{{ $order->id }}"
+                                data-document="{{ $docDigits }}"
+                                data-document-type="{{ $documentType }}"
+                                data-report-type="{{ $reportType }}"
+                                @selected((string) old('order_id') === (string) $order->id)
+                            >
+                                {{ $documentTypeLabel }} {{ $order->user?->name ?? 'Cliente não encontrado' }} - {{ $order->protocolo }}
                             </option>
                         @endforeach
                     </select>
@@ -477,6 +487,18 @@
                 return selected ? (selected.dataset.documentType || 'both') : 'both';
             };
 
+            const reportTypeValueForDocumentType = (documentType) => {
+                if (!reportTypeSelect || !documentType) {
+                    return '';
+                }
+
+                const desiredOption = Array.from(reportTypeSelect.options).find(function (option) {
+                    return (option.dataset.documentType || '') === documentType;
+                });
+
+                return desiredOption ? desiredOption.value : '';
+            };
+
             const applyMask = () => {
                 const raw = documentInput.value;
                 const digits = onlyDigits(raw);
@@ -505,10 +527,20 @@
                 orderSelect.addEventListener('change', function () {
                     const selected = orderSelect.options[orderSelect.selectedIndex];
                     const document = selected ? (selected.dataset.document || '') : '';
+                    const documentType = selected ? (selected.dataset.documentType || '') : '';
+
+                    if (reportTypeSelect && documentType !== '') {
+                        const reportType = reportTypeValueForDocumentType(documentType);
+                        if (reportType !== '') {
+                            reportTypeSelect.value = reportType;
+                        }
+                    }
+
                     if (document !== '') {
                         documentInput.value = document;
-                        applyMask();
                     }
+
+                    applyMask();
                 });
             }
 
@@ -527,6 +559,15 @@
             if (orderSelect && orderSelect.value) {
                 const selected = orderSelect.options[orderSelect.selectedIndex];
                 const document = selected ? (selected.dataset.document || '') : '';
+                const documentType = selected ? (selected.dataset.documentType || '') : '';
+
+                if (reportTypeSelect && documentType !== '') {
+                    const reportType = reportTypeValueForDocumentType(documentType);
+                    if (reportType !== '') {
+                        reportTypeSelect.value = reportType;
+                    }
+                }
+
                 if (document !== '') {
                     documentInput.value = document;
                 }

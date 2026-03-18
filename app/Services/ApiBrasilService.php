@@ -60,11 +60,13 @@ class ApiBrasilService
         $url = $this->baseUrl().'/'.ltrim($path, '/');
 
         $response = $this->send($method, $url, $payload);
+        $responsePayload = $this->payload($response);
+        $isSuccess = $this->isSuccessfulResponse($response, $responsePayload);
 
         return [
             'document' => $digits,
             'document_type' => $resolvedType,
-            'status' => $response->successful() ? 'success' : 'error',
+            'status' => $isSuccess ? 'success' : 'error',
             'http_status' => $response->status(),
             'endpoint' => $url,
             'request_payload' => [
@@ -73,8 +75,8 @@ class ApiBrasilService
                 'document' => $digits,
                 'body' => $payload,
             ],
-            'response_payload' => $this->payload($response),
-            'error_message' => $response->successful() ? null : $this->errorMessage($response),
+            'response_payload' => $responsePayload,
+            'error_message' => $isSuccess ? null : $this->errorMessage($response, $responsePayload),
             'consultation_key' => $consultationKey,
             'consultation_title' => (string) ($definition['title'] ?? $consultationKey),
             'consultation_category' => (string) ($definition['category'] ?? 'geral'),
@@ -143,8 +145,17 @@ class ApiBrasilService
         return ['raw' => $response->body()];
     }
 
-    private function errorMessage(Response $response): string
+    private function errorMessage(Response $response, mixed $payload = null): string
     {
+        if (is_array($payload)) {
+            foreach (['message', 'error_message', 'error', 'response.message'] as $path) {
+                $value = data_get($payload, $path);
+                if (is_string($value) && trim($value) !== '') {
+                    return trim($value);
+                }
+            }
+        }
+
         $body = $response->body();
         $body = mb_substr(trim($body), 0, 600);
 
@@ -153,6 +164,58 @@ class ApiBrasilService
         }
 
         return $body;
+    }
+
+    private function isSuccessfulResponse(Response $response, mixed $payload): bool
+    {
+        if (! $response->successful()) {
+            return false;
+        }
+
+        if (! is_array($payload)) {
+            return true;
+        }
+
+        foreach (['error', 'success'] as $flagKey) {
+            $flag = data_get($payload, $flagKey);
+
+            if ($flagKey === 'error' && $this->toNullableBoolean($flag) === true) {
+                return false;
+            }
+
+            if ($flagKey === 'success' && $this->toNullableBoolean($flag) === false) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function toNullableBoolean(mixed $value): ?bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value)) {
+            return $value === 1 ? true : ($value === 0 ? false : null);
+        }
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $normalized = mb_strtolower(trim($value));
+
+        if (in_array($normalized, ['1', 'true', 'yes', 'sim'], true)) {
+            return true;
+        }
+
+        if (in_array($normalized, ['0', 'false', 'no', 'nao', 'não'], true)) {
+            return false;
+        }
+
+        return null;
     }
 
     private function send(string $method, string $url, array $payload): Response

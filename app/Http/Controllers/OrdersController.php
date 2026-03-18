@@ -103,7 +103,7 @@ class OrdersController extends Controller
         $allowedPagamentoStatus = ['aguardando', 'pago', 'falhou', 'reembolsado'];
 
         $ordersQuery = Order::query()
-            ->with(['user', 'service'])
+            ->with(['user.referredBy', 'service', 'lead.referredBy'])
             ->when(in_array($status, $allowedStatus, true), fn ($query) => $query->where('status', $status))
             ->when(in_array($pagamentoStatus, $allowedPagamentoStatus, true), fn ($query) => $query->where('pagamento_status', $pagamentoStatus));
 

@@ -15,7 +15,8 @@ class ResearchReportService
 {
     public function __construct(
         private readonly ResearchProviderManager $providerManager,
-        private readonly PfResearchReportService $pfResearchReportService
+        private readonly PfResearchReportService $pfResearchReportService,
+        private readonly PjResearchReportService $pjResearchReportService
     ) {}
 
     public function createFromBundle(
@@ -203,6 +204,13 @@ class ResearchReportService
 
         if ($report->report_type === 'pf' && $successfulConsultations->isNotEmpty()) {
             $payload = $this->pfResearchReportService->build($this->contextOrder($report), $successfulConsultations);
+            $payload['meta']['generated_at'] = $report->freshTimestamp()->toIso8601String();
+
+            return $payload;
+        }
+
+        if ($report->report_type === 'pj' && $consultations->isNotEmpty()) {
+            $payload = $this->pjResearchReportService->build($this->contextOrder($report), $consultations);
             $payload['meta']['generated_at'] = $report->freshTimestamp()->toIso8601String();
 
             return $payload;

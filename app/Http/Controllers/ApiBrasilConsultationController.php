@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AdminAuditService;
 use App\Services\ApiBrasilService;
 use App\Services\PfResearchReportService;
+use App\Services\PjResearchReportService;
 use App\Services\ResearchReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
@@ -273,15 +274,18 @@ class ApiBrasilConsultationController extends Controller
         return $pdf->download($filename);
     }
 
-    public function downloadOrderPdf(Order $order, PfResearchReportService $pfResearchReportService): Response|RedirectResponse
-    {
+    public function downloadOrderPdf(
+        Order $order,
+        PfResearchReportService $pfResearchReportService,
+        PjResearchReportService $pjResearchReportService
+    ): Response|RedirectResponse {
         $existingReport = ResearchReport::query()
             ->where('order_id', $order->id)
             ->latest('id')
             ->first();
 
         if ($existingReport) {
-            return $this->downloadResearchReportPdf($existingReport, $pfResearchReportService);
+            return $this->downloadResearchReportPdf($existingReport, $pfResearchReportService, $pjResearchReportService);
         }
 
         $consultations = ApiBrasilConsultation::query()
@@ -311,17 +315,23 @@ class ApiBrasilConsultationController extends Controller
                 'report' => $report,
             ])->setPaper('a4');
         } else {
-            $pdf = Pdf::loadView('admin.management.apibrasil-order-dossier-pdf', [
+            $report = $pjResearchReportService->build($order, $consultations);
+
+            $pdf = Pdf::loadView('admin.management.apibrasil-order-dossier-pj-pdf', [
                 'order' => $order,
                 'consultations' => $consultations,
+                'report' => $report,
             ])->setPaper('a4');
         }
 
         return $pdf->download($filename);
     }
 
-    public function downloadResearchReportPdf(ResearchReport $report, PfResearchReportService $pfResearchReportService): Response|RedirectResponse
-    {
+    public function downloadResearchReportPdf(
+        ResearchReport $report,
+        PfResearchReportService $pfResearchReportService,
+        PjResearchReportService $pjResearchReportService
+    ): Response|RedirectResponse {
         $report->loadMissing([
             'order.lead',
             'order.user',
@@ -366,9 +376,15 @@ class ApiBrasilConsultationController extends Controller
                 'report' => $payload,
             ])->setPaper('a4');
         } else {
-            $pdf = Pdf::loadView('admin.management.apibrasil-order-dossier-pdf', [
+            $payload = $this->hydratePjPayload(
+                $report->normalized_payload,
+                $pjResearchReportService->build($contextOrder, $consultations)
+            );
+
+            $pdf = Pdf::loadView('admin.management.apibrasil-order-dossier-pj-pdf', [
                 'order' => $contextOrder,
                 'consultations' => $consultations,
+                'report' => $payload,
                 'researchReport' => $report,
             ])->setPaper('a4');
         }
@@ -390,6 +406,20 @@ class ApiBrasilConsultationController extends Controller
     }
 
     private function hydratePfPayload(?array $storedPayload, array $fallbackPayload): array
+    {
+        $payload = is_array($storedPayload) && $storedPayload !== [] ? $storedPayload : $fallbackPayload;
+        $generatedAt = data_get($payload, 'meta.generated_at');
+
+        if (is_string($generatedAt) && $generatedAt !== '') {
+            data_set($payload, 'meta.generated_at', Carbon::parse($generatedAt));
+        } elseif (! $generatedAt instanceof Carbon) {
+            data_set($payload, 'meta.generated_at', now());
+        }
+
+        return $payload;
+    }
+
+    private function hydratePjPayload(?array $storedPayload, array $fallbackPayload): array
     {
         $payload = is_array($storedPayload) && $storedPayload !== [] ? $storedPayload : $fallbackPayload;
         $generatedAt = data_get($payload, 'meta.generated_at');

@@ -135,6 +135,7 @@
                             <th class="px-4 py-3">Valor</th>
                             <th class="px-4 py-3">Status</th>
                             <th class="px-4 py-3">Pagamento</th>
+                            <th class="px-4 py-3">Origem</th>
                             @if (auth()->user()?->role === 'admin')
                                 <th class="px-4 py-3 text-right">Acoes</th>
                             @endif
@@ -153,6 +154,11 @@
                                 }
                                 $statusInfo = $statusMap[$order->status] ?? ['label' => ucfirst(str_replace('_', ' ', (string) $order->status)), 'class' => 'bg-slate-100/85 text-slate-800 border-slate-300/80'];
                                 $paymentInfo = $paymentMap[$order->pagamento_status] ?? ['label' => ucfirst((string) $order->pagamento_status), 'class' => 'bg-slate-100/85 text-slate-800 border-slate-300/80'];
+                                $originReferral = $order->lead?->referredBy ?: $order->user?->referredBy;
+                                $originLabel = 'Empresa';
+                                if ($originReferral && in_array($originReferral->role, ['analista', 'vendedor'], true)) {
+                                    $originLabel = 'Analista ('.$originReferral->name.')';
+                                }
                             @endphp
                             <tr class="border-t border-slate-200/60">
                                 <td class="px-4 py-3 font-semibold text-slate-800">{{ $order->protocolo }}</td>
@@ -169,6 +175,7 @@
                                 <td class="px-4 py-3 text-slate-700">
                                     <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-bold {{ $paymentInfo['class'] }}">{{ $paymentInfo['label'] }}</span>
                                 </td>
+                                <td class="px-4 py-3 text-slate-700">{{ $originLabel }}</td>
                                 @if (auth()->user()?->role === 'admin')
                                     <td class="px-4 py-3 text-right">
                                         @if ($order->pagamento_status !== 'pago')
@@ -185,7 +192,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ auth()->user()?->role === 'admin' ? 7 : 6 }}" class="px-4 py-6 text-center text-slate-500">Sem pedidos para exibir.</td>
+                                <td colspan="{{ auth()->user()?->role === 'admin' ? 8 : 7 }}" class="px-4 py-6 text-center text-slate-500">Sem pedidos para exibir.</td>
                             </tr>
                         @endforelse
                     </tbody>
