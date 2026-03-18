@@ -102,6 +102,23 @@
     if (is_string($generatedAt) && $generatedAt !== '') {
         $generatedAt = \Illuminate\Support\Carbon::parse($generatedAt);
     }
+    $sanitizeChargeMessage = function ($value): string {
+        if (! is_scalar($value)) {
+            return '';
+        }
+
+        $clean = trim((string) $value);
+        if ($clean === '') {
+            return '';
+        }
+
+        $clean = preg_replace('/valor\s+da\s+consulta:\s*r\$\s*[\d\.,]+!?/iu', '', $clean) ?? $clean;
+        $clean = preg_replace('/voc[eê]\s+foi\s+tarifado\s+em\s+r\$\s*[\d\.,]+!?/iu', '', $clean) ?? $clean;
+        $clean = preg_replace('/\br\$\s*[\d\.,]+/iu', 'R$ [oculto]', $clean) ?? $clean;
+        $clean = preg_replace('/\s{2,}/u', ' ', trim($clean)) ?? $clean;
+
+        return $clean;
+    };
     $formatDocument = function ($value): string {
         if (! is_scalar($value)) {
             return '-';
@@ -421,13 +438,22 @@
         </thead>
         <tbody>
             @foreach($sources as $source)
+                @php
+                    $sourceNote = $sanitizeChargeMessage($source['message'] ?? '');
+                    if ($sourceNote === '') {
+                        $sourceNote = $sanitizeChargeMessage($source['error_message'] ?? '');
+                    }
+                    if ($sourceNote === '') {
+                        $sourceNote = '-';
+                    }
+                @endphp
                 <tr>
                     <td>{{ $source['title'] ?? ($source['key'] ?? '-') }}</td>
                     <td><span class="pill {{ ($source['status'] ?? 'error') === 'success' ? 'ok' : 'warn' }}">{{ $source['status_label'] ?? (($source['status'] ?? '') === 'success' ? 'Sucesso' : 'Falha') }}</span></td>
                     <td>{{ $source['http_status'] ?? '-' }}</td>
                     <td>{{ $source['consulted_at'] ?? '-' }}</td>
                     <td>
-                        {{ $source['message'] ?: ($source['error_message'] ?: '-') }}
+                        {{ $sourceNote }}
                         <div style="margin-top: 3px; color: #64748b;">{{ $source['endpoint'] ?? '-' }}</div>
                     </td>
                 </tr>
