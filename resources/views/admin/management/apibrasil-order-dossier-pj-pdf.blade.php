@@ -13,10 +13,11 @@
         .protocol { margin-top: 8px; font-size: 9px; color: #d9f3ff; }
         .section { margin-top: 14px; }
         .section-title { margin: 0 0 8px; padding-bottom: 5px; border-bottom: 1px solid #d9e4ef; color: #17607e; font-size: 13px; font-weight: 700; }
-        .table { width: 100%; border-collapse: collapse; }
+        .table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .table td, .table th { border: 1px solid #e3ebf3; padding: 6px 8px; vertical-align: top; }
         .table th { background: #eef7fb; color: #36536b; text-align: left; }
         .label { width: 200px; background: #f8fbfd; color: #48627a; font-weight: 700; }
+        td, th { word-break: break-word; overflow-wrap: anywhere; }
         .pill { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
         .pill.ok { background: #e6f8ec; color: #17603a; }
         .pill.warn { background: #fff0d8; color: #8a5305; }
@@ -41,6 +42,10 @@
     $company = $report['company'] ?? [];
     $credit = $report['credit'] ?? [];
     $compliance = $report['compliance'] ?? [];
+    $judicial = $report['judicial'] ?? [];
+    $business = $report['business'] ?? [];
+    $creditBehavior = $report['credit_behavior'] ?? [];
+    $partners = is_array($report['partners'] ?? null) ? $report['partners'] : [];
     $sources = is_array($report['sources'] ?? null) ? $report['sources'] : [];
     $generatedAt = $meta['generated_at'] ?? now();
     if (is_string($generatedAt) && $generatedAt !== '') {
@@ -127,12 +132,111 @@
     </table>
 </div>
 
+@if(($business['company_name'] ?? '') !== '' || ($business['trade_name'] ?? '') !== '' || $partners !== [])
+    <div class="section">
+        <h2 class="section-title">Cadastro Empresarial (Basic PJ)</h2>
+        <table class="table">
+            <tr><td class="label">Razão social (fonte cadastral)</td><td>{{ $business['company_name'] ?? '-' }}</td></tr>
+            <tr><td class="label">Nome fantasia</td><td>{{ $business['trade_name'] ?? '-' }}</td></tr>
+            <tr><td class="label">Status da empresa</td><td>{{ $business['status'] ?? '-' }}</td></tr>
+            <tr><td class="label">Atividade principal</td><td>{{ $business['main_activity'] ?? '-' }}</td></tr>
+            <tr><td class="label">Atividade secundária</td><td>{{ $business['secondary_activity'] ?? '-' }}</td></tr>
+            <tr><td class="label">Telefone</td><td>{{ $business['telefone'] ?? '-' }}</td></tr>
+            <tr><td class="label">E-mail</td><td>{{ $business['email'] ?? '-' }}</td></tr>
+            <tr><td class="label">Capital social</td><td>{{ $business['capital_social'] ?? '-' }}</td></tr>
+        </table>
+
+        <table class="table" style="margin-top: 8px;">
+            <tr><td class="label">Consultas últimos 30 dias</td><td>{{ $creditBehavior['ultimos_30_dias'] ?? 0 }}</td></tr>
+            <tr><td class="label">Consultas de 31 a 60 dias</td><td>{{ $creditBehavior['de_31_a_60_dias'] ?? 0 }}</td></tr>
+            <tr><td class="label">Consultas de 61 a 90 dias</td><td>{{ $creditBehavior['de_61_a_90_dias'] ?? 0 }}</td></tr>
+            <tr><td class="label">Consultas acima de 90 dias</td><td>{{ $creditBehavior['mais_90_dias'] ?? 0 }}</td></tr>
+            <tr><td class="label">Cadastro positivo</td><td>{{ ($creditBehavior['status_cadastro_positivo'] ?? '') === '1' ? 'Ativo' : (($creditBehavior['status_cadastro_positivo'] ?? '') === '' ? '-' : 'Inativo') }}</td></tr>
+        </table>
+
+        @if($partners !== [])
+            <table class="table" style="margin-top: 8px;">
+                <thead>
+                    <tr>
+                        <th>Sócio</th>
+                        <th>Documento</th>
+                        <th>Tipo</th>
+                        <th>Relação</th>
+                        <th>Participação</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($partners as $partner)
+                        <tr>
+                            <td>{{ $partner['name'] ?? '-' }}</td>
+                            <td>{{ $partner['document'] ?? '-' }}</td>
+                            <td>{{ $partner['type'] ?? '-' }}</td>
+                            <td>{{ $partner['relationship'] ?? '-' }}</td>
+                            <td>{{ $partner['share'] ?? '-' }}</td>
+                            <td>{{ $partner['status'] ?? '-' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+@endif
+
+@if (($judicial['count'] ?? 0) > 0)
+    <div class="section">
+        <h2 class="section-title">Ações e Processos</h2>
+        <table class="table">
+            <tr><td class="label">Total de processos</td><td>{{ $judicial['count'] }}</td></tr>
+            <tr><td class="label">Em tramitação</td><td>{{ $judicial['active_count'] ?? 0 }}</td></tr>
+            <tr><td class="label">Arquivados</td><td>{{ $judicial['archived_count'] ?? 0 }}</td></tr>
+            <tr>
+                <td class="label">Tribunais com ocorrências</td>
+                <td>
+                    @php $tribunals = is_array($judicial['tribunals'] ?? null) ? $judicial['tribunals'] : []; @endphp
+                    @if($tribunals !== [])
+                        @foreach($tribunals as $tribunal)
+                            <div>{{ $tribunal['name'] ?? '-' }}: {{ $tribunal['count'] ?? 0 }}</div>
+                        @endforeach
+                    @else
+                        -
+                    @endif
+                </td>
+            </tr>
+        </table>
+
+        @php $topCases = is_array($judicial['top_cases'] ?? null) ? $judicial['top_cases'] : []; @endphp
+        @if($topCases !== [])
+            <table class="table" style="margin-top: 8px;">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Tribunal</th>
+                        <th>Classe</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($topCases as $case)
+                        <tr>
+                            <td>{{ $case['number'] ?? '-' }}</td>
+                            <td>{{ $case['tribunal'] ?? '-' }}</td>
+                            <td>{{ $case['subject'] ?? '-' }}</td>
+                            <td>{{ $case['status'] ?? '-' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+@endif
+
 <div class="section">
     <h2 class="section-title">Anexo Técnico Resumido</h2>
     @foreach($consultations as $item)
         @php
             $payload = json_encode($item->response_payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-            $preview = \Illuminate\Support\Str::limit((string) $payload, 2200, "\n... [conteúdo truncado]");
+            $preview = \Illuminate\Support\Str::limit((string) $payload, 1300, "\n... [conteúdo truncado]");
         @endphp
         <div style="margin-bottom: 8px;">
             <strong>{{ $item->consultation_title ?: $item->consultation_key }}</strong>

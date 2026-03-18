@@ -88,13 +88,18 @@ class PjResearchReportService
 
         $sources = $consultations->map(function (ApiBrasilConsultation $consultation): array {
             $payload = is_array($consultation->response_payload) ? $consultation->response_payload : [];
+            $httpStatus = $consultation->http_status;
+            $status = (string) $consultation->status;
+            $isWarning = $status !== 'success' && in_array((int) $httpStatus, [404, 422, 429], true);
 
             return [
                 'key' => (string) $consultation->consultation_key,
                 'title' => (string) ($consultation->consultation_title ?: $consultation->consultation_key),
-                'status' => (string) $consultation->status,
-                'status_label' => $consultation->status === 'success' ? 'Sucesso' : 'Falha',
-                'http_status' => $consultation->http_status,
+                'status' => $status,
+                'status_label' => $status === 'success'
+                    ? 'Sucesso'
+                    : ($isWarning ? 'Indisponivel' : 'Falha'),
+                'http_status' => $httpStatus,
                 'endpoint' => (string) ($consultation->endpoint ?: '-'),
                 'error_message' => (string) ($consultation->error_message ?: ''),
                 'message' => $this->firstString([
@@ -104,6 +109,9 @@ class PjResearchReportService
                 'consulted_at' => $consultation->created_at?->format('d/m/Y H:i:s') ?: '-',
             ];
         })->values()->all();
+
+        $judicialMetrics = $this->judicialMetrics($consultations);
+        $basicPjMetrics = $this->basicPjMetrics($consultations);
 
         return [
             'meta' => [
@@ -130,6 +138,10 @@ class PjResearchReportService
                 'protesto' => $protestoStatus,
                 'protesto_detail' => $protestoDetail,
             ],
+            'judicial' => $judicialMetrics,
+            'business' => $basicPjMetrics['business'],
+            'credit_behavior' => $basicPjMetrics['credit_behavior'],
+            'partners' => $basicPjMetrics['partners'],
             'sources' => $sources,
         ];
     }
@@ -193,5 +205,160 @@ class PjResearchReportService
         }
 
         return $fallback;
+    }
+
+    private function judicialMetrics(Collection $consultations): array
+    {
+        $allProcesses = collect();
+
+        foreach ($consultations as $consultation) {
+            if (! $consultation instanceof ApiBrasilConsultation) {
+                continue;
+            }
+
+            $payload = is_array($consultation->response_payload) ? $consultation->response_payload : [];
+            if ($payload === []) {
+                continue;
+            }
+
+            $processes = $this->extractProcesses($payload);
+            if ($processes->isNotEmpty()) {
+                $allProcesses = $allProcesses->merge($processes);
+            }
+        }
+
+        $allProcesses = $allProcesses
+            ->filter(fn ($item) => is_array($item))
+            ->values();
+
+        if ($allProcesses->isEmpty()) {
+            return [
+                'count' => 0,
+                'active_count' => 0,
+                'archived_count' => 0,
+                'tribunals' => [],
+                'top_cases' => [],
+            ];
+        }
+
+        $activeCount = 0;
+        $archivedCount = 0;
+
+        foreach ($allProcesses as $process) {
+            $status = mb_strtolower(trim((string) data_get($process, 'statusPj.statusProcesso', '')));
+            if (str_contains($status, 'arquiv')) {
+                $archivedCount++;
+            } else {
+                $activeCount++;
+            }
+        }
+
+        $tribunals = $allProcesses
+            ->map(fn ($process) => trim((string) ($process['tribunal'] ?? '')))
+            ->filter()
+            ->countBy()
+            ->sortDesc()
+            ->take(5)
+            ->map(fn ($count, $name) => ['name' => $name, 'count' => $count])
+            ->values()
+            ->all();
+
+        $topCases = $allProcesses
+            ->take(8)
+            ->map(function (array $process): array {
+                return [
+                    'number' => (string) ($process['numeroProcessoUnico'] ?? '-'),
+                    'tribunal' => (string) ($process['tribunal'] ?? '-'),
+                    'subject' => (string) data_get($process, 'classeProcessual.nome', '-'),
+                    'status' => (string) data_get($process, 'statusPj.statusProcesso', ($process['statusObservacao'] ?? '-')),
+                ];
+            })
+            ->all();
+
+        return [
+            'count' => $allProcesses->count(),
+            'active_count' => $activeCount,
+            'archived_count' => $archivedCount,
+            'tribunals' => $tribunals,
+            'top_cases' => $topCases,
+        ];
+    }
+
+    private function extractProcesses(array $payload): Collection
+    {
+        $candidates = [
+            data_get($payload, 'response.data.dados.acoesProcessos.acoes.processos', []),
+            data_get($payload, 'data.dados.acoesProcessos.acoes.processos', []),
+            data_get($payload, 'acoesProcessos.acoes.processos', []),
+            data_get($payload, 'acoes.processos', []),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate) && $candidate !== []) {
+                return collect($candidate);
+            }
+        }
+
+        return collect();
+    }
+
+    private function basicPjMetrics(Collection $consultations): array
+    {
+        $resultado = null;
+
+        foreach ($consultations as $consultation) {
+            if (! $consultation instanceof ApiBrasilConsultation || ! is_array($consultation->response_payload)) {
+                continue;
+            }
+
+            $candidate = data_get($consultation->response_payload, 'data.resultado');
+            if (is_array($candidate) && $candidate !== []) {
+                $resultado = $candidate;
+                break;
+            }
+        }
+
+        if (! is_array($resultado) || $resultado === []) {
+            return [
+                'business' => [],
+                'credit_behavior' => [],
+                'partners' => [],
+            ];
+        }
+
+        $dadosCadastrais = (array) data_get($resultado, 'dados_cadastrais', []);
+        $consultas = (array) data_get($resultado, 'consultas', []);
+        $quadroSocietario = (array) data_get($resultado, 'quadro_societario', []);
+        $socios = is_array($quadroSocietario['socios'] ?? null) ? $quadroSocietario['socios'] : [];
+
+        return [
+            'business' => [
+                'company_name' => (string) ($dadosCadastrais['nome_empresa'] ?? ''),
+                'trade_name' => (string) ($dadosCadastrais['nome_fantasia'] ?? ''),
+                'status' => (string) ($dadosCadastrais['status_empresa'] ?? ''),
+                'main_activity' => (string) ($dadosCadastrais['descricao_atividade_principal'] ?? ''),
+                'secondary_activity' => (string) ($dadosCadastrais['descricao_atividade_secundaria'] ?? ''),
+                'telefone' => (string) ($dadosCadastrais['numero_telefone'] ?? ''),
+                'email' => (string) data_get($dadosCadastrais, 'emails.emails', ''),
+                'capital_social' => (string) ($quadroSocietario['capital_social'] ?? ''),
+            ],
+            'credit_behavior' => [
+                'ultimos_30_dias' => (int) ($consultas['contagem_consultas_ultimos_30_dias'] ?? 0),
+                'de_31_a_60_dias' => (int) ($consultas['contagem_consultas_31_a_60_dias'] ?? 0),
+                'de_61_a_90_dias' => (int) ($consultas['contagem_consultas_61_a_90_dias'] ?? 0),
+                'mais_90_dias' => (int) ($consultas['contagem_consultas_mais_90_dias'] ?? 0),
+                'status_cadastro_positivo' => (string) ($resultado['status_cadastro_positivo'] ?? ''),
+            ],
+            'partners' => collect($socios)->map(function (array $partner): array {
+                return [
+                    'name' => (string) ($partner['nomes'] ?? '-'),
+                    'document' => (string) ($partner['cpf_cnpj'] ?? '-'),
+                    'type' => (string) ($partner['tipo_entidade'] ?? '-'),
+                    'relationship' => (string) ($partner['descricao_relacionamento'] ?? '-'),
+                    'share' => (string) ($partner['percentual_participacao'] ?? '-'),
+                    'status' => (string) ($partner['status'] ?? '-'),
+                ];
+            })->values()->all(),
+        ];
     }
 }
