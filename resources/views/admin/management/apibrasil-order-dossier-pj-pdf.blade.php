@@ -50,6 +50,9 @@
         'sp' => '-',
         'fitch' => '-',
     ], $credit['rating'] ?? []);
+    $logoPath = public_path('assets/branding/cpfclean-logo.svg');
+    $logoSvg = file_exists($logoPath) ? file_get_contents($logoPath) : null;
+    $logoDataUri = $logoSvg ? 'data:image/svg+xml;base64,'.base64_encode($logoSvg) : null;
     $riskPill = match ($rating['sp']) {
         'AAA', 'AA+', 'AA', 'AA-', 'A+', 'A', 'A-' => 'pill ok',
         'BBB+', 'BBB', 'BBB-', 'BB+', 'BB', 'BB-' => 'pill warn',
@@ -64,6 +67,11 @@
 <div class="header">
     <table class="header-table">
         <tr>
+            <td style="width:50px; vertical-align: top;">
+                @if($logoDataUri)
+                    <img src="{{ $logoDataUri }}" alt="CPF Clean Brasil" style="width:36px; height:36px;">
+                @endif
+            </td>
             <td>
                 <p class="title">DIAGNÓSTICO FINANCEIRO PJ</p>
                 <p class="subtitle">Consolidado empresarial no padrão executivo da análise PF</p>

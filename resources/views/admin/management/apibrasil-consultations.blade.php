@@ -2,11 +2,12 @@
     <div class="space-y-5">
         <div
             class="pointer-events-none fixed inset-0 z-[80] hidden items-center justify-center px-4"
+            style="display: none;"
             data-loading-overlay
             aria-hidden="true"
         >
-            <div class="absolute inset-0 bg-slate-950/45 backdrop-blur-[4px]"></div>
-            <div class="relative w-full max-w-md overflow-hidden rounded-[1.75rem] border border-white/35 bg-white/88 p-6 shadow-[0_30px_90px_rgba(7,26,47,0.35)] backdrop-blur-xl">
+            <div class="absolute inset-0 z-0 bg-slate-950/45 backdrop-blur-[4px]"></div>
+            <div class="relative z-10 w-full max-w-md overflow-hidden rounded-[1.75rem] border border-white/35 bg-white/88 p-6 shadow-[0_30px_90px_rgba(7,26,47,0.35)] backdrop-blur-xl">
                 <div class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-cyan-400 via-sky-500 to-cyan-300 opacity-90"></div>
                 <div class="flex items-start justify-between gap-4">
                     <div>
@@ -428,6 +429,7 @@
                 setLoadingProgress(1);
                 loadingOverlay.classList.remove('hidden');
                 loadingOverlay.classList.add('flex', 'pointer-events-auto');
+                loadingOverlay.style.display = 'flex';
                 loadingOverlay.setAttribute('aria-hidden', 'false');
                 document.body.classList.add('overflow-hidden');
 
@@ -458,6 +460,7 @@
                 }
 
                 setLoadingProgress(100);
+                loadingOverlay.style.display = 'none';
             };
 
             const onlyDigits = (value) => (value || '').replace(/\D+/g, '');
