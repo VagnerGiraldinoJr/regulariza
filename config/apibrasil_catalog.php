@@ -49,11 +49,11 @@ return [
                 ],
                 [
                     'provider' => 'fiscal',
-                    'consultation_key' => 'certidao_negativa_pj',
+                    'consultation_key' => 'define_risco_pj',
                 ],
                 [
                     'provider' => 'registry',
-                    'consultation_key' => 'protesto_nacional_v2',
+                    'consultation_key' => 'limite_pj',
                 ],
             ],
         ],
@@ -176,6 +176,32 @@ return [
             'path' => '/api/v2/consulta/cnpj/certidao-negativa',
             'body' => ['cnpj' => '{document}'],
             'description' => 'Certidão negativa para pessoa jurídica.',
+        ],
+        'define_risco_pj' => [
+            'title' => 'Define Risco PJ',
+            'category' => 'analise_credito',
+            'document_type' => 'cnpj',
+            'method' => 'POST',
+            'path' => '/api/v2/consulta/cnpj/credits',
+            'body' => [
+                'tipo' => 'define-risco-pj',
+                'cnpj' => '{document}',
+                'homolog' => true,
+            ],
+            'description' => 'Consulta sintética de risco PJ com score, dados cadastrais e indícios de negativas/protestos.',
+        ],
+        'limite_pj' => [
+            'title' => 'Limite PJ',
+            'category' => 'analise_credito',
+            'document_type' => 'cnpj',
+            'method' => 'POST',
+            'path' => '/api/v2/consulta/cnpj/credits',
+            'body' => [
+                'tipo' => 'limite-pj',
+                'cnpj' => '{document}',
+                'homolog' => true,
+            ],
+            'description' => 'Consulta de limite/score PJ para apoio à decisão de crédito.',
         ],
         'protesto_nacional_v2' => [
             'title' => 'Protesto Nacional V2',

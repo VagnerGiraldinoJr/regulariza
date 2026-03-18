@@ -131,13 +131,9 @@ class ResearchReportFlowTest extends TestCase
         Http::fake([
             'https://apibrasil.test/api/v2/consulta/cnpj/credits' => Http::sequence()
                 ->push(['data' => ['empresa' => 'Empresa XPTO']], 200)
-                ->push(['error' => 'falha'], 500),
-            'https://apibrasil.test/api/v2/consulta/cnpj/certidao-negativa' => Http::response([
-                'data' => ['situacao' => 'negativa'],
-            ], 200),
-            'https://apibrasil.test/api/v2/consulta/protesto/nacional-v2' => Http::response([
-                'data' => ['ocorrencias' => []],
-            ], 200),
+                ->push(['error' => 'falha'], 500)
+                ->push(['response' => ['data' => ['dados' => ['resultado' => ['dadoscadastrais' => ['razaosocial' => 'Empresa XPTO LTDA']]]]]], 200)
+                ->push(['response' => ['data' => ['dados' => ['resultado' => ['score' => ['score' => 702]]]]]], 200),
         ]);
 
         $admin = User::factory()->create(['role' => 'admin']);

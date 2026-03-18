@@ -20,6 +20,8 @@ class PjResearchReportService
 
         $scrPayload = $this->payloadArray($byKey->get('scr_bacen_score_pj'));
         $serasaPayload = $this->payloadArray($byKey->get('serasa_premium_pj'));
+        $defineRiscoPayload = $this->payloadArray($byKey->get('define_risco_pj'));
+        $limitePayload = $this->payloadArray($byKey->get('limite_pj'));
 
         $document = preg_replace('/\D+/', '', (string) ($order->lead?->cpf_cnpj ?: $order->user?->cpf_cnpj ?: ''));
         if ($document === '') {
@@ -27,8 +29,10 @@ class PjResearchReportService
         }
 
         $companyName = $this->firstString([
-            $this->findStringByKeys($serasaPayload, ['razao_social', 'razaoSocial', 'nomeEmpresarial', 'nome_fantasia', 'nomeFantasia', 'empresa', 'nome']),
-            $this->findStringByKeys($scrPayload, ['razao_social', 'razaoSocial', 'nomeEmpresarial', 'nome_fantasia', 'nomeFantasia', 'empresa', 'nome']),
+            $this->findStringByKeys($serasaPayload, ['razao_social', 'razaosocial', 'razaoSocial', 'nomeEmpresarial', 'nome_fantasia', 'nomefantasia', 'nomeFantasia', 'empresa', 'nome']),
+            $this->findStringByKeys($scrPayload, ['razao_social', 'razaosocial', 'razaoSocial', 'nomeEmpresarial', 'nome_fantasia', 'nomefantasia', 'nomeFantasia', 'empresa', 'nome']),
+            $this->findStringByKeys($defineRiscoPayload, ['razao_social', 'razaosocial', 'razaoSocial', 'nomeEmpresarial', 'nome_fantasia', 'nomefantasia', 'nomeFantasia', 'empresa', 'nome']),
+            $this->findStringByKeys($limitePayload, ['razao_social', 'razaosocial', 'razaoSocial', 'nomeEmpresarial', 'nome_fantasia', 'nomefantasia', 'nomeFantasia', 'empresa', 'nome']),
             (string) ($order->user?->name ?: ''),
         ], '-');
 
@@ -37,12 +41,24 @@ class PjResearchReportService
             data_get($scrPayload, 'score'),
             data_get($serasaPayload, 'data.score'),
             data_get($serasaPayload, 'score'),
+            data_get($scrPayload, 'response.data.dados.resultado.score.score'),
+            data_get($serasaPayload, 'response.data.dados.resultado.score.score'),
+            data_get($scrPayload, 'response.dados.scores.ocorrencias.0.score'),
+            data_get($serasaPayload, 'response.dados.scores.ocorrencias.0.score'),
+            data_get($defineRiscoPayload, 'response.data.dados.resultado.score.score'),
+            data_get($limitePayload, 'response.data.dados.resultado.score.score'),
+            data_get($defineRiscoPayload, 'response.dados.scores.ocorrencias.0.score'),
+            data_get($limitePayload, 'response.dados.scores.ocorrencias.0.score'),
         ], '-');
         $rating = $this->creditRatingService->resolveFromScore($scoreValue);
 
         $riskClass = $this->firstString([
             (string) data_get($scrPayload, 'data.classeRisco'),
             (string) data_get($serasaPayload, 'data.classeRisco'),
+            (string) data_get($scrPayload, 'response.data.dados.resultado.score.mensagem'),
+            (string) data_get($serasaPayload, 'response.data.dados.resultado.score.mensagem'),
+            (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.score.mensagem'),
+            (string) data_get($limitePayload, 'response.data.dados.resultado.score.mensagem'),
         ], '-');
 
         $creditSituation = $this->firstString([
@@ -50,6 +66,12 @@ class PjResearchReportService
             (string) data_get($scrPayload, 'data.status'),
             (string) data_get($serasaPayload, 'data.situacao'),
             (string) data_get($serasaPayload, 'data.status'),
+            (string) data_get($scrPayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
+            (string) data_get($serasaPayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
+            (string) data_get($scrPayload, 'response.dados.dados_receita_federal.situacao_receita'),
+            (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.situacao_receita'),
+            (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
+            (string) data_get($limitePayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
         ], '-');
 
         $institutions = $this->firstScalar([
@@ -65,6 +87,10 @@ class PjResearchReportService
         $creditToMature = $this->firstScalar([
             data_get($scrPayload, 'data.carteiraCredito.valorVencer'),
             data_get($scrPayload, 'data.indice.total'),
+            data_get($scrPayload, 'response.dados.faturamento_presumido.valor_presumido'),
+            data_get($serasaPayload, 'response.dados.faturamento_presumido.valor_presumido'),
+            data_get($defineRiscoPayload, 'response.dados.faturamento_presumido.valor_presumido'),
+            data_get($limitePayload, 'response.dados.faturamento_presumido.valor_presumido'),
         ], '-');
 
         $overdueCredit = $this->firstScalar([
@@ -76,17 +102,27 @@ class PjResearchReportService
 
         $certidaoStatus = $this->sourceLabel($byKey->get('certidao_negativa_pj'));
         $protestoStatus = $this->sourceLabel($byKey->get('protesto_nacional_v2'));
+        if ($byKey->has('define_risco_pj')) {
+            $certidaoStatus = $this->sourceLabel($byKey->get('define_risco_pj'));
+        }
+        if ($byKey->has('limite_pj')) {
+            $protestoStatus = $this->sourceLabel($byKey->get('limite_pj'));
+        }
 
         $certidaoDetail = $this->firstString([
             (string) data_get($certidaoPayload, 'data.situacao'),
             (string) data_get($certidaoPayload, 'message'),
             (string) ($byKey->get('certidao_negativa_pj')?->error_message ?: ''),
+            (string) data_get($defineRiscoPayload, 'response.message'),
+            (string) data_get($defineRiscoPayload, 'response.data.msg'),
         ], '-');
 
         $protestoDetail = $this->firstString([
             (string) data_get($protestoPayload, 'data.situacao'),
             (string) data_get($protestoPayload, 'message'),
             (string) ($byKey->get('protesto_nacional_v2')?->error_message ?: ''),
+            (string) data_get($limitePayload, 'response.message'),
+            (string) data_get($limitePayload, 'response.data.msg'),
         ], '-');
 
         $sources = $consultations->map(function (ApiBrasilConsultation $consultation): array {
@@ -112,6 +148,12 @@ class PjResearchReportService
 
         $judicialMetrics = $this->judicialMetrics($consultations);
         $basicPjMetrics = $this->basicPjMetrics($consultations);
+        if (($basicPjMetrics['business']['company_name'] ?? '') !== '') {
+            $companyName = (string) $basicPjMetrics['business']['company_name'];
+        }
+        if (($basicPjMetrics['business']['trade_name'] ?? '') !== '') {
+            $companyName = (string) $basicPjMetrics['business']['trade_name'];
+        }
 
         return [
             'meta' => [
@@ -317,6 +359,12 @@ class PjResearchReportService
                 $resultado = $candidate;
                 break;
             }
+
+            $candidate = data_get($consultation->response_payload, 'response.data.dados.resultado');
+            if (is_array($candidate) && $candidate !== []) {
+                $resultado = $candidate;
+                break;
+            }
         }
 
         if (! is_array($resultado) || $resultado === []) {
@@ -328,15 +376,18 @@ class PjResearchReportService
         }
 
         $dadosCadastrais = (array) data_get($resultado, 'dados_cadastrais', []);
+        if ($dadosCadastrais === []) {
+            $dadosCadastrais = (array) data_get($resultado, 'dadoscadastrais', []);
+        }
         $consultas = (array) data_get($resultado, 'consultas', []);
         $quadroSocietario = (array) data_get($resultado, 'quadro_societario', []);
         $socios = is_array($quadroSocietario['socios'] ?? null) ? $quadroSocietario['socios'] : [];
 
-        return [
+        $metrics = [
             'business' => [
-                'company_name' => (string) ($dadosCadastrais['nome_empresa'] ?? ''),
-                'trade_name' => (string) ($dadosCadastrais['nome_fantasia'] ?? ''),
-                'status' => (string) ($dadosCadastrais['status_empresa'] ?? ''),
+                'company_name' => (string) ($dadosCadastrais['nome_empresa'] ?? ($dadosCadastrais['razaosocial'] ?? '')),
+                'trade_name' => (string) ($dadosCadastrais['nome_fantasia'] ?? ($dadosCadastrais['nomefantasia'] ?? '')),
+                'status' => (string) ($dadosCadastrais['status_empresa'] ?? ($dadosCadastrais['situacao'] ?? '')),
                 'main_activity' => (string) ($dadosCadastrais['descricao_atividade_principal'] ?? ''),
                 'secondary_activity' => (string) ($dadosCadastrais['descricao_atividade_secundaria'] ?? ''),
                 'telefone' => (string) ($dadosCadastrais['numero_telefone'] ?? ''),
@@ -361,5 +412,39 @@ class PjResearchReportService
                 ];
             })->values()->all(),
         ];
+
+        if ($payloadFallback = $this->fallbackBasicPjMetrics($consultations)) {
+            $metrics = array_replace_recursive($metrics, $payloadFallback);
+        }
+
+        return $metrics;
+    }
+
+    private function fallbackBasicPjMetrics(Collection $consultations): array
+    {
+        foreach ($consultations as $consultation) {
+            if (! $consultation instanceof ApiBrasilConsultation || ! is_array($consultation->response_payload)) {
+                continue;
+            }
+
+            $dados = (array) data_get($consultation->response_payload, 'response.dados', []);
+            if ($dados === []) {
+                continue;
+            }
+
+            return [
+                'business' => [
+                    'company_name' => (string) data_get($dados, 'dados_receita_federal.razao_social', ''),
+                    'status' => (string) data_get($dados, 'dados_receita_federal.situacao_receita', ''),
+                    'main_activity' => (string) data_get($dados, 'dados_receita_federal.atividade_economica_principal', ''),
+                    'email' => (string) data_get($dados, 'dados_receita_federal.email', ''),
+                ],
+                'credit_behavior' => [
+                    'status_cadastro_positivo' => (string) data_get($dados, 'faturamento_presumido.dados_cadastro_positivo', ''),
+                ],
+            ];
+        }
+
+        return [];
     }
 }
