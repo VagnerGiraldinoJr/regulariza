@@ -34,9 +34,9 @@ class PjResearchReportService
         }
 
         $completeResult = $this->firstResultPayload([
+            $complianceCompletePayload,
             $basicCreditPayload,
             $businessCreditPayload,
-            $complianceCompletePayload,
             $serasaPayload,
             $defineRiscoPayload,
             $limitePayload,

@@ -40,12 +40,16 @@ return [
             'document_type' => 'cnpj',
             'sources' => [
                 [
-                    'provider' => 'bureau',
-                    'consultation_key' => 'analise_credito_business_pj',
+                    'provider' => 'fiscal',
+                    'consultation_key' => 'compliance_complete_pj',
                 ],
                 [
                     'provider' => 'bacen',
                     'consultation_key' => 'analise_credito_basic_pj',
+                ],
+                [
+                    'provider' => 'bureau',
+                    'consultation_key' => 'serasa_premium_pj',
                 ],
             ],
         ],
