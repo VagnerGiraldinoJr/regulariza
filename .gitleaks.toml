@@ -1,0 +1,14 @@
+title = "Regulariza Gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Catalog consultation keys are internal identifiers"
+condition = "AND"
+regexTarget = "line"
+paths = ['''^config/apibrasil_catalog\.php$''']
+regexes = ['''consultation_key'\s*=>\s*'[a-z0-9_]{3,80}'[,]?$''']
