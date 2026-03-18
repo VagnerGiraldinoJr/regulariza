@@ -62,6 +62,12 @@
     $partners = is_array($report['partners'] ?? null) ? $report['partners'] : [];
     $businessIndicators = is_array($report['business_indicators'] ?? null) ? $report['business_indicators'] : [];
     $sources = is_array($report['sources'] ?? null) ? $report['sources'] : [];
+    $sources = collect($sources)
+        ->filter(fn ($source) => is_array($source))
+        ->reject(fn ($source) => (string) ($source['key'] ?? '') === 'scr_bacen_score_pj')
+        ->values()
+        ->all();
+    $displayedSourceCount = count($sources);
     $hasComplianceEntries = $complianceEntries !== [];
     $rating = array_replace([
         'classification' => 'NÃO CLASSIFICADO',
@@ -112,7 +118,7 @@
                 <div class="protocol">
                     Protocolo comercial: {{ $meta['commercial_protocol'] ?? ($order->protocolo ?: '-') }}<br>
                     Documento: {{ $company['document'] ?? '-' }}<br>
-                    Total de fontes: {{ $meta['consultation_count'] ?? count($sources) }}<br>
+                    Total de fontes: {{ $displayedSourceCount }}<br>
                     Emitido em: {{ $generatedAt instanceof \Illuminate\Support\Carbon ? $generatedAt->format('d/m/Y H:i:s') : (string) $generatedAt }}
                 </div>
             </td>
