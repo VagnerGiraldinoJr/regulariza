@@ -102,6 +102,31 @@
     if (is_string($generatedAt) && $generatedAt !== '') {
         $generatedAt = \Illuminate\Support\Carbon::parse($generatedAt);
     }
+    $formatDocument = function ($value): string {
+        if (! is_scalar($value)) {
+            return '-';
+        }
+
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return '-';
+        }
+
+        $digits = preg_replace('/\D+/', '', $raw);
+        if ($digits === null || $digits === '') {
+            return $raw;
+        }
+
+        if (strlen($digits) === 14) {
+            return substr($digits, 0, 2).'.'.substr($digits, 2, 3).'.'.substr($digits, 5, 3).'/'.substr($digits, 8, 4).'-'.substr($digits, 12, 2);
+        }
+
+        if (strlen($digits) === 11) {
+            return substr($digits, 0, 3).'.'.substr($digits, 3, 3).'.'.substr($digits, 6, 3).'-'.substr($digits, 9, 2);
+        }
+
+        return $raw;
+    };
 @endphp
 
 <div class="header">
@@ -117,7 +142,7 @@
                 <p class="subtitle">Consolidado empresarial analítico no padrão executivo da análise PF</p>
                 <div class="protocol">
                     Protocolo comercial: {{ $meta['commercial_protocol'] ?? ($order->protocolo ?: '-') }}<br>
-                    Documento: {{ $company['document'] ?? '-' }}<br>
+                    Documento: {{ $formatDocument($company['document'] ?? '-') }}<br>
                     Total de fontes: {{ $displayedSourceCount }}<br>
                     Emitido em: {{ $generatedAt instanceof \Illuminate\Support\Carbon ? $generatedAt->format('d/m/Y H:i:s') : (string) $generatedAt }}
                 </div>
@@ -131,7 +156,7 @@
     <table class="table">
         <tr><td class="label">Razão social</td><td>{{ $company['razao_social'] ?? '-' }}</td></tr>
         <tr><td class="label">Nome fantasia</td><td>{{ $company['nome_fantasia'] ?? ($business['trade_name'] ?? '-') }}</td></tr>
-        <tr><td class="label">CNPJ</td><td>{{ $company['document'] ?? '-' }}</td></tr>
+        <tr><td class="label">CNPJ</td><td>{{ $formatDocument($company['document'] ?? '-') }}</td></tr>
         <tr><td class="label">Situação cadastral</td><td>{{ $registration['situacao_cadastral'] ?? ($business['status'] ?? '-') }}</td></tr>
         <tr><td class="label">Natureza jurídica</td><td>{{ $business['natureza_juridica'] ?? '-' }}</td></tr>
         <tr><td class="label">Data início atividade</td><td>{{ $registration['data_inicio_atividade'] ?? '-' }}</td></tr>
@@ -308,7 +333,7 @@
                 @foreach($partners as $partner)
                     <tr>
                         <td>{{ $partner['name'] ?? '-' }}</td>
-                        <td>{{ $partner['document'] ?? '-' }}</td>
+                        <td>{{ $formatDocument($partner['document'] ?? '-') }}</td>
                         <td>{{ $partner['type'] ?? '-' }}</td>
                         <td>{{ $partner['relationship'] ?? '-' }}</td>
                         <td>{{ $partner['share'] ?? '-' }}</td>
