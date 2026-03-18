@@ -143,6 +143,41 @@ class PjResearchReportServiceTest extends TestCase
         $this->assertSame(1, (int) $entries->firstWhere('key', 'cnep')['quantity']);
     }
 
+    public function test_build_sanitizes_source_error_message_without_price_details(): void
+    {
+        $client = User::factory()->make([
+            'name' => 'Empresa Teste',
+            'cpf_cnpj' => '44959669000180',
+        ]);
+
+        $order = new Order([
+            'protocolo' => 'REG-PJ-ERR-001',
+        ]);
+        $order->id = 13;
+        $order->setRelation('user', $client);
+
+        $consultation = new ApiBrasilConsultation([
+            'consultation_key' => 'compliance_complete_pj',
+            'consultation_title' => 'Compliance Complete PJ',
+            'status' => 'error',
+            'http_status' => 402,
+            'error_message' => 'Saldo insuficiente para realizar a consulta! Valor da consulta: R$ 14,44!',
+            'response_payload' => [],
+        ]);
+        $consultation->created_at = now();
+
+        $service = app(PjResearchReportService::class);
+        $report = $service->build($order, new Collection([$consultation]));
+
+        $sourceMessage = (string) data_get($report, 'sources.0.message', '');
+        $sourceError = (string) data_get($report, 'sources.0.error_message', '');
+
+        $this->assertStringContainsString('Saldo insuficiente', $sourceMessage);
+        $this->assertStringNotContainsString('Valor da consulta', $sourceMessage);
+        $this->assertStringNotContainsString('R$ 14,44', $sourceMessage);
+        $this->assertStringNotContainsString('Valor da consulta', $sourceError);
+    }
+
     private function acoesProcessosPayload(): array
     {
         return [

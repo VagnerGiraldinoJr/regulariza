@@ -188,6 +188,7 @@ class PjResearchReportService
             $httpStatus = $consultation->http_status;
             $status = (string) $consultation->status;
             $isWarning = $status !== 'success' && in_array((int) $httpStatus, [400, 404, 422, 429], true);
+            $sanitizedError = $this->sanitizeOperationalMessage((string) ($consultation->error_message ?: ''));
 
             return [
                 'key' => (string) $consultation->consultation_key,
@@ -198,8 +199,8 @@ class PjResearchReportService
                     : ($isWarning ? 'Indisponivel' : 'Falha'),
                 'http_status' => $httpStatus,
                 'endpoint' => (string) ($consultation->endpoint ?: '-'),
-                'error_message' => (string) ($consultation->error_message ?: ''),
-                'message' => $status === 'success' ? '' : (string) ($consultation->error_message ?: ''),
+                'error_message' => $sanitizedError,
+                'message' => $status === 'success' ? '' : $sanitizedError,
                 'consulted_at' => $consultation->created_at?->format('d/m/Y H:i:s') ?: '-',
             ];
         })->values()->all();
@@ -1081,5 +1082,22 @@ class PjResearchReportService
         }
 
         return trim((string) $value);
+    }
+
+    private function sanitizeOperationalMessage(string $message): string
+    {
+        $clean = trim($message);
+        if ($clean === '') {
+            return '';
+        }
+
+        // Never expose charging information in customer-facing reports.
+        $clean = preg_replace('/valor\s+da\s+consulta\s*:\s*r\$\s*[\d\.,]+!?/iu', '', $clean) ?? $clean;
+        $clean = preg_replace('/voc[eê]\s+foi\s+tarifado\s+em\s+r\$\s*[\d\.,]+!?/iu', '', $clean) ?? $clean;
+        $clean = preg_replace('/r\$\s*[\d\.,]+/iu', 'R$ ***', $clean) ?? $clean;
+        $clean = preg_replace('/\s{2,}/', ' ', $clean) ?? $clean;
+        $clean = preg_replace('/\n{2,}/', "\n", $clean) ?? $clean;
+
+        return trim($clean);
     }
 }
