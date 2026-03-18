@@ -12,9 +12,7 @@ class NotificarEquipeInterna implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public Order $order)
-    {
-    }
+    public function __construct(public Order $order) {}
 
     /**
      * Notifica equipe interna sobre novo pedido pago.

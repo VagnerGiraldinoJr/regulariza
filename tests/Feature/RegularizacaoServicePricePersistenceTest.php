@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Service;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class RegularizacaoServicePricePersistenceTest extends TestCase
@@ -32,11 +33,16 @@ class RegularizacaoServicePricePersistenceTest extends TestCase
 
     public function test_regularizacao_page_exposes_cpron_service_and_selection_guidance(): void
     {
-        $response = $this->get(route('regularizacao.index'));
+        $component = Livewire::test('regularizacao-wizard');
 
-        $response->assertOk();
-        $response->assertSee('Pesquisa CPRON - Cartório');
-        $response->assertSee('Clique em um dos serviços para continuar.');
-        $response->assertSee('Clique para selecionar');
+        $services = collect($component->get('services'));
+
+        $this->assertTrue($services->contains(fn (array $service): bool => $service['slug'] === 'cpron-cartorio'));
+
+        $component
+            ->set('etapa', 2)
+            ->assertSee('Pesquisa CPRON - Cartório')
+            ->assertSee('Clique em um dos serviços para continuar.')
+            ->assertSee('Clique para selecionar');
     }
 }

@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
 use App\Models\Order;
 use App\Services\PaidOrderReconciliationService;
 use App\Services\SellerCommissionService;
 use App\Services\ZApiService;
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -34,6 +34,7 @@ Artisan::command('whatsapp:boas-vindas {phone} {--nome=Cliente} {--protocolo=REG
     if ($imageUrl !== '') {
         $result = $zApiService->enviarImagem($phone, $imageUrl, $message, 'boas_vindas');
         $this->info('Resultado (imagem): '.json_encode($result, JSON_UNESCAPED_UNICODE));
+
         return;
     }
 

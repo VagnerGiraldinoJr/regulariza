@@ -81,4 +81,3 @@ class ProtocolsSeeder extends Seeder
         ]);
     }
 }
-

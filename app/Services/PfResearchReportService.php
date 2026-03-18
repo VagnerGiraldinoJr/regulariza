@@ -8,9 +8,7 @@ use Illuminate\Support\Collection;
 
 class PfResearchReportService
 {
-    public function __construct(private readonly CreditRatingService $creditRatingService)
-    {
-    }
+    public function __construct(private readonly CreditRatingService $creditRatingService) {}
 
     public function build(Order $order, Collection $consultations): array
     {

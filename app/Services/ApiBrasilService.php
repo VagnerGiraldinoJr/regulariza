@@ -247,6 +247,7 @@ class ApiBrasilService
                 if ($nested !== null) {
                     return $nested;
                 }
+
                 continue;
             }
 

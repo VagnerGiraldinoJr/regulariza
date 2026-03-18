@@ -10,9 +10,7 @@ class ResearchProviderManager
     /**
      * @param  iterable<ResearchProviderInterface>  $providers
      */
-    public function __construct(private readonly iterable $providers)
-    {
-    }
+    public function __construct(private readonly iterable $providers) {}
 
     public function consult(array $source, string $documentNumber): array
     {

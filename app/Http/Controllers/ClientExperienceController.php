@@ -45,7 +45,7 @@ class ClientExperienceController extends Controller
                 $events->push([
                     'at' => $installment->paid_at ?: $installment->updated_at,
                     'title' => "Contrato #{$contract->id} - {$installment->label}",
-                    'description' => "Parcela R$ ".number_format((float) $installment->amount, 2, ',', '.')." | {$installment->status}",
+                    'description' => 'Parcela R$ '.number_format((float) $installment->amount, 2, ',', '.')." | {$installment->status}",
                 ]);
             }
         }

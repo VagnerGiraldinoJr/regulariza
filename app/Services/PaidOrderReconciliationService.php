@@ -15,8 +15,7 @@ class PaidOrderReconciliationService
         private readonly ReferralService $referralService,
         private readonly SellerCommissionService $sellerCommissionService,
         private readonly LeadUserResolverService $leadUserResolverService
-    ) {
-    }
+    ) {}
 
     public function reconcile(Order $order, array $payment = [], bool $dispatchNotifications = true): Order
     {

@@ -20,8 +20,7 @@ class PortalAccessMail extends Mailable
         public Order $order,
         public string $accessLink,
         public string $temporaryPassword
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {

@@ -82,10 +82,10 @@ class PublicContactController extends Controller
             'mensagem' => trim(
                 "Captação de contato público\n".
                 "Origem: {$origem}\n".
-                "Nome: ".($validated['nome'] ?: 'Não informado')."\n".
+                'Nome: '.($validated['nome'] ?: 'Não informado')."\n".
                 "E-mail: {$validated['email']}\n".
                 "WhatsApp: {$whatsappDigits}\n".
-                "CNPJ: ".($cnpjDigits !== '' ? $cnpjDigits : 'Não informado')."\n".
+                'CNPJ: '.($cnpjDigits !== '' ? $cnpjDigits : 'Não informado')."\n".
                 ($mensagem !== '' ? "Mensagem: {$mensagem}" : 'Mensagem: Não informada')
             ),
             'tipo' => 'texto',
