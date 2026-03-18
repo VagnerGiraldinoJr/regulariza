@@ -178,10 +178,12 @@
     <div class="note">
         <strong>Probabilidade:</strong> {{ $credit['probabilidade'] ?? '-' }}<br>
         <strong>Situação de crédito:</strong> {{ $credit['situacao'] ?? '-' }}<br>
-        <strong>Instituições/Operações no SCR:</strong> {{ $credit['instituicoes'] ?? '0' }} / {{ $credit['operacoes'] ?? '0' }}<br>
-        <strong>Crédito a vencer / vencido:</strong> {{ $credit['credito_a_vencer'] ?? '-' }} / {{ $credit['credito_vencido'] ?? '-' }}
-        @if(($credit['has_scr'] ?? true) === false)
-            <br><strong>Observação:</strong> Fonte SCR/Bacen não foi consultada neste dossiê.
+        @if(($credit['has_scr'] ?? false) === true)
+            <strong>Instituições/Operações no SCR:</strong> {{ $credit['instituicoes'] ?? '0' }} / {{ $credit['operacoes'] ?? '0' }}<br>
+            <strong>Crédito a vencer / vencido:</strong> {{ $credit['credito_a_vencer'] ?? '-' }} / {{ $credit['credito_vencido'] ?? '-' }}
+        @else
+            <strong>Instituições/Operações no SCR:</strong> Não aplicável no pacote PJ atual<br>
+            <strong>Crédito a vencer / vencido:</strong> Não aplicável no pacote PJ atual
         @endif
     </div>
 </div>

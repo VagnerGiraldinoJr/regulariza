@@ -73,6 +73,9 @@ class PjResearchReportService
             data_get($scrPayload, 'score'),
             data_get($serasaPayload, 'data.score'),
             data_get($serasaPayload, 'score'),
+            data_get($serasaPayload, 'data.cnpj.score'),
+            data_get($serasaPayload, 'data.cnpj.scores.ocorrencias.0.score'),
+            data_get($serasaPayload, 'response.data.dados.resultado.score.score'),
             data_get($scrPayload, 'response.data.dados.resultado.score.score'),
             data_get($serasaPayload, 'response.data.dados.resultado.score.score'),
             data_get($serasaPayload, 'response.dados.scores.ocorrencias.0.score'),
@@ -90,6 +93,9 @@ class PjResearchReportService
         $riskClass = $this->firstString([
             (string) data_get($scrPayload, 'data.classeRisco'),
             (string) data_get($serasaPayload, 'data.classeRisco'),
+            (string) data_get($serasaPayload, 'data.cnpj.scores.ocorrencias.0.descr_score'),
+            (string) data_get($serasaPayload, 'data.cnpj.scores.ocorrencias.0.risco'),
+            (string) data_get($serasaPayload, 'response.dados.scores.ocorrencias.0.descr_score'),
             (string) data_get($basicCreditPayload, 'data.resultado.score.descricao'),
             (string) data_get($businessCreditPayload, 'data.resultado.score.0.classificacao_alfabetica'),
             (string) data_get($businessCreditPayload, 'data.resultado.decisao.descricao'),
@@ -105,6 +111,7 @@ class PjResearchReportService
             (string) data_get($completeResult, 'score.descricao_probabilidade_pagamento'),
             (string) data_get($basicResult, 'score.probabilidade_pagamento'),
             (string) data_get($basicCreditPayload, 'data.resultado.score.probabilidade_pagamento'),
+            (string) data_get($serasaPayload, 'data.cnpj.scores.ocorrencias.0.probabilidade_inadimplencia'),
             (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.score.probabilidade'),
             (string) data_get($limitePayload, 'response.data.dados.resultado.score.probabilidade'),
             (string) data_get($serasaPayload, 'response.dados.scores.ocorrencias.0.probabilidade_inadimplencia'),
@@ -228,9 +235,7 @@ class PjResearchReportService
                 'operacoes' => $operations,
                 'credito_a_vencer' => $creditToMature,
                 'credito_vencido' => $overdueCredit,
-                'has_scr' => array_key_exists('scr_bacen_score_pj', $byKey->all())
-                    || array_key_exists('analise_credito_business_pj', $byKey->all())
-                    || array_key_exists('analise_credito_basic_pj', $byKey->all()),
+                'has_scr' => array_key_exists('scr_bacen_score_pj', $byKey->all()),
             ],
             'compliance' => $hasComplianceSource ? $compliance : [],
             'compliance_entries' => $hasComplianceSource ? $complianceEntries : [],
@@ -521,14 +526,18 @@ class PjResearchReportService
             'porte' => $this->firstString([
                 (string) data_get($completeResult, 'firmografico.ds_porte_empresa', ''),
                 (string) data_get($completeResult, 'firmografico.porte_td', ''),
+                (string) data_get($serasaPayload, 'response.dados.identificacao_completo.porte_empresa', ''),
+                (string) data_get($serasaPayload, 'data.cnpj.empresa.porte_empresa', ''),
             ], '-'),
             'faixa_faturamento' => $this->firstString([
                 (string) data_get($completeResult, 'firmografico.ds_faixa_faturamento', ''),
                 (string) data_get($serasaPayload, 'response.dados.faturamento_presumido.faturamento_anual', ''),
+                (string) data_get($serasaPayload, 'data.cnpj.empresa.faturamento_presumido', ''),
             ], '-'),
             'faturamento_presumido' => $this->firstString([
                 (string) data_get($completeResult, 'firmografico.valor_faturamento_presumido', ''),
                 (string) data_get($serasaPayload, 'response.dados.faturamento_presumido.valor_presumido', ''),
+                (string) data_get($serasaPayload, 'data.cnpj.empresa.faturamento_presumido', ''),
             ], '-'),
             'foundation_date' => $this->firstString([
                 (string) data_get($serasaPayload, 'response.dados.identificacao_completo.data_fundacao', ''),
@@ -837,18 +846,20 @@ class PjResearchReportService
         $partners = collect(array_merge($completePartners, $basicPartners, $serasaPartners, $businessPartners))
             ->filter(fn ($row) => is_array($row))
             ->map(function (array $partner): array {
+                $document = $this->firstString([
+                    (string) ($partner['cpf_cnpj_socio_tratado'] ?? ''),
+                    (string) ($partner['cpf_cnpj'] ?? ''),
+                    (string) ($partner['cpf_cnpj_socio'] ?? ''),
+                    (string) ($partner['cnpj_cpf_socio'] ?? ''),
+                ], '-');
+
                 return [
                     'name' => $this->firstString([
                         (string) ($partner['nome_socio_razao_social'] ?? ''),
                         (string) ($partner['nomes'] ?? ''),
                     ], '-'),
-                    'document' => $this->firstString([
-                        (string) ($partner['cpf_cnpj_socio_tratado'] ?? ''),
-                        (string) ($partner['cpf_cnpj'] ?? ''),
-                        (string) ($partner['cpf_cnpj_socio'] ?? ''),
-                        (string) ($partner['cnpj_cpf_socio'] ?? ''),
-                        (string) ($partner['cpf_cnpj'] ?? ''),
-                    ], '-'),
+                    'document' => $document,
+                    'document_digits' => preg_replace('/\D+/', '', $document),
                     'type' => $this->firstString([
                         (string) ($partner['ds_identificador_socio'] ?? ''),
                         (string) ($partner['tipo_entidade'] ?? ''),
@@ -872,7 +883,19 @@ class PjResearchReportService
                     ], '-'),
                 ];
             })
-            ->unique(fn ($partner) => ($partner['document'] ?? '').'|'.($partner['name'] ?? ''))
+            ->reject(function (array $partner): bool {
+                $name = trim((string) ($partner['name'] ?? ''));
+                $digits = trim((string) ($partner['document_digits'] ?? ''));
+
+                return ($name === '' || $name === '-')
+                    && ($digits === '' || strlen($digits) < 11);
+            })
+            ->unique(fn ($partner) => ($partner['document_digits'] ?: ($partner['document'] ?? '')).'|'.($partner['name'] ?? ''))
+            ->map(function (array $partner): array {
+                unset($partner['document_digits']);
+
+                return $partner;
+            })
             ->values()
             ->all();
 
@@ -993,6 +1016,11 @@ class PjResearchReportService
             'regime' => $this->firstString([
                 data_get($completeResult, 'regime_tributario.opcao_simples') === true ? 'Simples Nacional' : '',
                 data_get($completeResult, 'regime_tributario.opcao_mei') === true ? 'MEI' : '',
+                data_get($basicResult, 'regime_tributario.opcao_simples') === true ? 'Simples Nacional' : '',
+                data_get($basicResult, 'regime_tributario.opcao_mei') === true ? 'MEI' : '',
+                (string) data_get($basicResult, 'dados_cadastrais.tipo_legal', ''),
+                (string) data_get($serasaPayload, 'response.dados.identificacao_completo.natureza_juridica', ''),
+                (string) data_get($serasaPayload, 'data.cnpj.empresa.natureza_juridica', ''),
             ], '-'),
         ];
     }
