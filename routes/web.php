@@ -1,24 +1,24 @@
 <?php
 
 use App\Http\Controllers\AdminFinanceDashboardController;
-use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\AdminManagementController;
 use App\Http\Controllers\AnalystPanelController;
 use App\Http\Controllers\ApiBrasilConsultationController;
 use App\Http\Controllers\ClientExperienceController;
 use App\Http\Controllers\ContractAcceptanceController;
 use App\Http\Controllers\ContractController;
+use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\PortalInviteController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicContactController;
 use App\Http\Controllers\SacTicketController;
-use App\Models\User;
 use App\Models\SacTicket;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
@@ -43,12 +43,12 @@ Route::get('/assets/selos-seguranca/siteblindado-dinamico.svg', function () {
         11 => 'NOV',
         12 => 'DEZ',
     ];
-    $auditDate = $now->format('d') . ' ' . $monthMap[(int) $now->format('n')];
+    $auditDate = $now->format('d').' '.$monthMap[(int) $now->format('n')];
 
     $svg = File::get($svgPath);
     $svg = preg_replace(
         '/(<text[^>]*id="auditing"[^>]*>)([^<]*)(<\/text>)/',
-        '$1AUDITADO EM ' . $auditDate . '$3',
+        '$1AUDITADO EM '.$auditDate.'$3',
         $svg,
         1
     );

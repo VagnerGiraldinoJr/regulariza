@@ -18,8 +18,7 @@ class ContractService
 {
     public function __construct(
         private readonly LeadUserResolverService $leadUserResolverService
-    ) {
-    }
+    ) {}
 
     public function createForOrder(
         Order $order,

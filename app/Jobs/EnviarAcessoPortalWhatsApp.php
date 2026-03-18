@@ -18,9 +18,7 @@ class EnviarAcessoPortalWhatsApp implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public Order $order)
-    {
-    }
+    public function __construct(public Order $order) {}
 
     public function handle(ZApiService $zApiService, LeadUserResolverService $leadUserResolverService): void
     {

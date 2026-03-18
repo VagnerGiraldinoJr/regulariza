@@ -16,8 +16,7 @@ class ResearchReportService
     public function __construct(
         private readonly ResearchProviderManager $providerManager,
         private readonly PfResearchReportService $pfResearchReportService
-    ) {
-    }
+    ) {}
 
     public function createFromBundle(
         ?Order $order,

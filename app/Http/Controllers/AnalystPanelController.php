@@ -9,8 +9,8 @@ use App\Models\User;
 use App\Services\SellerCommissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use RuntimeException;
 use Illuminate\View\View;
+use RuntimeException;
 
 class AnalystPanelController extends Controller
 {
@@ -85,8 +85,7 @@ class AnalystPanelController extends Controller
         Request $request,
         SellerCommission $commission,
         SellerCommissionService $commissionService
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         $user = $request->user();
 
         if ((int) $commission->seller_id !== (int) $user->id) {
@@ -152,6 +151,7 @@ class AnalystPanelController extends Controller
             $lastOrder = $client->orders()->latest('id')->first();
             if (! $lastOrder) {
                 $pipeline['novo']++;
+
                 continue;
             }
 

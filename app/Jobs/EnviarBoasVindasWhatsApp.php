@@ -11,9 +11,7 @@ class EnviarBoasVindasWhatsApp implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public Order $order)
-    {
-    }
+    public function __construct(public Order $order) {}
 
     /**
      * Dispara mensagem inicial com acesso ao portal para o cliente.

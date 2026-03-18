@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Order;
 use App\Models\ContractInstallment;
+use App\Models\Order;
 use App\Models\SellerCommission;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -11,9 +11,7 @@ use RuntimeException;
 
 class SellerCommissionService
 {
-    public function __construct(private readonly AsaasPixTransferService $pixTransferService)
-    {
-    }
+    public function __construct(private readonly AsaasPixTransferService $pixTransferService) {}
 
     public function registerResearchCommission(Order $order): void
     {

@@ -12,9 +12,7 @@ class EnviarLinkAceiteContratoWhatsApp implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public Contract $contract)
-    {
-    }
+    public function __construct(public Contract $contract) {}
 
     public function handle(ZApiService $zApiService): void
     {

@@ -2,9 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\SacTicket;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin SacTicket */
 class SacTicketResource extends JsonResource
 {
     /**

@@ -7,9 +7,7 @@ use RuntimeException;
 
 class ApiBrasilResearchProvider implements ResearchProviderInterface
 {
-    public function __construct(private readonly ApiBrasilService $apiBrasilService)
-    {
-    }
+    public function __construct(private readonly ApiBrasilService $apiBrasilService) {}
 
     public function supports(string $driver): bool
     {

@@ -13,9 +13,7 @@ class CriarUsuarioPortal implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public Order $order)
-    {
-    }
+    public function __construct(public Order $order) {}
 
     /**
      * Cria ou atualiza o usuário cliente com token de acesso ao portal.
