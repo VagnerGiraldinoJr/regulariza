@@ -20,6 +20,8 @@ class PjResearchReportService
 
         $scrPayload = $this->payloadArray($byKey->get('scr_bacen_score_pj'));
         $serasaPayload = $this->payloadArray($byKey->get('serasa_premium_pj'));
+        $complianceCompletePayload = $this->payloadArray($byKey->get('compliance_complete_pj'));
+        $complianceBasicPayload = $this->payloadArray($byKey->get('compliance_basic_pj'));
         $defineRiscoPayload = $this->payloadArray($byKey->get('define_risco_pj'));
         $limitePayload = $this->payloadArray($byKey->get('limite_pj'));
 
@@ -28,12 +30,35 @@ class PjResearchReportService
             $document = (string) ($consultations->first()?->document_number ?: '-');
         }
 
+        $completeResult = $this->firstResultPayload([
+            $complianceCompletePayload,
+            $serasaPayload,
+            $defineRiscoPayload,
+            $limitePayload,
+        ]);
+        $basicResult = $this->firstResultPayload([
+            $complianceBasicPayload,
+            $serasaPayload,
+            $defineRiscoPayload,
+            $limitePayload,
+        ]);
+        if ($completeResult === []) {
+            $completeResult = $this->firstResultFromConsultations($consultations);
+        }
+        if ($basicResult === []) {
+            $basicResult = $this->firstResultFromConsultations($consultations);
+        }
+
         $companyName = $this->firstString([
-            $this->findStringByKeys($serasaPayload, ['razao_social', 'razaosocial', 'razaoSocial', 'nomeEmpresarial', 'nome_fantasia', 'nomefantasia', 'nomeFantasia', 'empresa', 'nome']),
-            $this->findStringByKeys($scrPayload, ['razao_social', 'razaosocial', 'razaoSocial', 'nomeEmpresarial', 'nome_fantasia', 'nomefantasia', 'nomeFantasia', 'empresa', 'nome']),
-            $this->findStringByKeys($defineRiscoPayload, ['razao_social', 'razaosocial', 'razaoSocial', 'nomeEmpresarial', 'nome_fantasia', 'nomefantasia', 'nomeFantasia', 'empresa', 'nome']),
-            $this->findStringByKeys($limitePayload, ['razao_social', 'razaosocial', 'razaoSocial', 'nomeEmpresarial', 'nome_fantasia', 'nomefantasia', 'nomeFantasia', 'empresa', 'nome']),
+            $this->findStringByKeys($completeResult, ['razao_social_nome_empresarial', 'razao_social', 'razaosocial', 'nome_empresa', 'nomeEmpresarial', 'empresa', 'nome']),
+            $this->findStringByKeys($basicResult, ['razao_social_nome_empresarial', 'razao_social', 'razaosocial', 'nome_empresa', 'nomeEmpresarial', 'empresa', 'nome']),
+            $this->findStringByKeys($serasaPayload, ['razao_social_nome_empresarial', 'razao_social', 'razaosocial', 'nome_empresa', 'nomeEmpresarial', 'empresa', 'nome']),
             (string) ($order->user?->name ?: ''),
+        ], '-');
+
+        $tradeName = $this->firstString([
+            $this->findStringByKeys($completeResult, ['nome_fantasia', 'nomefantasia', 'trade_name']),
+            $this->findStringByKeys($basicResult, ['nome_fantasia', 'nomefantasia', 'trade_name']),
         ], '-');
 
         $scoreValue = $this->firstScalar([
@@ -43,93 +68,97 @@ class PjResearchReportService
             data_get($serasaPayload, 'score'),
             data_get($scrPayload, 'response.data.dados.resultado.score.score'),
             data_get($serasaPayload, 'response.data.dados.resultado.score.score'),
-            data_get($scrPayload, 'response.dados.scores.ocorrencias.0.score'),
             data_get($serasaPayload, 'response.dados.scores.ocorrencias.0.score'),
             data_get($defineRiscoPayload, 'response.data.dados.resultado.score.score'),
             data_get($limitePayload, 'response.data.dados.resultado.score.score'),
-            data_get($defineRiscoPayload, 'response.dados.scores.ocorrencias.0.score'),
-            data_get($limitePayload, 'response.dados.scores.ocorrencias.0.score'),
+            data_get($completeResult, 'score.numero_score'),
+            data_get($basicResult, 'score.numero_score'),
         ], '-');
+
         $rating = $this->creditRatingService->resolveFromScore($scoreValue);
 
         $riskClass = $this->firstString([
             (string) data_get($scrPayload, 'data.classeRisco'),
             (string) data_get($serasaPayload, 'data.classeRisco'),
-            (string) data_get($scrPayload, 'response.data.dados.resultado.score.mensagem'),
-            (string) data_get($serasaPayload, 'response.data.dados.resultado.score.mensagem'),
             (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.score.mensagem'),
             (string) data_get($limitePayload, 'response.data.dados.resultado.score.mensagem'),
+            (string) data_get($completeResult, 'score.descricao'),
+            (string) data_get($completeResult, 'score.descricao_complementar_score'),
+            (string) data_get($basicResult, 'score.descricao'),
+        ], '-');
+
+        $scoreProbability = $this->firstString([
+            (string) data_get($completeResult, 'score.probabilidade_pagamento'),
+            (string) data_get($completeResult, 'score.descricao_probabilidade_pagamento'),
+            (string) data_get($basicResult, 'score.probabilidade_pagamento'),
+            (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.score.probabilidade'),
+            (string) data_get($limitePayload, 'response.data.dados.resultado.score.probabilidade'),
+            (string) data_get($serasaPayload, 'response.dados.scores.ocorrencias.0.probabilidade_inadimplencia'),
         ], '-');
 
         $creditSituation = $this->firstString([
             (string) data_get($scrPayload, 'data.situacao'),
             (string) data_get($scrPayload, 'data.status'),
-            (string) data_get($serasaPayload, 'data.situacao'),
-            (string) data_get($serasaPayload, 'data.status'),
-            (string) data_get($scrPayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
-            (string) data_get($serasaPayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
-            (string) data_get($scrPayload, 'response.dados.dados_receita_federal.situacao_receita'),
             (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.situacao_receita'),
             (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
             (string) data_get($limitePayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
+            (string) data_get($completeResult, 'situacao_cadastral.ds_situacao_cadastral'),
+            (string) data_get($basicResult, 'situacao_cadastral.ds_situacao_cadastral'),
+            (string) data_get($completeResult, 'dados_cadastrais.status_empresa'),
+            (string) data_get($basicResult, 'dados_cadastrais.status_empresa'),
         ], '-');
 
         $institutions = $this->firstScalar([
             data_get($scrPayload, 'data.quantidadeInstituicoes'),
             data_get($scrPayload, 'data.instituicoes'),
+            data_get($scrPayload, 'response.data.dados.scrBacen.scrBacen.quantidadeInstituicoes'),
         ], '0');
 
         $operations = $this->firstScalar([
             data_get($scrPayload, 'data.quantidadeOperacoes'),
             data_get($scrPayload, 'data.operacoes'),
+            data_get($scrPayload, 'response.data.dados.scrBacen.scrBacen.quantidadeOperacoes'),
         ], '0');
 
         $creditToMature = $this->firstScalar([
             data_get($scrPayload, 'data.carteiraCredito.valorVencer'),
             data_get($scrPayload, 'data.indice.total'),
-            data_get($scrPayload, 'response.dados.faturamento_presumido.valor_presumido'),
+            data_get($scrPayload, 'response.data.dados.scrBacen.scrBacen.consolidado.creditoAVencer.valor'),
+            data_get($completeResult, 'firmografico.valor_faturamento_presumido'),
+            data_get($basicResult, 'firmografico.valor_faturamento_presumido'),
             data_get($serasaPayload, 'response.dados.faturamento_presumido.valor_presumido'),
-            data_get($defineRiscoPayload, 'response.dados.faturamento_presumido.valor_presumido'),
-            data_get($limitePayload, 'response.dados.faturamento_presumido.valor_presumido'),
         ], '-');
 
         $overdueCredit = $this->firstScalar([
             data_get($scrPayload, 'data.carteiraCredito.valorVencida'),
+            data_get($scrPayload, 'response.data.dados.scrBacen.scrBacen.consolidado.creditoVencido.valor'),
+            data_get($serasaPayload, 'response.dados.protesto_sintetico.valor_total'),
         ], '-');
 
-        $certidaoPayload = $this->payloadArray($byKey->get('certidao_negativa_pj'));
-        $protestoPayload = $this->payloadArray($byKey->get('protesto_nacional_v2'));
+        $businessMetrics = $this->buildBusinessMetrics($completeResult, $basicResult, $serasaPayload);
+        $creditBehavior = $this->buildCreditBehavior($completeResult, $basicResult);
+        $contacts = $this->buildContacts($completeResult, $basicResult);
+        $publicDebts = $this->buildPublicDebts($completeResult, $basicResult);
+        $negativeMetrics = $this->buildNegativeMetrics($completeResult, $basicResult, $serasaPayload);
+        $compliance = $this->buildComplianceSummary($byKey, $completeResult, $basicResult);
+        $complianceEntries = $this->buildComplianceEntries($completeResult, $basicResult);
+        $partners = $this->buildPartners($completeResult, $basicResult);
+        $businessIndicators = $this->buildBusinessIndicators($completeResult);
+        $consultationHistory = $this->buildConsultationHistory($completeResult, $basicResult);
+        $registration = $this->buildRegistration($completeResult, $basicResult, $serasaPayload);
+        $patrimony = $this->buildPatrimony($completeResult, $basicResult);
 
-        $certidaoStatus = $this->sourceLabel($byKey->get('certidao_negativa_pj'));
-        $protestoStatus = $this->sourceLabel($byKey->get('protesto_nacional_v2'));
-        if ($byKey->has('define_risco_pj')) {
-            $certidaoStatus = $this->sourceLabel($byKey->get('define_risco_pj'));
+        if (($businessMetrics['company_name'] ?? '') !== '') {
+            $companyName = (string) $businessMetrics['company_name'];
         }
-        if ($byKey->has('limite_pj')) {
-            $protestoStatus = $this->sourceLabel($byKey->get('limite_pj'));
+        if (($businessMetrics['trade_name'] ?? '') !== '' && $tradeName === '-') {
+            $tradeName = (string) $businessMetrics['trade_name'];
         }
-
-        $certidaoDetail = $this->firstString([
-            (string) data_get($certidaoPayload, 'data.situacao'),
-            (string) data_get($certidaoPayload, 'message'),
-            (string) ($byKey->get('certidao_negativa_pj')?->error_message ?: ''),
-            (string) data_get($defineRiscoPayload, 'response.message'),
-            (string) data_get($defineRiscoPayload, 'response.data.msg'),
-        ], '-');
-
-        $protestoDetail = $this->firstString([
-            (string) data_get($protestoPayload, 'data.situacao'),
-            (string) data_get($protestoPayload, 'message'),
-            (string) ($byKey->get('protesto_nacional_v2')?->error_message ?: ''),
-            (string) data_get($limitePayload, 'response.message'),
-            (string) data_get($limitePayload, 'response.data.msg'),
-        ], '-');
 
         $sources = $consultations->map(function (ApiBrasilConsultation $consultation): array {
-            $payload = is_array($consultation->response_payload) ? $consultation->response_payload : [];
             $httpStatus = $consultation->http_status;
             $status = (string) $consultation->status;
-            $isWarning = $status !== 'success' && in_array((int) $httpStatus, [404, 422, 429], true);
+            $isWarning = $status !== 'success' && in_array((int) $httpStatus, [400, 404, 422, 429], true);
 
             return [
                 'key' => (string) $consultation->consultation_key,
@@ -147,13 +176,6 @@ class PjResearchReportService
         })->values()->all();
 
         $judicialMetrics = $this->judicialMetrics($consultations);
-        $basicPjMetrics = $this->basicPjMetrics($consultations);
-        if (($basicPjMetrics['business']['company_name'] ?? '') !== '') {
-            $companyName = (string) $basicPjMetrics['business']['company_name'];
-        }
-        if (($basicPjMetrics['business']['trade_name'] ?? '') !== '') {
-            $companyName = (string) $basicPjMetrics['business']['trade_name'];
-        }
 
         return [
             'meta' => [
@@ -163,28 +185,33 @@ class PjResearchReportService
             ],
             'company' => [
                 'razao_social' => $companyName,
+                'nome_fantasia' => $tradeName,
                 'document' => $document,
             ],
             'credit' => [
                 'score' => $scoreValue,
                 'rating' => $rating,
                 'classe_risco' => $riskClass,
+                'probabilidade' => $scoreProbability,
                 'situacao' => $creditSituation,
                 'instituicoes' => $institutions,
                 'operacoes' => $operations,
                 'credito_a_vencer' => $creditToMature,
                 'credito_vencido' => $overdueCredit,
             ],
-            'compliance' => [
-                'certidao' => $certidaoStatus,
-                'certidao_detail' => $certidaoDetail,
-                'protesto' => $protestoStatus,
-                'protesto_detail' => $protestoDetail,
-            ],
+            'compliance' => $compliance,
+            'compliance_entries' => $complianceEntries,
             'judicial' => $judicialMetrics,
-            'business' => $basicPjMetrics['business'],
-            'credit_behavior' => $basicPjMetrics['credit_behavior'],
-            'partners' => $basicPjMetrics['partners'],
+            'business' => $businessMetrics,
+            'credit_behavior' => $creditBehavior,
+            'contacts' => $contacts,
+            'public_debts' => $publicDebts,
+            'negatives' => $negativeMetrics,
+            'partners' => $partners,
+            'business_indicators' => $businessIndicators,
+            'consultation_history' => $consultationHistory,
+            'registration' => $registration,
+            'patrimony' => $patrimony,
             'sources' => $sources,
         ];
     }
@@ -201,6 +228,47 @@ class PjResearchReportService
         }
 
         return $consultation->status === 'success' ? 'Regular' : 'Com pendencia';
+    }
+
+    private function firstResultPayload(array $payloads): array
+    {
+        foreach ($payloads as $payload) {
+            if (! is_array($payload) || $payload === []) {
+                continue;
+            }
+
+            $paths = [
+                'data.resultado',
+                'response.data.dados.resultado',
+                'response.dados',
+                'response.data.dados',
+            ];
+
+            foreach ($paths as $path) {
+                $candidate = data_get($payload, $path);
+                if (is_array($candidate) && $candidate !== []) {
+                    return $candidate;
+                }
+            }
+        }
+
+        return [];
+    }
+
+    private function firstResultFromConsultations(Collection $consultations): array
+    {
+        foreach ($consultations as $consultation) {
+            if (! $consultation instanceof ApiBrasilConsultation || ! is_array($consultation->response_payload)) {
+                continue;
+            }
+
+            $candidate = $this->firstResultPayload([$consultation->response_payload]);
+            if ($candidate !== []) {
+                return $candidate;
+            }
+        }
+
+        return [];
     }
 
     private function findStringByKeys(array $payload, array $keys): ?string
@@ -345,104 +413,468 @@ class PjResearchReportService
         return collect();
     }
 
-    private function basicPjMetrics(Collection $consultations): array
+    private function buildBusinessMetrics(array $completeResult, array $basicResult, array $serasaPayload): array
     {
-        $resultado = null;
+        $dadosCadastrais = $this->mergeAssoc(
+            (array) data_get($basicResult, 'dados_cadastrais', []),
+            (array) data_get($completeResult, 'dados_cadastrais', [])
+        );
 
-        foreach ($consultations as $consultation) {
-            if (! $consultation instanceof ApiBrasilConsultation || ! is_array($consultation->response_payload)) {
-                continue;
-            }
-
-            $candidate = data_get($consultation->response_payload, 'data.resultado');
-            if (is_array($candidate) && $candidate !== []) {
-                $resultado = $candidate;
-                break;
-            }
-
-            $candidate = data_get($consultation->response_payload, 'response.data.dados.resultado');
-            if (is_array($candidate) && $candidate !== []) {
-                $resultado = $candidate;
-                break;
-            }
-        }
-
-        if (! is_array($resultado) || $resultado === []) {
-            return [
-                'business' => [],
-                'credit_behavior' => [],
-                'partners' => [],
-            ];
-        }
-
-        $dadosCadastrais = (array) data_get($resultado, 'dados_cadastrais', []);
         if ($dadosCadastrais === []) {
-            $dadosCadastrais = (array) data_get($resultado, 'dadoscadastrais', []);
+            $dadosCadastrais = (array) data_get($basicResult, 'dadoscadastrais', []);
         }
-        $consultas = (array) data_get($resultado, 'consultas', []);
-        $quadroSocietario = (array) data_get($resultado, 'quadro_societario', []);
-        $socios = is_array($quadroSocietario['socios'] ?? null) ? $quadroSocietario['socios'] : [];
 
-        $metrics = [
-            'business' => [
-                'company_name' => (string) ($dadosCadastrais['nome_empresa'] ?? ($dadosCadastrais['razaosocial'] ?? '')),
-                'trade_name' => (string) ($dadosCadastrais['nome_fantasia'] ?? ($dadosCadastrais['nomefantasia'] ?? '')),
-                'status' => (string) ($dadosCadastrais['status_empresa'] ?? ($dadosCadastrais['situacao'] ?? '')),
-                'main_activity' => (string) ($dadosCadastrais['descricao_atividade_principal'] ?? ''),
-                'secondary_activity' => (string) ($dadosCadastrais['descricao_atividade_secundaria'] ?? ''),
-                'telefone' => (string) ($dadosCadastrais['numero_telefone'] ?? ''),
-                'email' => (string) data_get($dadosCadastrais, 'emails.emails', ''),
-                'capital_social' => (string) ($quadroSocietario['capital_social'] ?? ''),
-            ],
-            'credit_behavior' => [
-                'ultimos_30_dias' => (int) ($consultas['contagem_consultas_ultimos_30_dias'] ?? 0),
-                'de_31_a_60_dias' => (int) ($consultas['contagem_consultas_31_a_60_dias'] ?? 0),
-                'de_61_a_90_dias' => (int) ($consultas['contagem_consultas_61_a_90_dias'] ?? 0),
-                'mais_90_dias' => (int) ($consultas['contagem_consultas_mais_90_dias'] ?? 0),
-                'status_cadastro_positivo' => (string) ($resultado['status_cadastro_positivo'] ?? ''),
-            ],
-            'partners' => collect($socios)->map(function (array $partner): array {
-                return [
-                    'name' => (string) ($partner['nomes'] ?? '-'),
-                    'document' => (string) ($partner['cpf_cnpj'] ?? '-'),
-                    'type' => (string) ($partner['tipo_entidade'] ?? '-'),
-                    'relationship' => (string) ($partner['descricao_relacionamento'] ?? '-'),
-                    'share' => (string) ($partner['percentual_participacao'] ?? '-'),
-                    'status' => (string) ($partner['status'] ?? '-'),
-                ];
-            })->values()->all(),
+        return [
+            'company_name' => $this->firstString([
+                (string) ($dadosCadastrais['razao_social_nome_empresarial'] ?? ''),
+                (string) ($dadosCadastrais['nome_empresa'] ?? ''),
+                (string) ($dadosCadastrais['razaosocial'] ?? ''),
+                (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.razao_social', ''),
+            ], ''),
+            'trade_name' => $this->firstString([
+                (string) ($dadosCadastrais['nome_fantasia'] ?? ''),
+                (string) ($dadosCadastrais['nomefantasia'] ?? ''),
+            ], ''),
+            'status' => $this->firstString([
+                (string) data_get($completeResult, 'situacao_cadastral.ds_situacao_cadastral', ''),
+                (string) ($dadosCadastrais['status_empresa'] ?? ''),
+                (string) ($dadosCadastrais['situacao'] ?? ''),
+                (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.situacao_receita', ''),
+            ], '-'),
+            'main_activity' => $this->firstString([
+                (string) ($dadosCadastrais['ds_cnae_fiscal_principal'] ?? ''),
+                (string) ($dadosCadastrais['descricao_atividade_principal'] ?? ''),
+                (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.atividade_economica_principal', ''),
+            ], '-'),
+            'secondary_activity' => $this->firstString([
+                (string) ($dadosCadastrais['descricao_atividade_secundaria'] ?? ''),
+                (string) ($dadosCadastrais['ds_cnae_fiscal_secundarios.0'] ?? ''),
+                (string) ($dadosCadastrais['descricao_atividade_secundaria'] ?? ''),
+            ], '-'),
+            'natureza_juridica' => $this->firstString([
+                (string) ($dadosCadastrais['ds_natureza_juridica'] ?? ''),
+                (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.natureza_juridica', ''),
+            ], '-'),
+            'capital_social' => $this->firstString([
+                (string) data_get($completeResult, 'firmografico.capital_social', ''),
+                (string) data_get($basicResult, 'quadro_societario.capital_social', ''),
+            ], '-'),
+            'porte' => $this->firstString([
+                (string) data_get($completeResult, 'firmografico.ds_porte_empresa', ''),
+                (string) data_get($completeResult, 'firmografico.porte_td', ''),
+            ], '-'),
+            'faixa_faturamento' => $this->firstString([
+                (string) data_get($completeResult, 'firmografico.ds_faixa_faturamento', ''),
+                (string) data_get($serasaPayload, 'response.dados.faturamento_presumido.faturamento_anual', ''),
+            ], '-'),
+            'faturamento_presumido' => $this->firstString([
+                (string) data_get($completeResult, 'firmografico.valor_faturamento_presumido', ''),
+                (string) data_get($serasaPayload, 'response.dados.faturamento_presumido.valor_presumido', ''),
+            ], '-'),
         ];
-
-        if ($payloadFallback = $this->fallbackBasicPjMetrics($consultations)) {
-            $metrics = array_replace_recursive($metrics, $payloadFallback);
-        }
-
-        return $metrics;
     }
 
-    private function fallbackBasicPjMetrics(Collection $consultations): array
+    private function buildCreditBehavior(array $completeResult, array $basicResult): array
     {
-        foreach ($consultations as $consultation) {
-            if (! $consultation instanceof ApiBrasilConsultation || ! is_array($consultation->response_payload)) {
-                continue;
-            }
+        $consultas = $this->mergeAssoc(
+            (array) data_get($basicResult, 'consultas', []),
+            (array) data_get($completeResult, 'consultas', [])
+        );
 
-            $dados = (array) data_get($consultation->response_payload, 'response.dados', []);
-            if ($dados === []) {
-                continue;
-            }
+        return [
+            'ultimos_30_dias' => (int) ($consultas['contagem_consultas_ultimos_30_dias'] ?? 0),
+            'de_31_a_60_dias' => (int) ($consultas['contagem_consultas_31_a_60_dias'] ?? 0),
+            'de_61_a_90_dias' => (int) ($consultas['contagem_consultas_61_a_90_dias'] ?? 0),
+            'mais_90_dias' => (int) ($consultas['contagem_consultas_mais_90_dias'] ?? 0),
+            'status_cadastro_positivo' => $this->firstString([
+                (string) ($completeResult['status_cadastro_positivo'] ?? ''),
+                (string) ($basicResult['status_cadastro_positivo'] ?? ''),
+            ], ''),
+        ];
+    }
 
-            return [
-                'business' => [
-                    'company_name' => (string) data_get($dados, 'dados_receita_federal.razao_social', ''),
-                    'status' => (string) data_get($dados, 'dados_receita_federal.situacao_receita', ''),
-                    'main_activity' => (string) data_get($dados, 'dados_receita_federal.atividade_economica_principal', ''),
-                    'email' => (string) data_get($dados, 'dados_receita_federal.email', ''),
-                ],
-                'credit_behavior' => [
-                    'status_cadastro_positivo' => (string) data_get($dados, 'faturamento_presumido.dados_cadastro_positivo', ''),
-                ],
+    private function buildContacts(array $completeResult, array $basicResult): array
+    {
+        $emails = collect();
+        $phones = collect();
+        $addresses = collect();
+
+        foreach ([
+            data_get($completeResult, 'dados_contato.emails', []),
+            data_get($basicResult, 'dados_contato.emails', []),
+        ] as $sourceEmails) {
+            if (is_array($sourceEmails)) {
+                foreach ($sourceEmails as $emailRow) {
+                    $value = trim((string) data_get($emailRow, 'emails', ''));
+                    if ($value !== '') {
+                        $emails->push($value);
+                    }
+                }
+            }
+        }
+
+        $legacyEmail = (string) data_get($basicResult, 'dados_cadastrais.emails.emails', '');
+        if ($legacyEmail !== '') {
+            $emails->push($legacyEmail);
+        }
+
+        foreach ([
+            data_get($completeResult, 'dados_contato.telefones', []),
+            data_get($basicResult, 'dados_contato.telefones', []),
+        ] as $sourcePhones) {
+            if (is_array($sourcePhones)) {
+                foreach ($sourcePhones as $phoneRow) {
+                    $ddd = trim((string) data_get($phoneRow, 'ddd', ''));
+                    $number = trim((string) data_get($phoneRow, 'numero', ''));
+                    $type = trim((string) data_get($phoneRow, 'tipo', ''));
+                    $value = trim($ddd.' '.$number);
+                    if ($value !== '') {
+                        $phones->push(trim($value.($type !== '' ? ' ('.$type.')' : '')));
+                    }
+                }
+            }
+        }
+
+        $legacyPhone = (string) data_get($basicResult, 'dados_cadastrais.numero_telefone', '');
+        if ($legacyPhone !== '') {
+            $phones->push($legacyPhone);
+        }
+
+        foreach ([
+            data_get($completeResult, 'dados_contato.logradouros', []),
+            data_get($basicResult, 'dados_contato.logradouros', []),
+        ] as $sourceAddresses) {
+            if (is_array($sourceAddresses)) {
+                foreach ($sourceAddresses as $row) {
+                    $parts = array_filter([
+                        trim((string) data_get($row, 'logradouro_tipo', '')),
+                        trim((string) data_get($row, 'logradouro_endereco', '')),
+                        trim((string) data_get($row, 'logradouro_numero', '')),
+                        trim((string) data_get($row, 'logradouro_complemento', '')),
+                        trim((string) data_get($row, 'logradouro_bairro', '')),
+                        trim((string) data_get($row, 'logradouro_municipio', '')),
+                        trim((string) data_get($row, 'logradouro_uf', '')),
+                        trim((string) data_get($row, 'logradouro_cep', '')),
+                    ]);
+                    if ($parts !== []) {
+                        $addresses->push(implode(', ', $parts));
+                    }
+                }
+            }
+        }
+
+        $legacyAddress = (array) data_get($basicResult, 'dados_cadastrais.enderecos', []);
+        if ($legacyAddress !== []) {
+            $parts = array_filter([
+                trim((string) ($legacyAddress['rua'] ?? '')),
+                trim((string) ($legacyAddress['numero'] ?? '')),
+                trim((string) ($legacyAddress['complemento'] ?? '')),
+                trim((string) ($legacyAddress['bairro'] ?? '')),
+                trim((string) ($legacyAddress['cidade'] ?? '')),
+                trim((string) ($legacyAddress['estado'] ?? '')),
+                trim((string) ($legacyAddress['codigo_postal'] ?? '')),
+            ]);
+            if ($parts !== []) {
+                $addresses->push(implode(', ', $parts));
+            }
+        }
+
+        return [
+            'emails' => $emails->map(fn ($item) => mb_strtoupper((string) $item))->unique()->values()->all(),
+            'phones' => $phones->unique()->values()->all(),
+            'addresses' => $addresses->unique()->values()->all(),
+        ];
+    }
+
+    private function buildPublicDebts(array $completeResult, array $basicResult): array
+    {
+        $debts = $this->mergeAssoc(
+            (array) data_get($basicResult, 'dividas_publicas', data_get($basicResult, 'divida_publica', [])),
+            (array) data_get($completeResult, 'dividas_publicas', data_get($completeResult, 'divida_publica', []))
+        );
+
+        $rows = [];
+        foreach ([
+            'pgfn_fgts' => 'PGFN FGTS',
+            'pgfn_nao_previdenciario' => 'PGFN Não Previdenciário',
+            'pgfn_previdenciario' => 'PGFN Previdenciário',
+        ] as $key => $label) {
+            $node = (array) ($debts[$key] ?? []);
+            $rows[] = [
+                'title' => $label,
+                'quantity' => (string) ($node['quantidade'] ?? '0'),
+                'value' => (string) ($node['valor'] ?? '0,00'),
             ];
+        }
+
+        return $rows;
+    }
+
+    private function buildNegativeMetrics(array $completeResult, array $basicResult, array $serasaPayload): array
+    {
+        $negativacoes = $this->mergeAssoc(
+            (array) data_get($basicResult, 'negativacoes', []),
+            (array) data_get($completeResult, 'negativacoes', [])
+        );
+
+        $protestos = $this->firstArray([
+            data_get($completeResult, 'protestos', []),
+            data_get($basicResult, 'protestos', []),
+        ]);
+
+        return [
+            'controle_pendencias_credito' => (string) ($negativacoes['controle_pendencias_credito'] ?? '0'),
+            'apontamentos' => is_array($negativacoes['apontamentos'] ?? null) ? count($negativacoes['apontamentos']) : 0,
+            'ccf' => is_array($negativacoes['ccf_apontamentos'] ?? null) ? count($negativacoes['ccf_apontamentos']) : 0,
+            'acoes_judiciais' => is_array($negativacoes['acoes_judiciais_apontamentos'] ?? null) ? count($negativacoes['acoes_judiciais_apontamentos']) : 0,
+            'protestos_total' => $this->firstString([
+                (string) data_get($protestos, '0.total_protestos'),
+                (string) data_get($serasaPayload, 'response.dados.protesto_sintetico.quantidade_ocorrencia', ''),
+                '0',
+            ], '0'),
+            'protestos_valor' => $this->firstString([
+                (string) data_get($protestos, '0.valor_protestados_total'),
+                (string) data_get($serasaPayload, 'response.dados.protesto_sintetico.valor_total', ''),
+                '0,00',
+            ], '0,00'),
+        ];
+    }
+
+    private function buildComplianceSummary(Collection $byKey, array $completeResult, array $basicResult): array
+    {
+        $completeSource = $byKey->get('compliance_complete_pj');
+        $basicSource = $byKey->get('compliance_basic_pj');
+
+        $rows = $this->buildComplianceEntries($completeResult, $basicResult);
+        $withHit = collect($rows)->first(fn (array $row) => (int) $row['quantity'] > 0);
+
+        return [
+            'certidao' => $this->sourceLabel($completeSource ?: $basicSource),
+            'certidao_detail' => $withHit
+                ? 'Ocorrências em '.$withHit['title'].': '.$withHit['quantity']
+                : 'Sem ocorrências em listas de compliance consultadas.',
+            'protesto' => $this->sourceLabel($basicSource ?: $completeSource),
+            'protesto_detail' => $withHit
+                ? 'Verifique seção de Compliance e Órgãos para detalhes.'
+                : 'Sem ocorrências de compliance retornadas.',
+        ];
+    }
+
+    private function buildComplianceEntries(array $completeResult, array $basicResult): array
+    {
+        $complete = (array) data_get($completeResult, 'compliance', []);
+        $basic = (array) data_get($basicResult, 'compliance', []);
+
+        $map = [
+            'ceis' => 'CEIS',
+            'cepim' => 'CEPIM',
+            'cnep' => 'CNEP',
+            'ibama' => 'IBAMA',
+            'mpf_leniencia' => 'MPF Leniencia',
+            'mpt_lista_suja' => 'MPT Lista Suja',
+            'pep' => 'PEP',
+            'tcu' => 'TCU',
+        ];
+
+        $rows = [];
+        foreach ($map as $key => $label) {
+            $completeItems = is_array($complete[$key] ?? null) ? $complete[$key] : [];
+            $basicItems = is_array($basic[$key] ?? null) ? $basic[$key] : [];
+            $quantity = max(count($completeItems), count($basicItems));
+
+            $rows[] = [
+                'key' => $key,
+                'title' => $label,
+                'quantity' => $quantity,
+                'status' => $quantity > 0 ? 'Alerta' : 'Regular',
+            ];
+        }
+
+        return $rows;
+    }
+
+    private function buildPartners(array $completeResult, array $basicResult): array
+    {
+        $completePartners = is_array(data_get($completeResult, 'quadro_societario.socios'))
+            ? data_get($completeResult, 'quadro_societario.socios')
+            : [];
+
+        $basicPartners = is_array(data_get($basicResult, 'quadro_societario.socios'))
+            ? data_get($basicResult, 'quadro_societario.socios')
+            : [];
+
+        $partners = collect(array_merge($completePartners, $basicPartners))
+            ->filter(fn ($row) => is_array($row))
+            ->map(function (array $partner): array {
+                return [
+                    'name' => $this->firstString([
+                        (string) ($partner['nome_socio_razao_social'] ?? ''),
+                        (string) ($partner['nomes'] ?? ''),
+                    ], '-'),
+                    'document' => $this->firstString([
+                        (string) ($partner['cpf_cnpj_socio_tratado'] ?? ''),
+                        (string) ($partner['cpf_cnpj'] ?? ''),
+                        (string) ($partner['cpf_cnpj_socio'] ?? ''),
+                    ], '-'),
+                    'type' => $this->firstString([
+                        (string) ($partner['ds_identificador_socio'] ?? ''),
+                        (string) ($partner['tipo_entidade'] ?? ''),
+                    ], '-'),
+                    'relationship' => $this->firstString([
+                        (string) ($partner['ds_qualificacao_socio'] ?? ''),
+                        (string) ($partner['descricao_relacionamento'] ?? ''),
+                    ], '-'),
+                    'share' => $this->firstString([
+                        (string) ($partner['percentual_participacao'] ?? ''),
+                        (string) ($partner['valor_participacao'] ?? ''),
+                    ], '-'),
+                    'status' => $this->firstString([
+                        (string) ($partner['status'] ?? ''),
+                        (string) ($partner['nivel_confianca'] ?? ''),
+                    ], '-'),
+                ];
+            })
+            ->unique(fn ($partner) => ($partner['document'] ?? '').'|'.($partner['name'] ?? ''))
+            ->values()
+            ->all();
+
+        return $partners;
+    }
+
+    private function buildBusinessIndicators(array $completeResult): array
+    {
+        $indicators = (array) data_get($completeResult, 'indicadores_de_negocios', []);
+        if ($indicators === []) {
+            return [];
+        }
+
+        $groups = [];
+        foreach ($indicators as $groupKey => $groupValue) {
+            if (! is_array($groupValue)) {
+                continue;
+            }
+
+            $items = [];
+            foreach ($groupValue as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                $items[] = [
+                    'name' => (string) ($item['nomes'] ?? '-'),
+                    'risk' => (string) ($item['risco'] ?? '-'),
+                    'description' => (string) ($item['descricao'] ?? '-'),
+                ];
+            }
+
+            if ($items !== []) {
+                $groups[] = [
+                    'title' => $this->normalizeIndicatorTitle((string) $groupKey),
+                    'items' => $items,
+                ];
+            }
+        }
+
+        return $groups;
+    }
+
+    private function normalizeIndicatorTitle(string $key): string
+    {
+        $clean = str_replace('_', ' ', trim($key));
+
+        return mb_convert_case($clean, MB_CASE_TITLE, 'UTF-8');
+    }
+
+    private function buildConsultationHistory(array $completeResult, array $basicResult): array
+    {
+        $consultas = $this->mergeAssoc(
+            (array) data_get($basicResult, 'consultas', []),
+            (array) data_get($completeResult, 'consultas', [])
+        );
+
+        $details = is_array($consultas['detalhes_consultas'] ?? null) ? $consultas['detalhes_consultas'] : [];
+
+        $normalized = collect($details)
+            ->filter(fn ($row) => is_array($row))
+            ->map(function (array $row): array {
+                $date = (array) ($row['data_consulta'] ?? []);
+                $formattedDate = trim((string) ($date['dia'] ?? '')).'/'.trim((string) ($date['mes'] ?? '')).'/'.trim((string) ($date['ano'] ?? ''));
+                $formattedDate = trim($formattedDate, '/');
+
+                return [
+                    'date' => $formattedDate !== '' ? $formattedDate : '-',
+                    'segment' => (string) ($row['segmento'] ?? '-'),
+                    'count' => (int) ($row['contagem_consultas'] ?? 0),
+                ];
+            })
+            ->values()
+            ->all();
+
+        return [
+            'total_30' => (int) ($consultas['contagem_consultas_ultimos_30_dias'] ?? 0),
+            'total_31_60' => (int) ($consultas['contagem_consultas_31_a_60_dias'] ?? 0),
+            'total_61_90' => (int) ($consultas['contagem_consultas_61_a_90_dias'] ?? 0),
+            'total_90_plus' => (int) ($consultas['contagem_consultas_mais_90_dias'] ?? 0),
+            'details' => $normalized,
+        ];
+    }
+
+    private function buildRegistration(array $completeResult, array $basicResult, array $serasaPayload): array
+    {
+        return [
+            'situacao_cadastral' => $this->firstString([
+                (string) data_get($completeResult, 'situacao_cadastral.ds_situacao_cadastral', ''),
+                (string) data_get($basicResult, 'dados_cadastrais.status_empresa', ''),
+                (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.situacao_receita', ''),
+            ], '-'),
+            'data_inicio_atividade' => $this->firstString([
+                (string) data_get($completeResult, 'dados_cadastrais.data_inicio_atividade', ''),
+                (string) data_get($basicResult, 'dados_cadastrais.data_fundacao', ''),
+                (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.data_nascimento_fundacao', ''),
+            ], '-'),
+            'nire' => $this->firstString([
+                (string) data_get($basicResult, 'dados_cadastrais.nire', ''),
+                (string) data_get($serasaPayload, 'response.dados.identificacao_completo.numero_nire', ''),
+            ], '-'),
+            'regime' => $this->firstString([
+                data_get($completeResult, 'regime_tributario.opcao_simples') === true ? 'Simples Nacional' : '',
+                data_get($completeResult, 'regime_tributario.opcao_mei') === true ? 'MEI' : '',
+            ], '-'),
+        ];
+    }
+
+    private function buildPatrimony(array $completeResult, array $basicResult): array
+    {
+        $multi = $this->firstArray([
+            data_get($completeResult, 'patrimonio.multiempresarial', []),
+            data_get($basicResult, 'patrimonio.multiempresarial', []),
+        ]);
+
+        return [
+            'multiempresarial_count' => is_array($multi) ? count($multi) : 0,
+            'filiais_count' => is_array(data_get($completeResult, 'filiais')) ? count(data_get($completeResult, 'filiais')) : 0,
+        ];
+    }
+
+    private function mergeAssoc(array $base, array $extra): array
+    {
+        if ($base === []) {
+            return $extra;
+        }
+
+        if ($extra === []) {
+            return $base;
+        }
+
+        return array_replace_recursive($base, $extra);
+    }
+
+    private function firstArray(array $values): array
+    {
+        foreach ($values as $value) {
+            if (is_array($value) && $value !== []) {
+                return $value;
+            }
         }
 
         return [];

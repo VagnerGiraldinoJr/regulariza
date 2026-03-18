@@ -77,6 +77,71 @@ class PjResearchReportServiceTest extends TestCase
         $this->assertCount(2, data_get($report, 'partners'));
     }
 
+    public function test_build_consolidates_compliance_entries_without_duplicate_rows(): void
+    {
+        $client = User::factory()->make([
+            'name' => 'Empresa Teste',
+            'cpf_cnpj' => '44959669000180',
+        ]);
+
+        $order = new Order([
+            'protocolo' => 'REG-PJ-COMP-001',
+        ]);
+        $order->id = 12;
+        $order->setRelation('user', $client);
+
+        $complete = new ApiBrasilConsultation([
+            'consultation_key' => 'compliance_complete_pj',
+            'consultation_title' => 'Compliance Complete PJ',
+            'status' => 'success',
+            'http_status' => 200,
+            'response_payload' => [
+                'data' => [
+                    'resultado' => [
+                        'compliance' => [
+                            'ceis' => [['id' => 1]],
+                            'cnep' => [],
+                            'pep' => [],
+                            'tcu' => [],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        $complete->created_at = now();
+
+        $basic = new ApiBrasilConsultation([
+            'consultation_key' => 'compliance_basic_pj',
+            'consultation_title' => 'Compliance Basic PJ',
+            'status' => 'success',
+            'http_status' => 200,
+            'response_payload' => [
+                'data' => [
+                    'resultado' => [
+                        'compliance' => [
+                            'ceis' => [],
+                            'cnep' => [['id' => 2]],
+                            'pep' => [],
+                            'tcu' => [],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        $basic->created_at = now();
+
+        $service = app(PjResearchReportService::class);
+        $report = $service->build($order, new Collection([$complete, $basic]));
+
+        $entries = collect(data_get($report, 'compliance_entries', []));
+
+        $this->assertGreaterThan(0, $entries->count());
+        $this->assertSame(1, $entries->where('key', 'ceis')->count());
+        $this->assertSame(1, $entries->where('key', 'cnep')->count());
+        $this->assertSame(1, (int) $entries->firstWhere('key', 'ceis')['quantity']);
+        $this->assertSame(1, (int) $entries->firstWhere('key', 'cnep')['quantity']);
+    }
+
     private function acoesProcessosPayload(): array
     {
         return [

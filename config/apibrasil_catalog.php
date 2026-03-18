@@ -49,11 +49,11 @@ return [
                 ],
                 [
                     'provider' => 'fiscal',
-                    'consultation_key' => 'define_risco_pj',
+                    'consultation_key' => 'compliance_complete_pj',
                 ],
                 [
                     'provider' => 'registry',
-                    'consultation_key' => 'limite_pj',
+                    'consultation_key' => 'compliance_basic_pj',
                 ],
             ],
         ],
@@ -149,6 +149,32 @@ return [
                 'homolog' => true,
             ],
             'description' => 'Consulta completa Serasa Premium para CNPJ.',
+        ],
+        'compliance_basic_pj' => [
+            'title' => 'Compliance Basic PJ',
+            'category' => 'regularidade_fiscal',
+            'document_type' => 'cnpj',
+            'method' => 'POST',
+            'path' => '/api/v2/consulta/cnpj/credits',
+            'body' => [
+                'tipo' => 'compliance-basic-pj',
+                'cnpj' => '{document}',
+                'homolog' => true,
+            ],
+            'description' => 'Compliance PJ enxuto (órgãos de controle, cadastro e contato empresarial).',
+        ],
+        'compliance_complete_pj' => [
+            'title' => 'Compliance Complete PJ',
+            'category' => 'regularidade_fiscal',
+            'document_type' => 'cnpj',
+            'method' => 'POST',
+            'path' => '/api/v2/consulta/cnpj/credits',
+            'body' => [
+                'tipo' => 'compliance-complete-pj',
+                'cnpj' => '{document}',
+                'homolog' => true,
+            ],
+            'description' => 'Compliance PJ completo com score, indicadores, sócios, dívidas públicas e órgãos.',
         ],
         'serasa_score_pf' => [
             'title' => 'Serasa Score PF',

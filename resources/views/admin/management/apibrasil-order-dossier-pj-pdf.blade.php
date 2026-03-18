@@ -18,7 +18,7 @@
         .table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         .table td, .table th { border: 1px solid #e3ebf3; padding: 6px 8px; vertical-align: top; }
         .table th { background: #eef7fb; color: #36536b; text-align: left; }
-        .label { width: 200px; background: #f8fbfd; color: #48627a; font-weight: 700; }
+        .label { width: 220px; background: #f8fbfd; color: #48627a; font-weight: 700; }
         td, th { word-break: break-word; overflow-wrap: anywhere; }
         .cards { width: 100%; border-collapse: separate; border-spacing: 8px; margin: 0 -8px; }
         .card { border: 1px solid #dce7ef; border-radius: 10px; background: #f8fbfd; padding: 10px; min-height: 72px; }
@@ -39,10 +39,18 @@
     $company = $report['company'] ?? [];
     $credit = $report['credit'] ?? [];
     $compliance = $report['compliance'] ?? [];
+    $complianceEntries = is_array($report['compliance_entries'] ?? null) ? $report['compliance_entries'] : [];
     $judicial = $report['judicial'] ?? [];
     $business = $report['business'] ?? [];
     $creditBehavior = $report['credit_behavior'] ?? [];
+    $contacts = $report['contacts'] ?? [];
+    $publicDebts = is_array($report['public_debts'] ?? null) ? $report['public_debts'] : [];
+    $negatives = $report['negatives'] ?? [];
+    $registration = $report['registration'] ?? [];
+    $consultationHistory = $report['consultation_history'] ?? [];
+    $patrimony = $report['patrimony'] ?? [];
     $partners = is_array($report['partners'] ?? null) ? $report['partners'] : [];
+    $businessIndicators = is_array($report['business_indicators'] ?? null) ? $report['business_indicators'] : [];
     $sources = is_array($report['sources'] ?? null) ? $report['sources'] : [];
     $rating = array_replace([
         'classification' => 'NÃO CLASSIFICADO',
@@ -74,7 +82,7 @@
             </td>
             <td>
                 <p class="title">DIAGNÓSTICO FINANCEIRO PJ</p>
-                <p class="subtitle">Consolidado empresarial no padrão executivo da análise PF</p>
+                <p class="subtitle">Consolidado empresarial analítico no padrão executivo da análise PF</p>
                 <div class="protocol">
                     Protocolo comercial: {{ $meta['commercial_protocol'] ?? ($order->protocolo ?: '-') }}<br>
                     Documento: {{ $company['document'] ?? '-' }}<br>
@@ -89,15 +97,14 @@
 <div class="section">
     <h2 class="section-title">Dados Empresariais</h2>
     <table class="table">
-        <tr><td class="label">Razão social / Nome</td><td>{{ $company['razao_social'] ?? '-' }}</td></tr>
+        <tr><td class="label">Razão social</td><td>{{ $company['razao_social'] ?? '-' }}</td></tr>
+        <tr><td class="label">Nome fantasia</td><td>{{ $company['nome_fantasia'] ?? ($business['trade_name'] ?? '-') }}</td></tr>
         <tr><td class="label">CNPJ</td><td>{{ $company['document'] ?? '-' }}</td></tr>
-        <tr><td class="label">Score</td><td>{{ $credit['score'] ?? '-' }}</td></tr>
-        <tr><td class="label">Classe de risco</td><td>{{ $credit['classe_risco'] ?? '-' }}</td></tr>
-        <tr><td class="label">Situação de crédito</td><td>{{ $credit['situacao'] ?? '-' }}</td></tr>
-        <tr><td class="label">Instituições no SCR</td><td>{{ $credit['instituicoes'] ?? '0' }}</td></tr>
-        <tr><td class="label">Operações no SCR</td><td>{{ $credit['operacoes'] ?? '0' }}</td></tr>
-        <tr><td class="label">Crédito a vencer</td><td>{{ $credit['credito_a_vencer'] ?? '-' }}</td></tr>
-        <tr><td class="label">Crédito vencido</td><td>{{ $credit['credito_vencido'] ?? '-' }}</td></tr>
+        <tr><td class="label">Situação cadastral</td><td>{{ $registration['situacao_cadastral'] ?? ($business['status'] ?? '-') }}</td></tr>
+        <tr><td class="label">Natureza jurídica</td><td>{{ $business['natureza_juridica'] ?? '-' }}</td></tr>
+        <tr><td class="label">Data início atividade</td><td>{{ $registration['data_inicio_atividade'] ?? '-' }}</td></tr>
+        <tr><td class="label">NIRE</td><td>{{ $registration['nire'] ?? '-' }}</td></tr>
+        <tr><td class="label">Regime tributário</td><td>{{ $registration['regime'] ?? '-' }}</td></tr>
     </table>
 </div>
 
@@ -105,33 +112,14 @@
     <h2 class="section-title">Indicadores Financeiros</h2>
     <table class="cards">
         <tr>
-            <td>
-                <div class="card">
-                    <div class="card-label">Score Principal</div>
-                    <div class="card-value">{{ $credit['score'] ?? '-' }}</div>
-                </div>
-            </td>
-            <td>
-                <div class="card">
-                    <div class="card-label">Rating S&amp;P / Fitch</div>
-                    <div class="card-value">{{ $rating['sp'] }} / {{ $rating['fitch'] }}</div>
-                </div>
-            </td>
-            <td>
-                <div class="card">
-                    <div class="card-label">Classe de Risco API</div>
-                    <div class="card-value small">{{ $credit['classe_risco'] ?? '-' }}</div>
-                </div>
-            </td>
-            <td>
-                <div class="card">
-                    <div class="card-label">Risco Consolidado</div>
-                    <div class="card-value small"><span class="{{ $riskPill }}">{{ $rating['classification'] }}</span></div>
-                </div>
-            </td>
+            <td><div class="card"><div class="card-label">Score Principal</div><div class="card-value">{{ $credit['score'] ?? '-' }}</div></div></td>
+            <td><div class="card"><div class="card-label">Rating S&amp;P / Fitch</div><div class="card-value">{{ $rating['sp'] }} / {{ $rating['fitch'] }}</div></div></td>
+            <td><div class="card"><div class="card-label">Classe de Risco API</div><div class="card-value small">{{ $credit['classe_risco'] ?? '-' }}</div></div></td>
+            <td><div class="card"><div class="card-label">Risco Consolidado</div><div class="card-value small"><span class="{{ $riskPill }}">{{ $rating['classification'] }}</span></div></div></td>
         </tr>
     </table>
     <div class="note">
+        <strong>Probabilidade:</strong> {{ $credit['probabilidade'] ?? '-' }}<br>
         <strong>Situação de crédito:</strong> {{ $credit['situacao'] ?? '-' }}<br>
         <strong>Instituições/Operações no SCR:</strong> {{ $credit['instituicoes'] ?? '0' }} / {{ $credit['operacoes'] ?? '0' }}<br>
         <strong>Crédito a vencer / vencido:</strong> {{ $credit['credito_a_vencer'] ?? '-' }} / {{ $credit['credito_vencido'] ?? '-' }}
@@ -141,122 +129,155 @@
 <div class="section">
     <h2 class="section-title">Classificação do Risco de Crédito</h2>
     <table class="table">
-        <tr>
-            <th>Classificação</th>
-            <th>Moody's</th>
-            <th>Standard &amp; Poor's</th>
-            <th>Fitch</th>
-        </tr>
-        <tr>
-            <td>{{ $rating['classification'] }}</td>
-            <td>{{ $rating['moodys'] }}</td>
-            <td>{{ $rating['sp'] }}</td>
-            <td>{{ $rating['fitch'] }}</td>
-        </tr>
+        <tr><th>Classificação</th><th>Moody's</th><th>Standard &amp; Poor's</th><th>Fitch</th></tr>
+        <tr><td>{{ $rating['classification'] }}</td><td>{{ $rating['moodys'] }}</td><td>{{ $rating['sp'] }}</td><td>{{ $rating['fitch'] }}</td></tr>
     </table>
 </div>
 
 <div class="section">
-    <h2 class="section-title">Compliance</h2>
+    <h2 class="section-title">Compliance e Órgãos</h2>
     <table class="table">
         <tr>
-            <td class="label">Certidão Negativa PJ</td>
+            <td class="label">Consolidado compliance</td>
             <td>
                 <span class="pill {{ ($compliance['certidao'] ?? '') === 'Regular' ? 'ok' : 'warn' }}">{{ $compliance['certidao'] ?? '-' }}</span>
                 <div>{{ $compliance['certidao_detail'] ?? '-' }}</div>
             </td>
         </tr>
         <tr>
-            <td class="label">Protesto Nacional</td>
-            <td>
-                <span class="pill {{ ($compliance['protesto'] ?? '') === 'Regular' ? 'ok' : 'warn' }}">{{ $compliance['protesto'] ?? '-' }}</span>
-                <div>{{ $compliance['protesto_detail'] ?? '-' }}</div>
-            </td>
+            <td class="label">Observação operacional</td>
+            <td>{{ $compliance['protesto_detail'] ?? '-' }}</td>
         </tr>
     </table>
-</div>
 
-<div class="section">
-    <h2 class="section-title">Fontes Consultadas</h2>
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Fonte</th>
-                <th>Status</th>
-                <th>HTTP</th>
-                <th>Consultado em</th>
-                <th>Observação</th>
-            </tr>
-        </thead>
+    <table class="table" style="margin-top: 8px;">
+        <thead><tr><th>Órgão/Lista</th><th>Status</th><th>Ocorrências</th></tr></thead>
         <tbody>
-            @foreach($sources as $source)
+            @foreach($complianceEntries as $entry)
                 <tr>
-                    <td>{{ $source['title'] ?? ($source['key'] ?? '-') }}</td>
-                    <td>
-                        <span class="pill {{ ($source['status'] ?? 'error') === 'success' ? 'ok' : 'warn' }}">
-                            {{ $source['status_label'] ?? (($source['status'] ?? '') === 'success' ? 'Sucesso' : 'Falha') }}
-                        </span>
-                    </td>
-                    <td>{{ $source['http_status'] ?? '-' }}</td>
-                    <td>{{ $source['consulted_at'] ?? '-' }}</td>
-                    <td>
-                        {{ $source['message'] ?: ($source['error_message'] ?: '-') }}
-                        <div style="margin-top: 3px; color: #64748b;">{{ $source['endpoint'] ?? '-' }}</div>
-                    </td>
+                    <td>{{ $entry['title'] ?? '-' }}</td>
+                    <td><span class="pill {{ ($entry['status'] ?? 'Regular') === 'Regular' ? 'ok' : 'warn' }}">{{ $entry['status'] ?? '-' }}</span></td>
+                    <td>{{ $entry['quantity'] ?? 0 }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 </div>
 
-@if(($business['company_name'] ?? '') !== '' || ($business['trade_name'] ?? '') !== '' || $partners !== [])
+<div class="section">
+    <h2 class="section-title">Cadastro, Porte e Contatos</h2>
+    <table class="table">
+        <tr><td class="label">Atividade principal</td><td>{{ $business['main_activity'] ?? '-' }}</td></tr>
+        <tr><td class="label">Atividade secundária</td><td>{{ $business['secondary_activity'] ?? '-' }}</td></tr>
+        <tr><td class="label">Capital social</td><td>{{ $business['capital_social'] ?? '-' }}</td></tr>
+        <tr><td class="label">Porte</td><td>{{ $business['porte'] ?? '-' }}</td></tr>
+        <tr><td class="label">Faixa de faturamento</td><td>{{ $business['faixa_faturamento'] ?? '-' }}</td></tr>
+        <tr><td class="label">Faturamento presumido</td><td>{{ $business['faturamento_presumido'] ?? '-' }}</td></tr>
+        <tr><td class="label">E-mails</td><td>{{ is_array($contacts['emails'] ?? null) && $contacts['emails'] !== [] ? implode(' | ', $contacts['emails']) : '-' }}</td></tr>
+        <tr><td class="label">Telefones</td><td>{{ is_array($contacts['phones'] ?? null) && $contacts['phones'] !== [] ? implode(' | ', $contacts['phones']) : '-' }}</td></tr>
+        <tr><td class="label">Endereços</td><td>{{ is_array($contacts['addresses'] ?? null) && $contacts['addresses'] !== [] ? implode(' | ', $contacts['addresses']) : '-' }}</td></tr>
+    </table>
+</div>
+
+<div class="section">
+    <h2 class="section-title">Comportamento de Crédito</h2>
+    <table class="table">
+        <tr><td class="label">Consultas últimos 30 dias</td><td>{{ $creditBehavior['ultimos_30_dias'] ?? ($consultationHistory['total_30'] ?? 0) }}</td></tr>
+        <tr><td class="label">Consultas de 31 a 60 dias</td><td>{{ $creditBehavior['de_31_a_60_dias'] ?? ($consultationHistory['total_31_60'] ?? 0) }}</td></tr>
+        <tr><td class="label">Consultas de 61 a 90 dias</td><td>{{ $creditBehavior['de_61_a_90_dias'] ?? ($consultationHistory['total_61_90'] ?? 0) }}</td></tr>
+        <tr><td class="label">Consultas acima de 90 dias</td><td>{{ $creditBehavior['mais_90_dias'] ?? ($consultationHistory['total_90_plus'] ?? 0) }}</td></tr>
+        <tr><td class="label">Cadastro positivo</td><td>{{ ($creditBehavior['status_cadastro_positivo'] ?? '') === '1' ? 'Ativo' : (($creditBehavior['status_cadastro_positivo'] ?? '') === '' ? '-' : 'Inativo') }}</td></tr>
+    </table>
+
+    @php $historyDetails = is_array($consultationHistory['details'] ?? null) ? $consultationHistory['details'] : []; @endphp
+    @if($historyDetails !== [])
+        <table class="table" style="margin-top: 8px;">
+            <thead><tr><th>Data</th><th>Segmento</th><th>Consultas</th></tr></thead>
+            <tbody>
+                @foreach($historyDetails as $item)
+                    <tr>
+                        <td>{{ $item['date'] ?? '-' }}</td>
+                        <td>{{ $item['segment'] ?? '-' }}</td>
+                        <td>{{ $item['count'] ?? 0 }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+</div>
+
+<div class="section">
+    <h2 class="section-title">Negativações, Dívidas Públicas e Protestos</h2>
+    <table class="table">
+        <tr><td class="label">Controle de pendências</td><td>{{ $negatives['controle_pendencias_credito'] ?? '0' }}</td></tr>
+        <tr><td class="label">Apontamentos</td><td>{{ $negatives['apontamentos'] ?? 0 }}</td></tr>
+        <tr><td class="label">CCF</td><td>{{ $negatives['ccf'] ?? 0 }}</td></tr>
+        <tr><td class="label">Ações judiciais (negativação)</td><td>{{ $negatives['acoes_judiciais'] ?? 0 }}</td></tr>
+        <tr><td class="label">Total de protestos</td><td>{{ $negatives['protestos_total'] ?? '0' }}</td></tr>
+        <tr><td class="label">Valor total protestado</td><td>{{ $negatives['protestos_valor'] ?? '0,00' }}</td></tr>
+    </table>
+
+    @if($publicDebts !== [])
+        <table class="table" style="margin-top: 8px;">
+            <thead><tr><th>Dívida Pública</th><th>Quantidade</th><th>Valor</th></tr></thead>
+            <tbody>
+                @foreach($publicDebts as $debt)
+                    <tr>
+                        <td>{{ $debt['title'] ?? '-' }}</td>
+                        <td>{{ $debt['quantity'] ?? '0' }}</td>
+                        <td>{{ $debt['value'] ?? '0,00' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+</div>
+
+@if($partners !== [])
     <div class="section">
-        <h2 class="section-title">Cadastro Empresarial (Basic PJ)</h2>
+        <h2 class="section-title">Quadro Societário</h2>
         <table class="table">
-            <tr><td class="label">Razão social (fonte cadastral)</td><td>{{ $business['company_name'] ?? '-' }}</td></tr>
-            <tr><td class="label">Nome fantasia</td><td>{{ $business['trade_name'] ?? '-' }}</td></tr>
-            <tr><td class="label">Status da empresa</td><td>{{ $business['status'] ?? '-' }}</td></tr>
-            <tr><td class="label">Atividade principal</td><td>{{ $business['main_activity'] ?? '-' }}</td></tr>
-            <tr><td class="label">Atividade secundária</td><td>{{ $business['secondary_activity'] ?? '-' }}</td></tr>
-            <tr><td class="label">Telefone</td><td>{{ $business['telefone'] ?? '-' }}</td></tr>
-            <tr><td class="label">E-mail</td><td>{{ $business['email'] ?? '-' }}</td></tr>
-            <tr><td class="label">Capital social</td><td>{{ $business['capital_social'] ?? '-' }}</td></tr>
+            <thead>
+                <tr><th>Sócio</th><th>Documento</th><th>Tipo</th><th>Relação</th><th>Participação</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+                @foreach($partners as $partner)
+                    <tr>
+                        <td>{{ $partner['name'] ?? '-' }}</td>
+                        <td>{{ $partner['document'] ?? '-' }}</td>
+                        <td>{{ $partner['type'] ?? '-' }}</td>
+                        <td>{{ $partner['relationship'] ?? '-' }}</td>
+                        <td>{{ $partner['share'] ?? '-' }}</td>
+                        <td>{{ $partner['status'] ?? '-' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
         </table>
 
         <table class="table" style="margin-top: 8px;">
-            <tr><td class="label">Consultas últimos 30 dias</td><td>{{ $creditBehavior['ultimos_30_dias'] ?? 0 }}</td></tr>
-            <tr><td class="label">Consultas de 31 a 60 dias</td><td>{{ $creditBehavior['de_31_a_60_dias'] ?? 0 }}</td></tr>
-            <tr><td class="label">Consultas de 61 a 90 dias</td><td>{{ $creditBehavior['de_61_a_90_dias'] ?? 0 }}</td></tr>
-            <tr><td class="label">Consultas acima de 90 dias</td><td>{{ $creditBehavior['mais_90_dias'] ?? 0 }}</td></tr>
-            <tr><td class="label">Cadastro positivo</td><td>{{ ($creditBehavior['status_cadastro_positivo'] ?? '') === '1' ? 'Ativo' : (($creditBehavior['status_cadastro_positivo'] ?? '') === '' ? '-' : 'Inativo') }}</td></tr>
+            <tr><td class="label">Grupo multiempresarial</td><td>{{ $patrimony['multiempresarial_count'] ?? 0 }}</td></tr>
+            <tr><td class="label">Filiais identificadas</td><td>{{ $patrimony['filiais_count'] ?? 0 }}</td></tr>
         </table>
+    </div>
+@endif
 
-        @if($partners !== [])
+@if($businessIndicators !== [])
+    <div class="section">
+        <h2 class="section-title">Indicadores de Negócio</h2>
+        @foreach($businessIndicators as $group)
             <table class="table" style="margin-top: 8px;">
-                <thead>
-                    <tr>
-                        <th>Sócio</th>
-                        <th>Documento</th>
-                        <th>Tipo</th>
-                        <th>Relação</th>
-                        <th>Participação</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
+                <thead><tr><th colspan="3">{{ $group['title'] ?? '-' }}</th></tr><tr><th>Indicador</th><th>Risco</th><th>Descrição</th></tr></thead>
                 <tbody>
-                    @foreach($partners as $partner)
+                    @foreach(($group['items'] ?? []) as $indicator)
                         <tr>
-                            <td>{{ $partner['name'] ?? '-' }}</td>
-                            <td>{{ $partner['document'] ?? '-' }}</td>
-                            <td>{{ $partner['type'] ?? '-' }}</td>
-                            <td>{{ $partner['relationship'] ?? '-' }}</td>
-                            <td>{{ $partner['share'] ?? '-' }}</td>
-                            <td>{{ $partner['status'] ?? '-' }}</td>
+                            <td>{{ $indicator['name'] ?? '-' }}</td>
+                            <td>{{ $indicator['risk'] ?? '-' }}</td>
+                            <td>{{ $indicator['description'] ?? '-' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-        @endif
+        @endforeach
     </div>
 @endif
 
@@ -285,14 +306,7 @@
         @php $topCases = is_array($judicial['top_cases'] ?? null) ? $judicial['top_cases'] : []; @endphp
         @if($topCases !== [])
             <table class="table" style="margin-top: 8px;">
-                <thead>
-                    <tr>
-                        <th>Número</th>
-                        <th>Tribunal</th>
-                        <th>Classe</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Número</th><th>Tribunal</th><th>Classe</th><th>Status</th></tr></thead>
                 <tbody>
                     @foreach($topCases as $case)
                         <tr>
@@ -307,6 +321,29 @@
         @endif
     </div>
 @endif
+
+<div class="section">
+    <h2 class="section-title">Fontes Consultadas</h2>
+    <table class="table">
+        <thead>
+            <tr><th>Fonte</th><th>Status</th><th>HTTP</th><th>Consultado em</th><th>Observação</th></tr>
+        </thead>
+        <tbody>
+            @foreach($sources as $source)
+                <tr>
+                    <td>{{ $source['title'] ?? ($source['key'] ?? '-') }}</td>
+                    <td><span class="pill {{ ($source['status'] ?? 'error') === 'success' ? 'ok' : 'warn' }}">{{ $source['status_label'] ?? (($source['status'] ?? '') === 'success' ? 'Sucesso' : 'Falha') }}</span></td>
+                    <td>{{ $source['http_status'] ?? '-' }}</td>
+                    <td>{{ $source['consulted_at'] ?? '-' }}</td>
+                    <td>
+                        {{ $source['message'] ?: ($source['error_message'] ?: '-') }}
+                        <div style="margin-top: 3px; color: #64748b;">{{ $source['endpoint'] ?? '-' }}</div>
+                    </td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+</div>
 
 <div class="footer">
     Documento Oficial CPF CLEAN BR • CNPJ 44.156.681/0001-57
