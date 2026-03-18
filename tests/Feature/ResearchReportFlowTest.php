@@ -21,6 +21,10 @@ class ResearchReportFlowTest extends TestCase
         config()->set('services.apibrasil.homolog', false);
 
         Http::fake([
+            'https://apibrasil.test/api/v2/user' => Http::response([
+                'error' => false,
+                'balance' => '120,500',
+            ], 200),
             'https://apibrasil.test/api/v2/consulta/cpf/credits' => Http::sequence()
                 ->push($this->pfAcertaPayload(), 200)
                 ->push($this->pfScrPayload(), 200),
@@ -84,7 +88,7 @@ class ResearchReportFlowTest extends TestCase
         );
 
         $pdfResponse->assertOk();
-        Http::assertSentCount(2);
+        Http::assertSentCount(3);
     }
 
     public function test_admin_can_generate_pf_research_report_with_alternative_acerta_payload_shape(): void
@@ -94,6 +98,10 @@ class ResearchReportFlowTest extends TestCase
         config()->set('services.apibrasil.homolog', false);
 
         Http::fake([
+            'https://apibrasil.test/api/v2/user' => Http::response([
+                'error' => false,
+                'balance' => '120,500',
+            ], 200),
             'https://apibrasil.test/api/v2/consulta/cpf/credits' => Http::sequence()
                 ->push($this->pfAcertaAlternativePayload(), 200)
                 ->push($this->pfScrPayload(), 200),
@@ -119,7 +127,7 @@ class ResearchReportFlowTest extends TestCase
         $this->assertSame('REGULAR', data_get($report->normalized_payload, 'person.cpf_status'));
         $this->assertSame(655, data_get($report->normalized_payload, 'score.value'));
         $this->assertSame('alt@cpfclean.test', data_get($report->normalized_payload, 'contacts.main_email'));
-        Http::assertSentCount(2);
+        Http::assertSentCount(3);
     }
 
     public function test_admin_can_generate_pj_research_report_without_order_and_track_failures(): void
@@ -129,6 +137,10 @@ class ResearchReportFlowTest extends TestCase
         config()->set('services.apibrasil.homolog', false);
 
         Http::fake([
+            'https://apibrasil.test/api/v2/user' => Http::response([
+                'error' => false,
+                'balance' => '120,500',
+            ], 200),
             'https://apibrasil.test/api/v2/consulta/cnpj/credits' => Http::sequence()
                 ->push(['data' => ['empresa' => 'Empresa XPTO']], 200)
                 ->push(['response' => ['data' => ['dados' => ['resultado' => ['dadoscadastrais' => ['razaosocial' => 'Empresa XPTO LTDA']]]]]], 200),
@@ -165,7 +177,36 @@ class ResearchReportFlowTest extends TestCase
         );
 
         $pdfResponse->assertOk();
-        Http::assertSentCount(2);
+        Http::assertSentCount(3);
+    }
+
+    public function test_admin_cannot_generate_report_when_apibrasil_balance_is_zero(): void
+    {
+        config()->set('services.apibrasil.base_url', 'https://apibrasil.test');
+        config()->set('services.apibrasil.token', 'token-apibrasil');
+        config()->set('services.apibrasil.homolog', false);
+
+        Http::fake([
+            'https://apibrasil.test/api/v2/user' => Http::response([
+                'error' => false,
+                'balance' => '0,000',
+            ], 200),
+        ]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin)->post(route('admin.management.apibrasil-consultations.store'), [
+            'report_type' => 'pj',
+            'document_number' => '12.345.678/0001-99',
+            'notes' => 'Sem saldo',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasErrors('apibrasil');
+        $this->assertDatabaseCount('research_reports', 0);
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($request) => str_contains((string) $request->url(), '/api/v2/user'));
     }
 
     private function pfAcertaPayload(): array

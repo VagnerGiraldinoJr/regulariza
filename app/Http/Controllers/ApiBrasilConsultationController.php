@@ -122,7 +122,11 @@ class ApiBrasilConsultationController extends Controller
         ]);
     }
 
-    public function store(Request $request, ResearchReportService $researchReportService): RedirectResponse
+    public function store(
+        Request $request,
+        ResearchReportService $researchReportService,
+        ApiBrasilService $apiBrasilService
+    ): RedirectResponse
     {
         $bundles = $this->bundles();
         $data = $request->validate([
@@ -151,6 +155,36 @@ class ApiBrasilConsultationController extends Controller
                     ? 'Informe um CPF válido para o dossiê PF.'
                     : 'Informe um CNPJ válido para o dossiê PJ.',
             ])->withInput();
+        }
+
+        if ($this->isConfigured()) {
+            try {
+                $balance = $apiBrasilService->consultarSaldo();
+                $balanceValue = $this->parseMoney($balance['balance'] ?? null);
+
+                if ($balanceValue === null) {
+                    return back()->withErrors([
+                        'apibrasil' => 'Não foi possível validar o saldo da API Brasil agora. Tente novamente em instantes.',
+                    ])->withInput();
+                }
+
+                if ($balanceValue <= 0) {
+                    return back()->withErrors([
+                        'apibrasil' => 'Saldo insuficiente na API Brasil para executar a análise. Recarregue os créditos e tente novamente.',
+                    ])->withInput();
+                }
+            } catch (\Throwable $exception) {
+                Log::warning('Falha ao validar saldo da API Brasil antes da análise.', [
+                    'error' => $exception->getMessage(),
+                    'admin_user_id' => $request->user()?->id,
+                    'report_type' => $reportType,
+                    'document' => $documentDigits,
+                ]);
+
+                return back()->withErrors([
+                    'apibrasil' => 'Não foi possível validar o saldo da API Brasil agora. Tente novamente em instantes.',
+                ])->withInput();
+            }
         }
 
         try {
