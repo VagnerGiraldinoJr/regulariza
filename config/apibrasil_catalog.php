@@ -161,6 +161,12 @@ return [
                 'cnpj' => '{document}',
                 'homolog' => true,
             ],
+            'tipo_fallbacks' => [
+                'compliance-basic-pj',
+                'compliance_basic_pj',
+                'compliance-basic',
+                'compliance_basic',
+            ],
             'description' => 'Compliance PJ enxuto (órgãos de controle, cadastro e contato empresarial).',
         ],
         'compliance_complete_pj' => [
@@ -173,6 +179,12 @@ return [
                 'tipo' => 'compliance-complete-pj',
                 'cnpj' => '{document}',
                 'homolog' => true,
+            ],
+            'tipo_fallbacks' => [
+                'compliance-complete-pj',
+                'compliance_complete_pj',
+                'compliance-complete',
+                'compliance_complete',
             ],
             'description' => 'Compliance PJ completo com score, indicadores, sócios, dívidas públicas e órgãos.',
         ],

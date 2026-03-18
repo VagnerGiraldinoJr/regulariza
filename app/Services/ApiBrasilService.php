@@ -61,6 +61,41 @@ class ApiBrasilService
 
         $response = $this->send($method, $url, $payload);
         $responsePayload = $this->payload($response);
+        $attempts = [[
+            'body' => $payload,
+            'http_status' => $response->status(),
+        ]];
+
+        if ($this->shouldRetryWithTipoFallback($method, $payload, $response)) {
+            foreach ($this->tipoFallbacks($definition, $payload) as $fallbackTipo) {
+                if ($fallbackTipo === (string) $payload['tipo']) {
+                    continue;
+                }
+
+                $retryPayload = $payload;
+                $retryPayload['tipo'] = $fallbackTipo;
+                $retryResponse = $this->send($method, $url, $retryPayload);
+                $retryResponsePayload = $this->payload($retryResponse);
+
+                $attempts[] = [
+                    'body' => $retryPayload,
+                    'http_status' => $retryResponse->status(),
+                ];
+
+                $payload = $retryPayload;
+                $response = $retryResponse;
+                $responsePayload = $retryResponsePayload;
+
+                if ($this->isSuccessfulResponse($response, $responsePayload)) {
+                    break;
+                }
+
+                if ($response->status() !== 400) {
+                    break;
+                }
+            }
+        }
+
         $isSuccess = $this->isSuccessfulResponse($response, $responsePayload);
 
         return [
@@ -74,6 +109,7 @@ class ApiBrasilService
                 'path' => '/'.ltrim($path, '/'),
                 'document' => $digits,
                 'body' => $payload,
+                'attempts' => $attempts,
             ],
             'response_payload' => $responsePayload,
             'error_message' => $isSuccess ? null : $this->errorMessage($response, $responsePayload),
@@ -81,6 +117,51 @@ class ApiBrasilService
             'consultation_title' => (string) ($definition['title'] ?? $consultationKey),
             'consultation_category' => (string) ($definition['category'] ?? 'geral'),
         ];
+    }
+
+    private function shouldRetryWithTipoFallback(string $method, array $payload, Response $response): bool
+    {
+        return $method === 'POST'
+            && array_key_exists('tipo', $payload)
+            && $response->status() === 400;
+    }
+
+    /**
+     * @param  array<string, mixed>  $definition
+     * @param  array<string, mixed>  $payload
+     * @return list<string>
+     */
+    private function tipoFallbacks(array $definition, array $payload): array
+    {
+        $configured = data_get($definition, 'tipo_fallbacks');
+
+        if (is_array($configured)) {
+            return collect($configured)
+                ->filter(fn ($item) => is_string($item) && trim($item) !== '')
+                ->map(fn ($item) => trim((string) $item))
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        $currentTipo = trim((string) ($payload['tipo'] ?? ''));
+
+        if ($currentTipo === '') {
+            return [];
+        }
+
+        return collect([
+            $currentTipo,
+            str_replace('-', '_', $currentTipo),
+            str_replace('_', '-', $currentTipo),
+            str_replace('-pj', '', $currentTipo),
+            str_replace('_pj', '', $currentTipo),
+        ])
+            ->filter(fn ($item) => is_string($item) && trim($item) !== '')
+            ->map(fn ($item) => trim((string) $item))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function consultarDocumento(string $documento): array
