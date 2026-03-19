@@ -121,7 +121,6 @@ return [
             ],
             'tipo_fallbacks' => [
                 'scr-bacen-score',
-                'scr_bacen_score',
                 'scr-analitico-resumo-bacen',
                 'scr_analitico_resumo_bacen',
                 'scr-analitico-bacen',
