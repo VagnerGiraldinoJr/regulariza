@@ -367,6 +367,38 @@
             </tbody>
         </table>
     @endif
+
+    @php
+        $spcTerceiros = is_array($negatives['spc_terceiros'] ?? null) ? $negatives['spc_terceiros'] : [];
+        $spcRows = is_array($spcTerceiros['registros'] ?? null) ? $spcTerceiros['registros'] : [];
+        $spcQty = (string) ($spcTerceiros['quantidade'] ?? '0');
+    @endphp
+    @if($spcRows !== [] || $spcQty !== '0')
+        <table class="table" style="margin-top: 8px;">
+            <tr><td class="label">Pendências SPC Terceiros (qtd)</td><td>{{ $spcTerceiros['quantidade'] ?? '0' }}</td></tr>
+            <tr><td class="label">Pendências SPC Terceiros (valor total)</td><td>{{ $formatCurrencyBr($spcTerceiros['valor_total'] ?? '0,00') }}</td></tr>
+            <tr><td class="label">Última ocorrência SPC Terceiros</td><td>{{ $spcTerceiros['data_ultima_ocorrencia'] ?? '-' }}</td></tr>
+            <tr><td class="label">Score / Probabilidade (base do risco)</td><td>{{ $credit['score'] ?? '-' }} / {{ $credit['probabilidade'] ?? '-' }}</td></tr>
+        </table>
+
+        @if($spcRows !== [])
+            <table class="table" style="margin-top: 8px;">
+                <thead><tr><th>Informante</th><th>Contrato</th><th>Cidade</th><th>Data</th><th>Disponibilidade</th><th>Valor</th></tr></thead>
+                <tbody>
+                    @foreach($spcRows as $row)
+                        <tr>
+                            <td>{{ $row['informante'] ?? '-' }}</td>
+                            <td>{{ $row['contrato'] ?? '-' }}</td>
+                            <td>{{ $row['cidade'] ?? '-' }}</td>
+                            <td>{{ $row['data'] ?? '-' }}</td>
+                            <td>{{ $row['data_disponibilidade'] ?? '-' }}</td>
+                            <td>{{ $formatCurrencyBr($row['valor'] ?? '-') }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    @endif
 </div>
 
 @if($partners !== [])

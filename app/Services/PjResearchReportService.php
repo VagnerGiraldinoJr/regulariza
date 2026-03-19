@@ -813,13 +813,28 @@ class PjResearchReportService
             data_get($basicResult, 'protestos', []),
         ]);
 
+        $spcRows = collect(is_array(data_get($serasaPayload, 'response.dados.spc')) ? data_get($serasaPayload, 'response.dados.spc') : [])
+            ->filter(fn ($row) => is_array($row))
+            ->map(fn (array $row) => [
+                'informante' => $this->firstString([(string) ($row['informante'] ?? '')], '-'),
+                'contrato' => $this->firstString([(string) ($row['contrato'] ?? '')], '-'),
+                'cidade' => $this->firstString([(string) ($row['cidade'] ?? '')], '-'),
+                'data' => $this->firstString([(string) ($row['data'] ?? '')], '-'),
+                'data_disponibilidade' => $this->firstString([(string) ($row['dataDisponibilidade'] ?? '')], '-'),
+                'valor' => $this->firstString([(string) ($row['valor'] ?? '')], '-'),
+            ])
+            ->values();
+
         return [
             'controle_pendencias_credito' => $this->firstString([
                 (string) ($negativacoes['controle_pendencias_credito'] ?? ''),
                 (string) data_get($serasaPayload, 'response.dados.resumoConsulta.pendenciasFinanceiras.quantidadeTotal', ''),
                 '0',
             ], '0'),
-            'apontamentos' => is_array($negativacoes['apontamentos'] ?? null) ? count($negativacoes['apontamentos']) : 0,
+            'apontamentos' => max(
+                is_array($negativacoes['apontamentos'] ?? null) ? count($negativacoes['apontamentos']) : 0,
+                $spcRows->count()
+            ),
             'ccf' => is_array($negativacoes['ccf_apontamentos'] ?? null) ? count($negativacoes['ccf_apontamentos']) : 0,
             'acoes_judiciais' => is_array($negativacoes['acoes_judiciais_apontamentos'] ?? null) ? count($negativacoes['acoes_judiciais_apontamentos']) : 0,
             'protestos_total' => $this->firstString([
@@ -836,6 +851,22 @@ class PjResearchReportService
                 (string) data_get($businessCreditPayload, 'data.resultado.protestos.valor_total', ''),
                 '0,00',
             ], '0,00'),
+            'spc_terceiros' => [
+                'quantidade' => $this->firstString([
+                    (string) data_get($serasaPayload, 'response.dados.resumoConsulta.spc.quantidadeTotal', ''),
+                    (string) $spcRows->count(),
+                    '0',
+                ], '0'),
+                'valor_total' => $this->firstString([
+                    (string) data_get($serasaPayload, 'response.dados.resumoConsulta.spc.valorTotal', ''),
+                    '0,00',
+                ], '0,00'),
+                'data_ultima_ocorrencia' => $this->firstString([
+                    (string) data_get($serasaPayload, 'response.dados.resumoConsulta.spc.dataUltimaOcorrencia', ''),
+                    '-',
+                ], '-'),
+                'registros' => $spcRows->all(),
+            ],
         ];
     }
 
