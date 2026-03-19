@@ -63,13 +63,18 @@ class ResearchReportService
             foreach ($sources as $source) {
                 $sourceForExecution = $source;
                 if (($source['consultation_key'] ?? '') === 'certidao_negativa_pj') {
+                    $certidaoOverrides = [
+                        'cnpj' => $this->formatCnpj($documentDigits),
+                    ];
                     $resolvedUf = $this->resolveCertidaoUf($consultations);
                     if ($resolvedUf !== null) {
-                        $sourceForExecution['body_overrides'] = array_replace(
-                            (array) ($sourceForExecution['body_overrides'] ?? []),
-                            ['uf' => $resolvedUf]
-                        );
+                        $certidaoOverrides['uf'] = $resolvedUf;
                     }
+
+                    $sourceForExecution['body_overrides'] = array_replace(
+                        (array) ($sourceForExecution['body_overrides'] ?? []),
+                        $certidaoOverrides
+                    );
                 }
 
                 $result = $this->executeSource($sourceForExecution, $documentDigits);
@@ -513,5 +518,14 @@ class ResearchReportService
         }
 
         return null;
+    }
+
+    private function formatCnpj(string $documentDigits): string
+    {
+        if (preg_match('/^\d{14}$/', $documentDigits) !== 1) {
+            return $documentDigits;
+        }
+
+        return preg_replace('/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/', '$1.$2.$3/$4-$5', $documentDigits) ?: $documentDigits;
     }
 }
