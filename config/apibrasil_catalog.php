@@ -296,8 +296,6 @@ return [
             'tipo_fallbacks' => [
                 'certidao-negativa-de-debitos',
                 'certidao_negativa_de_debitos',
-                'certidao-negativa',
-                'certidao_negativa',
             ],
             'description' => 'Certidão negativa de débitos PJ com status fiscal e dados de validade da certidão.',
         ],

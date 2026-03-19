@@ -435,10 +435,14 @@ class ResearchReportService
     {
         $paths = [
             'data.resultado.dados_cadastrais.enderecos.estado',
+            'data.resultado.dados_cadastrais.historico_endereco.enderecos.0.estado',
             'data.resultado.dados_contato.logradouros.0.logradouro_uf',
+            'data.resultado.dados_contato.logradouros.0.logradouro_uf_iso',
             'data.dados_cadastrais.enderecos.estado',
+            'data.dados.enderecos.0.estado',
             'response.dados.dados_receita_federal.uf',
             'data.dados_receita_federal.uf',
+            'response.response.dados.dados_receita_federal.uf',
             'response.data.retorno.uf',
             'data.retorno.uf',
         ];
@@ -450,13 +454,60 @@ class ResearchReportService
 
             foreach ($paths as $path) {
                 $candidate = data_get($consultation->response_payload, $path);
-                if (! is_scalar($candidate)) {
-                    continue;
-                }
-
-                $uf = mb_strtoupper(trim((string) $candidate));
-                if (preg_match('/^[A-Z]{2}$/', $uf) === 1) {
+                $uf = $this->normalizeUf($candidate);
+                if ($uf !== null) {
                     return $uf;
+                }
+            }
+
+            $uf = $this->findUfRecursively($consultation->response_payload);
+            if ($uf !== null) {
+                return $uf;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeUf(mixed $value): ?string
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $candidate = mb_strtoupper(trim((string) $value));
+        if (preg_match('/^[A-Z]{2}$/', $candidate) === 1) {
+            return $candidate;
+        }
+
+        if (preg_match('/^BR\-([A-Z]{2})$/', $candidate, $matches) === 1) {
+            return $matches[1];
+        }
+
+        return null;
+    }
+
+    private function findUfRecursively(mixed $node): ?string
+    {
+        if (! is_array($node)) {
+            return null;
+        }
+
+        foreach ($node as $key => $value) {
+            if (is_string($key)) {
+                $keyLower = mb_strtolower($key);
+                if (in_array($keyLower, ['uf', 'estado', 'logradouro_uf', 'logradouro_uf_iso'], true)) {
+                    $uf = $this->normalizeUf($value);
+                    if ($uf !== null) {
+                        return $uf;
+                    }
+                }
+            }
+
+            if (is_array($value)) {
+                $nested = $this->findUfRecursively($value);
+                if ($nested !== null) {
+                    return $nested;
                 }
             }
         }
