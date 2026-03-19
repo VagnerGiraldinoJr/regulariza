@@ -25,6 +25,7 @@ class PjResearchReportService
         $quodPayload = $this->normalizeBureauPayload($this->payloadArray($byKey->get('spc_quod_pj')));
         $serasaPayload = $this->normalizeBureauPayload($this->payloadArray($byKey->get('serasa_premium_pj')));
         $bureauPayload = $this->firstArray([$quodPayload, $serasaPayload]);
+        $certidaoPayload = $this->payloadArray($byKey->get('certidao_negativa_pj'));
         $complianceCompletePayload = $this->payloadArray($byKey->get('compliance_complete_pj'));
         $complianceBasicPayload = $this->payloadArray($byKey->get('compliance_basic_pj'));
         $defineRiscoPayload = $this->payloadArray($byKey->get('define_risco_pj'));
@@ -177,7 +178,7 @@ class PjResearchReportService
         $contacts = $this->buildContacts($completeResult, $basicResult, $bureauPayload, $creditPjPayload);
         $publicDebts = $this->buildPublicDebts($completeResult, $basicResult);
         $negativeMetrics = $this->buildNegativeMetrics($completeResult, $basicResult, $bureauPayload, $creditPjPayload);
-        $compliance = $this->buildComplianceSummary($byKey, $completeResult, $basicResult);
+        $compliance = $this->buildComplianceSummary($byKey, $completeResult, $basicResult, $certidaoPayload);
         $complianceEntries = $this->buildComplianceEntries($completeResult, $basicResult);
         $partners = $this->buildPartners($completeResult, $basicResult, $bureauPayload, $creditPjPayload);
         $businessIndicators = $this->buildBusinessIndicators($completeResult);
@@ -216,7 +217,7 @@ class PjResearchReportService
         $hasComplianceSource = $consultations->contains(
             fn (ApiBrasilConsultation $consultation) => in_array(
                 (string) $consultation->consultation_key,
-                ['compliance_complete_pj', 'compliance_basic_pj'],
+                ['compliance_complete_pj', 'compliance_basic_pj', 'certidao_negativa_pj'],
                 true
             )
         );
@@ -647,10 +648,9 @@ class PjResearchReportService
                 foreach ($sourcePhones as $phoneRow) {
                     $ddd = trim((string) data_get($phoneRow, 'ddd', ''));
                     $number = trim((string) data_get($phoneRow, 'numero', ''));
-                    $type = trim((string) data_get($phoneRow, 'tipo', ''));
-                    $value = trim($ddd.' '.$number);
+                    $value = $this->formatBrazilianPhone($ddd.' '.$number);
                     if ($value !== '') {
-                        $phones->push(trim($value.($type !== '' ? ' ('.$type.')' : '')));
+                        $phones->push($value);
                     }
                 }
             }
@@ -658,15 +658,18 @@ class PjResearchReportService
 
         $legacyPhone = (string) data_get($basicResult, 'dados_cadastrais.numero_telefone', '');
         if ($legacyPhone !== '') {
-            $phones->push($legacyPhone);
+            $formatted = $this->formatBrazilianPhone($legacyPhone);
+            $phones->push($formatted !== '' ? $formatted : $legacyPhone);
         }
         $serasaCnpjPhone = trim((string) (($serasaCnpj['ddd1'] ?? '').' '.($serasaCnpj['telefone1'] ?? '')));
         if ($serasaCnpjPhone !== '') {
-            $phones->push($serasaCnpjPhone);
+            $formatted = $this->formatBrazilianPhone($serasaCnpjPhone);
+            $phones->push($formatted !== '' ? $formatted : $serasaCnpjPhone);
         }
         $serasaPhone = (string) data_get($basicResult, 'identificacao_completo.fgts.telefone', '');
         if ($serasaPhone !== '') {
-            $phones->push($serasaPhone);
+            $formatted = $this->formatBrazilianPhone($serasaPhone);
+            $phones->push($formatted !== '' ? $formatted : $serasaPhone);
         }
 
         foreach ([
@@ -809,19 +812,31 @@ class PjResearchReportService
         ];
     }
 
-    private function buildComplianceSummary(Collection $byKey, array $completeResult, array $basicResult): array
+    private function buildComplianceSummary(Collection $byKey, array $completeResult, array $basicResult, array $certidaoPayload): array
     {
         $completeSource = $byKey->get('compliance_complete_pj');
         $basicSource = $byKey->get('compliance_basic_pj');
+        $certidaoSource = $byKey->get('certidao_negativa_pj');
 
         $rows = $this->buildComplianceEntries($completeResult, $basicResult);
         $withHit = collect($rows)->first(fn (array $row) => (int) $row['quantity'] > 0);
+        $certidaoStatus = $this->firstString([
+            (string) data_get($certidaoPayload, 'data.retorno.status', ''),
+            (string) data_get($certidaoPayload, 'response.data.retorno.status', ''),
+        ], '');
+        $certidaoHasDebt = data_get($certidaoPayload, 'data.retorno.possuiDebito');
+        if (! is_bool($certidaoHasDebt)) {
+            $certidaoHasDebt = data_get($certidaoPayload, 'response.data.retorno.possuiDebito');
+        }
 
         return [
-            'certidao' => $this->sourceLabel($completeSource ?: $basicSource),
-            'certidao_detail' => $withHit
-                ? 'Ocorrências em '.$withHit['title'].': '.$withHit['quantity']
-                : 'Sem ocorrências em listas de compliance consultadas.',
+            'certidao' => $this->sourceLabel($certidaoSource ?: ($completeSource ?: $basicSource)),
+            'certidao_detail' => $this->firstString([
+                $certidaoStatus,
+                is_bool($certidaoHasDebt) ? ($certidaoHasDebt ? 'Certidão com débitos.' : 'Certidão sem débitos.') : '',
+                $withHit ? 'Ocorrências em '.$withHit['title'].': '.$withHit['quantity'] : '',
+                'Sem ocorrências em listas de compliance consultadas.',
+            ], 'Sem ocorrências em listas de compliance consultadas.'),
             'protesto' => $this->sourceLabel($basicSource ?: $completeSource),
             'protesto_detail' => $withHit
                 ? 'Verifique seção de Compliance e Órgãos para detalhes.'
@@ -1116,6 +1131,24 @@ class PjResearchReportService
         }
 
         return trim((string) $value);
+    }
+
+    private function formatBrazilianPhone(string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', $value);
+        if (! is_string($digits) || $digits === '') {
+            return '';
+        }
+
+        if (strlen($digits) === 10) {
+            return sprintf('(%s) %s.%s', substr($digits, 0, 2), substr($digits, 2, 4), substr($digits, 6, 4));
+        }
+
+        if (strlen($digits) === 11) {
+            return sprintf('(%s) %s.%s', substr($digits, 0, 2), substr($digits, 2, 5), substr($digits, 7, 4));
+        }
+
+        return trim($value);
     }
 
     private function sanitizeOperationalMessage(string $message): string

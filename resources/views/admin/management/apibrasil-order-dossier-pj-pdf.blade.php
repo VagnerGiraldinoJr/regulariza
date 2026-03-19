@@ -144,6 +144,34 @@
 
         return $raw;
     };
+    $formatCurrencyBr = function ($value): string {
+        if (! is_scalar($value)) {
+            return '-';
+        }
+
+        $raw = trim((string) $value);
+        if ($raw === '' || $raw === '-') {
+            return '-';
+        }
+
+        $normalized = preg_replace('/[^\d,.\-]/', '', $raw);
+        if (! is_string($normalized) || $normalized === '') {
+            return $raw;
+        }
+
+        if (str_contains($normalized, ',') && str_contains($normalized, '.')) {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        } elseif (str_contains($normalized, ',')) {
+            $normalized = str_replace(',', '.', $normalized);
+        }
+
+        if (! is_numeric($normalized)) {
+            return $raw;
+        }
+
+        return 'R$ '.number_format((float) $normalized, 2, ',', '.');
+    };
 @endphp
 
 <div class="header">
@@ -277,7 +305,7 @@
     <table class="table">
         <tr><td class="label">Atividade principal</td><td>{{ $business['main_activity'] ?? '-' }}</td></tr>
         <tr><td class="label">Atividade secundária</td><td>{{ $business['secondary_activity'] ?? '-' }}</td></tr>
-        <tr><td class="label">Capital social</td><td>{{ $business['capital_social'] ?? '-' }}</td></tr>
+        <tr><td class="label">Capital social</td><td>{{ $formatCurrencyBr($business['capital_social'] ?? '-') }}</td></tr>
         <tr><td class="label">Porte</td><td>{{ $business['porte'] ?? '-' }}</td></tr>
         <tr><td class="label">Faixa de faturamento</td><td>{{ $business['faixa_faturamento'] ?? '-' }}</td></tr>
         <tr><td class="label">Faturamento presumido</td><td>{{ $business['faturamento_presumido'] ?? '-' }}</td></tr>

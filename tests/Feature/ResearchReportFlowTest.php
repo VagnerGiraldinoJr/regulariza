@@ -142,7 +142,8 @@ class ResearchReportFlowTest extends TestCase
                 'balance' => '120,500',
             ], 200),
             'https://apibrasil.test/api/v2/consulta/cnpj/credits' => Http::sequence()
-                ->push(['data' => ['resultado' => ['score' => ['numero_score' => 642]]], 'message' => 'ok'], 200),
+                ->push(['data' => ['resultado' => ['score' => ['numero_score' => 642]]], 'message' => 'ok'], 200)
+                ->push(['data' => ['retorno' => ['status' => 'Certidão positiva sem débitos', 'possuiDebito' => false]]], 200),
             'https://apibrasil.test/api/v2/quod/cnpj/credits' => Http::response([
                 'response' => [
                     'dados' => [
@@ -180,13 +181,13 @@ class ResearchReportFlowTest extends TestCase
         $this->assertNotNull($report);
         $this->assertNull($report->order_id);
         $this->assertSame('pj', $report->report_type);
-        $this->assertSame(2, $report->source_count);
-        $this->assertSame(2, $report->success_count);
+        $this->assertSame(3, $report->source_count);
+        $this->assertSame(3, $report->success_count);
         $this->assertSame(0, $report->failure_count);
         $this->assertSame('success', $report->status);
-        $this->assertCount(2, $report->items);
+        $this->assertCount(3, $report->items);
         $this->assertSame(
-            2,
+            3,
             $report->items()->distinct('provider')->count('provider')
         );
 
@@ -195,7 +196,7 @@ class ResearchReportFlowTest extends TestCase
         );
 
         $pdfResponse->assertOk();
-        Http::assertSentCount(3);
+        Http::assertSentCount(4);
     }
 
     public function test_admin_cannot_generate_report_when_apibrasil_balance_is_zero(): void
