@@ -102,6 +102,16 @@
     if (is_string($generatedAt) && $generatedAt !== '') {
         $generatedAt = \Illuminate\Support\Carbon::parse($generatedAt);
     }
+    $authTimestamp = $generatedAt instanceof \Illuminate\Support\Carbon
+        ? $generatedAt->copy()
+        : now();
+    $authSeed = implode('|', [
+        (string) ($meta['commercial_protocol'] ?? ($order->protocolo ?? '-')),
+        (string) ($company['document'] ?? '-'),
+        (string) ($company['razao_social'] ?? '-'),
+        (string) $authTimestamp->format('Y-m-d H:i:s'),
+    ]);
+    $authHash = strtoupper(substr(hash('sha256', $authSeed), 0, 24));
     $sanitizeChargeMessage = function ($value): string {
         if (! is_scalar($value)) {
             return '';
@@ -491,34 +501,11 @@
 @endif
 
 <div class="section">
-    <h2 class="section-title">Fontes Consultadas</h2>
+    <h2 class="section-title">Autenticação do Documento</h2>
     <table class="table">
-        <thead>
-            <tr><th>Fonte</th><th>Status</th><th>HTTP</th><th>Consultado em</th><th>Observação</th></tr>
-        </thead>
-        <tbody>
-            @foreach($sources as $source)
-                @php
-                    $sourceNote = $sanitizeChargeMessage($source['message'] ?? '');
-                    if ($sourceNote === '') {
-                        $sourceNote = $sanitizeChargeMessage($source['error_message'] ?? '');
-                    }
-                    if ($sourceNote === '') {
-                        $sourceNote = '-';
-                    }
-                @endphp
-                <tr>
-                    <td>{{ $source['title'] ?? ($source['key'] ?? '-') }}</td>
-                    <td><span class="pill {{ ($source['status'] ?? 'error') === 'success' ? 'ok' : 'warn' }}">{{ $source['status_label'] ?? (($source['status'] ?? '') === 'success' ? 'Sucesso' : 'Falha') }}</span></td>
-                    <td>{{ $source['http_status'] ?? '-' }}</td>
-                    <td>{{ $source['consulted_at'] ?? '-' }}</td>
-                    <td>
-                        {{ $sourceNote }}
-                        <div style="margin-top: 3px; color: #64748b;">{{ $source['endpoint'] ?? '-' }}</div>
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
+        <tr><td class="label">Hash de autenticação</td><td>{{ $authHash }}</td></tr>
+        <tr><td class="label">Data e hora de autoria</td><td>{{ $authTimestamp->format('d/m/Y H:i:s') }}</td></tr>
+        <tr><td class="label">Protocolo de referência</td><td>{{ $meta['commercial_protocol'] ?? ($order->protocolo ?: '-') }}</td></tr>
     </table>
 </div>
 
