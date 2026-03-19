@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ApiBrasilConsultation;
 use App\Models\Order;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 class PfResearchReportService
@@ -20,6 +21,10 @@ class PfResearchReportService
 
         $acertaData = $this->acertaData($byKey->get('acerta_essencial_plus_pf'));
         $scrData = $this->scrData($byKey->get('scr_bacen_score_pf'));
+        $birthDate = $this->normalizeBirthDate($acertaData['birth_date'] ?? '');
+        $calculatedAge = $birthDate ? $this->humanAgeFromBirthDate($birthDate) : null;
+        $calculatedAgeBand = $birthDate ? $this->ageBandFromBirthDate($birthDate) : null;
+        $calculatedZodiac = $birthDate ? $this->zodiacFromBirthDate($birthDate) : null;
 
         $primaryScore = $acertaData['score_value'] ?? $acertaData['rating_score_value'] ?? $scrData['score'] ?? null;
         $rating = $this->creditRatingService->resolveFromScore($primaryScore);
@@ -38,10 +43,10 @@ class PfResearchReportService
             'person' => [
                 'name' => $acertaData['name'] ?: ($order->user?->name ?? '-'),
                 'document' => $acertaData['document'] ?: preg_replace('/\D+/', '', (string) ($order->lead?->cpf_cnpj ?: $order->user?->cpf_cnpj ?: '')),
-                'birth_date' => $acertaData['birth_date'] ?: '-',
+                'birth_date' => $birthDate?->format('d/m/Y') ?: ($acertaData['birth_date'] ?: '-'),
                 'cpf_status' => $acertaData['cpf_status'] ?: '-',
                 'mother_name' => $acertaData['mother_name'] ?: '-',
-                'age' => $acertaData['age'] ?: '-',
+                'age' => $acertaData['age'] ?: ($calculatedAge ?: '-'),
                 'gender' => $acertaData['gender'] ?: '-',
                 'rg' => $acertaData['rg'] ?: '-',
                 'title' => $acertaData['voter_title'] ?: '-',
@@ -51,8 +56,8 @@ class PfResearchReportService
                 'region' => $acertaData['region'] ?: '-',
                 'uf' => $acertaData['uf'] ?: '-',
                 'rfb_status' => $acertaData['rfb_status'] ?: '-',
-                'zodiac' => $acertaData['zodiac'] ?: '-',
-                'faixa_idade' => $acertaData['age_band'] ?: '-',
+                'zodiac' => $acertaData['zodiac'] ?: ($calculatedZodiac ?: '-'),
+                'faixa_idade' => $acertaData['age_band'] ?: ($calculatedAgeBand ?: '-'),
             ],
             'contacts' => [
                 'main_email' => $acertaData['main_email'],
@@ -526,5 +531,76 @@ class PfResearchReportService
         }
 
         return 'Perfil de maior sensibilidade. Recomendado endurecer critérios e revisar exposição de risco.';
+    }
+
+    private function normalizeBirthDate(string $value): ?Carbon
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        $value = preg_replace('/\s+\|\s+.*$/', '', $value) ?? $value;
+
+        $formats = ['d/m/Y', 'd-m-Y', 'Y-m-d', 'Y-m-d H:i:s', 'd/m/Y H:i:s'];
+        foreach ($formats as $format) {
+            try {
+                return Carbon::createFromFormat($format, $value)->startOfDay();
+            } catch (\Throwable) {
+            }
+        }
+
+        try {
+            return Carbon::parse($value)->startOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function humanAgeFromBirthDate(Carbon $birthDate): string
+    {
+        $today = now()->startOfDay();
+        if ($birthDate->greaterThan($today)) {
+            return '-';
+        }
+
+        $diff = $birthDate->diff($today);
+
+        return sprintf('%d anos e %d meses e %d dias', $diff->y, $diff->m, $diff->d);
+    }
+
+    private function ageBandFromBirthDate(Carbon $birthDate): string
+    {
+        $age = $birthDate->age;
+
+        return match (true) {
+            $age <= 12 => 'Infantil (0-12)',
+            $age <= 17 => 'Adolescente (13-17)',
+            $age <= 24 => 'Jovem adulto (18-24)',
+            $age <= 39 => 'Adulto (25-39)',
+            $age <= 59 => 'Adulto maduro (40-59)',
+            default => 'Sênior (60+)',
+        };
+    }
+
+    private function zodiacFromBirthDate(Carbon $birthDate): ?string
+    {
+        $monthDay = (int) $birthDate->format('md');
+
+        return match (true) {
+            $monthDay >= 321 && $monthDay <= 419 => 'Aries',
+            $monthDay >= 420 && $monthDay <= 520 => 'Touro',
+            $monthDay >= 521 && $monthDay <= 620 => 'Gemeos',
+            $monthDay >= 621 && $monthDay <= 722 => 'Cancer',
+            $monthDay >= 723 && $monthDay <= 822 => 'Leao',
+            $monthDay >= 823 && $monthDay <= 922 => 'Virgem',
+            $monthDay >= 923 && $monthDay <= 1022 => 'Libra',
+            $monthDay >= 1023 && $monthDay <= 1121 => 'Escorpiao',
+            $monthDay >= 1122 && $monthDay <= 1221 => 'Sagitario',
+            $monthDay >= 1222 || $monthDay <= 119 => 'Capricornio',
+            $monthDay >= 120 && $monthDay <= 218 => 'Aquario',
+            $monthDay >= 219 && $monthDay <= 320 => 'Peixes',
+            default => null,
+        };
     }
 }

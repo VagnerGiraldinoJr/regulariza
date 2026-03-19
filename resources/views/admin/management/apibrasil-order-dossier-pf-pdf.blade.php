@@ -213,6 +213,14 @@
 
         return is_numeric($normalized) ? 'R$ '.number_format((float) $normalized, 2, ',', '.') : (string) $value;
     };
+    $formatCpf = function ($value): string {
+        $digits = preg_replace('/\D+/', '', (string) $value) ?? '';
+        if (preg_match('/^\d{11}$/', $digits) !== 1) {
+            return (string) $value;
+        }
+
+        return preg_replace('/^(\d{3})(\d{3})(\d{3})(\d{2})$/', '$1.$2.$3-$4', $digits) ?: $digits;
+    };
 
     $riskPill = match ($summary['risk']) {
         'Baixo' => 'pill safe',
@@ -258,7 +266,7 @@
     <h2 class="section-title">Dados Cadastrais</h2>
     <table class="table">
         <tr><td class="label">Nome Completo</td><td>{{ $person['name'] ?: '-' }}</td></tr>
-        <tr><td class="label">CPF</td><td>{{ $person['document'] ?: '-' }}</td></tr>
+        <tr><td class="label">CPF</td><td>{{ $person['document'] ? $formatCpf($person['document']) : '-' }}</td></tr>
         <tr><td class="label">Situação CPF</td><td>{{ $person['cpf_status'] ?: '-' }}</td></tr>
         <tr><td class="label">Status RFB</td><td>{{ $person['rfb_status'] ?: '-' }}</td></tr>
         <tr><td class="label">Data de Nascimento</td><td>{{ $person['birth_date'] ?: '-' }}</td></tr>
