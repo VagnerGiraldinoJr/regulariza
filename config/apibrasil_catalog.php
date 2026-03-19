@@ -47,6 +47,10 @@ return [
                     'provider' => 'bureau',
                     'consultation_key' => 'spc_quod_pj',
                 ],
+                [
+                    'provider' => 'fiscal',
+                    'consultation_key' => 'certidao_negativa_pj',
+                ],
             ],
         ],
     ],

@@ -13,6 +13,9 @@ use RuntimeException;
 
 class ResearchReportService
 {
+    private const CERTIDAO_SKIP_UF_MESSAGE = 'Certidão Negativa PJ não executada: UF do CNPJ não foi identificada nas fontes anteriores.';
+    private const CERTIDAO_CIRCUIT_BREAKER_MESSAGE = 'Certidão Negativa PJ desativada automaticamente hoje após retorno HTTP 400. Tente novamente amanhã ou após reconfiguração do suporte.';
+
     public function __construct(
         private readonly ResearchProviderManager $providerManager,
         private readonly PfResearchReportService $pfResearchReportService,
@@ -63,14 +66,25 @@ class ResearchReportService
             foreach ($sources as $source) {
                 $sourceForExecution = $source;
                 if (($source['consultation_key'] ?? '') === 'certidao_negativa_pj') {
-                    $certidaoOverrides = [
-                        'cnpj' => $this->formatCnpj($documentDigits),
-                    ];
-                    $resolvedUf = $this->resolveCertidaoUf($consultations);
-                    if ($resolvedUf !== null) {
-                        $certidaoOverrides['uf'] = $resolvedUf;
+                    if ($this->isCertidaoCircuitBreakerOpen()) {
+                        $result = $this->skippedSourceResult($sourceForExecution, $documentDigits, self::CERTIDAO_CIRCUIT_BREAKER_MESSAGE);
+                        $consultation = $this->persistConsultationResult($report, $order, $admin, $sourceForExecution, $result, $notes);
+                        $consultations->push($consultation);
+                        continue;
                     }
 
+                    $resolvedUf = $this->resolveCertidaoUf($consultations);
+                    if ($resolvedUf === null) {
+                        $result = $this->skippedSourceResult($sourceForExecution, $documentDigits, self::CERTIDAO_SKIP_UF_MESSAGE);
+                        $consultation = $this->persistConsultationResult($report, $order, $admin, $sourceForExecution, $result, $notes);
+                        $consultations->push($consultation);
+                        continue;
+                    }
+
+                    $certidaoOverrides = [
+                        'cnpj' => $this->formatCnpj($documentDigits),
+                        'uf' => $resolvedUf,
+                    ];
                     $sourceForExecution['body_overrides'] = array_replace(
                         (array) ($sourceForExecution['body_overrides'] ?? []),
                         $certidaoOverrides
@@ -78,45 +92,12 @@ class ResearchReportService
                 }
 
                 $result = $this->executeSource($sourceForExecution, $documentDigits);
-                $consultation = ApiBrasilConsultation::query()->create([
-                    'order_id' => $order?->id,
-                    'lead_id' => $order?->lead_id,
-                    'user_id' => $order?->user_id,
-                    'admin_user_id' => $admin->id,
-                    'analyst_user_id' => $report->analyst_user_id,
-                    'consultation_key' => $result['consultation_key'] ?? $source['consultation_key'],
-                    'consultation_title' => $result['consultation_title'] ?? $source['consultation_key'],
-                    'consultation_category' => $result['consultation_category'] ?? null,
-                    'document_type' => $result['document_type'] ?? $report->document_type,
-                    'document_number' => $result['document'] ?? $documentDigits,
-                    'status' => $result['status'] ?? 'error',
-                    'provider' => (string) ($result['provider'] ?? $source['provider']),
-                    'endpoint' => $result['endpoint'] ?? null,
-                    'http_status' => $result['http_status'] ?? null,
-                    'request_payload' => $result['request_payload'] ?? null,
-                    'response_payload' => $result['response_payload'] ?? null,
-                    'error_message' => $result['error_message'] ?? null,
-                    'notes' => $notes ?: $report->title,
-                ]);
-
-                $report->items()->create([
-                    'apibrasil_consultation_id' => $consultation->id,
-                    'provider' => (string) ($result['provider'] ?? $source['provider']),
-                    'source_key' => $result['consultation_key'] ?? $source['consultation_key'],
-                    'source_title' => $result['consultation_title'] ?? $source['consultation_key'],
-                    'source_category' => $result['consultation_category'] ?? null,
-                    'status' => $result['status'] ?? 'error',
-                    'http_status' => $result['http_status'] ?? null,
-                    'request_payload' => $result['request_payload'] ?? null,
-                    'response_payload' => $result['response_payload'] ?? null,
-                    'error_message' => $result['error_message'] ?? null,
-                ]);
-
+                $consultation = $this->persistConsultationResult($report, $order, $admin, $source, $result, $notes);
                 $consultations->push($consultation);
             }
 
             $successCount = (int) $consultations->where('status', 'success')->count();
-            $failureCount = (int) $consultations->count() - $successCount;
+            $failureCount = (int) $consultations->where('status', 'error')->count();
 
             $report->update([
                 'status' => $successCount === 0
@@ -518,6 +499,87 @@ class ResearchReportService
         }
 
         return null;
+    }
+
+    private function isCertidaoCircuitBreakerOpen(): bool
+    {
+        return ApiBrasilConsultation::query()
+            ->where('consultation_key', 'certidao_negativa_pj')
+            ->where('http_status', 400)
+            ->where('created_at', '>=', now()->startOfDay())
+            ->exists();
+    }
+
+    private function skippedSourceResult(array $source, string $documentDigits, string $errorMessage): array
+    {
+        $definition = $this->consultationDefinition((string) ($source['consultation_key'] ?? ''));
+
+        return [
+            'document' => $documentDigits,
+            'document_type' => $this->documentTypeFromDigits($documentDigits),
+            'status' => 'error',
+            'provider' => (string) ($source['provider'] ?? 'apibrasil'),
+            'provider_label' => (string) ($source['provider_label'] ?? 'Fonte de pesquisa'),
+            'provider_driver' => (string) ($source['provider_driver'] ?? 'apibrasil'),
+            'endpoint' => null,
+            'http_status' => null,
+            'request_payload' => [
+                'document' => $documentDigits,
+                'provider' => $source['provider'] ?? null,
+                'source_key' => $source['consultation_key'] ?? null,
+                'skipped' => true,
+            ],
+            'response_payload' => null,
+            'error_message' => $errorMessage,
+            'consultation_key' => $source['consultation_key'] ?? null,
+            'consultation_title' => (string) ($definition['title'] ?? ($source['consultation_key'] ?? 'fonte')),
+            'consultation_category' => (string) ($definition['category'] ?? 'geral'),
+        ];
+    }
+
+    private function persistConsultationResult(
+        ResearchReport $report,
+        ?Order $order,
+        User $admin,
+        array $source,
+        array $result,
+        ?string $notes
+    ): ApiBrasilConsultation {
+        $consultation = ApiBrasilConsultation::query()->create([
+            'order_id' => $order?->id,
+            'lead_id' => $order?->lead_id,
+            'user_id' => $order?->user_id,
+            'admin_user_id' => $admin->id,
+            'analyst_user_id' => $report->analyst_user_id,
+            'consultation_key' => $result['consultation_key'] ?? $source['consultation_key'],
+            'consultation_title' => $result['consultation_title'] ?? $source['consultation_key'],
+            'consultation_category' => $result['consultation_category'] ?? null,
+            'document_type' => $result['document_type'] ?? $report->document_type,
+            'document_number' => $result['document'] ?? $report->document_number,
+            'status' => $result['status'] ?? 'error',
+            'provider' => (string) ($result['provider'] ?? $source['provider']),
+            'endpoint' => $result['endpoint'] ?? null,
+            'http_status' => $result['http_status'] ?? null,
+            'request_payload' => $result['request_payload'] ?? null,
+            'response_payload' => $result['response_payload'] ?? null,
+            'error_message' => $result['error_message'] ?? null,
+            'notes' => $notes ?: $report->title,
+        ]);
+
+        $report->items()->create([
+            'apibrasil_consultation_id' => $consultation->id,
+            'provider' => (string) ($result['provider'] ?? $source['provider']),
+            'source_key' => $result['consultation_key'] ?? $source['consultation_key'],
+            'source_title' => $result['consultation_title'] ?? $source['consultation_key'],
+            'source_category' => $result['consultation_category'] ?? null,
+            'status' => $result['status'] ?? 'error',
+            'http_status' => $result['http_status'] ?? null,
+            'request_payload' => $result['request_payload'] ?? null,
+            'response_payload' => $result['response_payload'] ?? null,
+            'error_message' => $result['error_message'] ?? null,
+        ]);
+
+        return $consultation;
     }
 
     private function formatCnpj(string $documentDigits): string

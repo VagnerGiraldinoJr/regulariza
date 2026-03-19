@@ -201,7 +201,14 @@ class ApiBrasilConsultationController extends Controller
         }
         $message .= ". Relatório #{$report->id} gerado.";
 
-        return back()->with('success', $message);
+        $warningToast = $this->buildCertidaoToastWarning($report);
+        $response = back()->with('success', $message);
+
+        if ($warningToast !== null) {
+            $response->with('warning_toast', $warningToast);
+        }
+
+        return $response;
     }
 
     public function forward(Request $request, ApiBrasilConsultation $consultation): RedirectResponse
@@ -589,5 +596,23 @@ class ApiBrasilConsultationController extends Controller
         }
 
         return is_numeric($normalized) ? (float) $normalized : null;
+    }
+
+    private function buildCertidaoToastWarning(ResearchReport $report): ?string
+    {
+        $warnings = $report->items()
+            ->where('source_key', 'certidao_negativa_pj')
+            ->whereNotNull('error_message')
+            ->pluck('error_message')
+            ->filter(fn ($message) => is_string($message) && str_contains($message, 'Certidão Negativa PJ'))
+            ->map(fn ($message) => trim((string) $message))
+            ->unique()
+            ->values();
+
+        if ($warnings->isEmpty()) {
+            return null;
+        }
+
+        return $warnings->implode(' ');
     }
 }

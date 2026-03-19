@@ -124,6 +124,9 @@
         @if (session('success'))
             <div class="rounded-lg border border-emerald-200 bg-emerald-50/85 px-4 py-3 text-sm text-emerald-800">{{ session('success') }}</div>
         @endif
+        @if (session('warning_toast'))
+            <div class="rounded-lg border border-amber-200 bg-amber-50/85 px-4 py-3 text-sm text-amber-800">{{ session('warning_toast') }}</div>
+        @endif
 
         @if ($errors->any())
             <div class="rounded-lg border border-red-200 bg-red-50/85 px-4 py-3 text-sm text-red-800">
@@ -390,6 +393,18 @@
 
     <script>
         (function () {
+            const warningToastMessage = @json(session('warning_toast'));
+            if (warningToastMessage) {
+                const toast = document.createElement('div');
+                toast.className = 'fixed right-4 top-4 z-[120] max-w-md rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 shadow-lg';
+                toast.textContent = warningToastMessage;
+                document.body.appendChild(toast);
+
+                window.setTimeout(function () {
+                    toast.remove();
+                }, 8000);
+            }
+
             const reportTypeSelect = document.querySelector('[data-report-type-selector]');
             const orderSelect = document.querySelector('[data-order-selector]');
             const documentInput = document.querySelector('[data-document-input]');

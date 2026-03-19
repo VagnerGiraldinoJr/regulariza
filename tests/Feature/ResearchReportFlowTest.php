@@ -142,7 +142,17 @@ class ResearchReportFlowTest extends TestCase
                 'balance' => '120,500',
             ], 200),
             'https://apibrasil.test/api/v2/consulta/cnpj/credits' => Http::sequence()
-                ->push(['data' => ['resultado' => ['score' => ['numero_score' => 642]]], 'message' => 'ok'], 200)
+                ->push([
+                    'data' => [
+                        'resultado' => [
+                            'score' => ['numero_score' => 642],
+                            'dados_cadastrais' => [
+                                'enderecos' => ['estado' => 'BA'],
+                            ],
+                        ],
+                    ],
+                    'message' => 'ok',
+                ], 200)
                 ->push(['data' => ['retorno' => ['status' => 'Certidão positiva sem débitos', 'possuiDebito' => false]]], 200),
             'https://apibrasil.test/api/v2/quod/cnpj/credits' => Http::response([
                 'response' => [
@@ -175,6 +185,7 @@ class ResearchReportFlowTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHas('success');
+        $response->assertSessionMissing('warning_toast');
 
         $report = ResearchReport::query()->latest('id')->first();
 
