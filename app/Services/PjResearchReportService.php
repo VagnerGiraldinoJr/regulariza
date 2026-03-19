@@ -22,9 +22,10 @@ class PjResearchReportService
         $businessCreditPayload = $this->payloadArray($byKey->get('analise_credito_business_pj'));
         $basicCreditPayload = $this->payloadArray($byKey->get('analise_credito_basic_pj'));
         $creditPjPayload = $this->firstArray([$businessCreditPayload, $basicCreditPayload]);
+        $spcTerceirosPayload = $this->normalizeBureauPayload($this->payloadArray($byKey->get('spc_terceiros_pj')));
         $quodPayload = $this->normalizeBureauPayload($this->payloadArray($byKey->get('spc_quod_pj')));
         $serasaPayload = $this->normalizeBureauPayload($this->payloadArray($byKey->get('serasa_premium_pj')));
-        $bureauPayload = $this->firstArray([$quodPayload, $serasaPayload]);
+        $bureauPayload = $this->firstArray([$spcTerceirosPayload, $quodPayload, $serasaPayload]);
         $certidaoPayload = $this->payloadArray($byKey->get('certidao_negativa_pj'));
         $complianceCompletePayload = $this->payloadArray($byKey->get('compliance_complete_pj'));
         $complianceBasicPayload = $this->payloadArray($byKey->get('compliance_basic_pj'));
@@ -76,6 +77,8 @@ class PjResearchReportService
             data_get($scrPayload, 'score'),
             data_get($quodPayload, 'response.dados.scores.ocorrencias.0.score'),
             data_get($quodPayload, 'response.data.dados.scores.ocorrencias.0.score'),
+            data_get($spcTerceirosPayload, 'response.dados.score.score'),
+            data_get($spcTerceirosPayload, 'response.data.data.spcTerceirosPJ.score.score'),
             data_get($bureauPayload, 'data.score'),
             data_get($bureauPayload, 'score'),
             data_get($bureauPayload, 'data.cnpj.score'),
@@ -100,6 +103,7 @@ class PjResearchReportService
             (string) data_get($quodPayload, 'response.dados.scores.ocorrencias.0.descr_score'),
             (string) data_get($quodPayload, 'response.dados.scores.ocorrencias.0.risco'),
             (string) data_get($quodPayload, 'response.dados.scores.ocorrencias.0.texto'),
+            (string) data_get($spcTerceirosPayload, 'response.dados.score.mensagem'),
             (string) data_get($bureauPayload, 'data.classeRisco'),
             (string) data_get($bureauPayload, 'data.cnpj.scores.ocorrencias.0.descr_score'),
             (string) data_get($bureauPayload, 'data.cnpj.scores.ocorrencias.0.risco'),
@@ -120,6 +124,7 @@ class PjResearchReportService
             (string) data_get($basicResult, 'score.probabilidade_pagamento'),
             (string) data_get($basicCreditPayload, 'data.resultado.score.probabilidade_pagamento'),
             (string) data_get($quodPayload, 'response.dados.scores.ocorrencias.0.probabilidade_inadimplencia'),
+            (string) data_get($spcTerceirosPayload, 'response.dados.score.probabilidade'),
             (string) data_get($bureauPayload, 'data.cnpj.scores.ocorrencias.0.probabilidade_inadimplencia'),
             (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.score.probabilidade'),
             (string) data_get($limitePayload, 'response.data.dados.resultado.score.probabilidade'),
@@ -131,6 +136,7 @@ class PjResearchReportService
             (string) data_get($scrPayload, 'data.situacao'),
             (string) data_get($scrPayload, 'data.status'),
             (string) data_get($bureauPayload, 'response.dados.dados_receita_federal.situacao_receita'),
+            (string) data_get($spcTerceirosPayload, 'response.dados.dadosCadastrais.situacaoCadastral'),
             (string) data_get($basicCreditPayload, 'data.resultado.dados_cadastrais.status_empresa'),
             (string) data_get($businessCreditPayload, 'data.resultado.identificacao_completo.situacao_cnpj'),
             (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.dadoscadastrais.situacao'),
@@ -275,7 +281,16 @@ class PjResearchReportService
             return [];
         }
 
+        $spcTerceiros = $this->firstArray([
+            data_get($payload, 'data.data.spcTerceirosPJ'),
+            data_get($payload, 'data.spcTerceirosPJ'),
+            data_get($payload, 'response.data.data.spcTerceirosPJ'),
+            data_get($payload, 'data.data.spcTerceirosPF'),
+            data_get($payload, 'data.spcTerceirosPF'),
+        ]);
+
         $dados = $this->firstArray([
+            $spcTerceiros,
             data_get($payload, 'data'),
             data_get($payload, 'response.dados'),
             data_get($payload, 'response.data.dados'),
@@ -520,12 +535,14 @@ class PjResearchReportService
                 (string) ($dadosCadastrais['nome_fantasia'] ?? ''),
                 (string) ($dadosCadastrais['nomefantasia'] ?? ''),
                 (string) ($serasaCnpj['nome_fantasia'] ?? ''),
+                (string) data_get($serasaPayload, 'response.dados.dadosCadastrais.nomeFantasia', ''),
             ], ''),
             'status' => $this->firstString([
                 (string) data_get($completeResult, 'situacao_cadastral.ds_situacao_cadastral', ''),
                 (string) ($dadosCadastrais['status_empresa'] ?? ''),
                 (string) ($dadosCadastrais['situacao'] ?? ''),
                 (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.situacao_receita', ''),
+                (string) data_get($serasaPayload, 'response.dados.dadosCadastrais.situacaoCadastral', ''),
                 (string) data_get($serasaPayload, 'data.situacao', ''),
                 (string) ($serasaCnpj['situacao_cadastral'] ?? ''),
                 (string) ($businessIdentificacao['situacao_cnpj'] ?? ''),
@@ -535,6 +552,7 @@ class PjResearchReportService
                 (string) ($dadosCadastrais['descricao_atividade_principal'] ?? ''),
                 (string) data_get($serasaPayload, 'response.dados.identificacao_completo.ramo_atividade_primario.atividade', ''),
                 (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.atividade_economica_principal', ''),
+                (string) data_get($serasaPayload, 'response.dados.dadosCadastrais.ramoAtividade', ''),
                 (string) ($serasaCnpj['cnae_fiscal'] ?? ''),
                 (string) data_get($businessCreditPayload, 'data.resultado.identificacao_completo.ramo_atividade_primario.atividade', ''),
             ], '-'),
@@ -556,6 +574,7 @@ class PjResearchReportService
                 (string) data_get($completeResult, 'firmografico.capital_social', ''),
                 (string) data_get($basicResult, 'quadro_societario.capital_social', ''),
                 (string) ($serasaEmpresa['capital_social'] ?? ''),
+                (string) data_get($serasaPayload, 'response.dados.dadosCadastrais.capitalSocial', ''),
                 (string) ($businessIdentificacao['capital_atual'] ?? ''),
                 (string) ($businessIdentificacao['capital_inicial'] ?? ''),
             ], '-'),
@@ -569,6 +588,7 @@ class PjResearchReportService
                 (string) data_get($completeResult, 'firmografico.ds_faixa_faturamento', ''),
                 (string) data_get($serasaPayload, 'response.dados.faturamento_presumido.faturamento_anual', ''),
                 (string) data_get($serasaPayload, 'data.cnpj.empresa.faturamento_presumido', ''),
+                (string) data_get($serasaPayload, 'response.dados.resumoConsulta.spc.valorTotal', ''),
             ], '-'),
             'faturamento_presumido' => $this->firstString([
                 (string) data_get($completeResult, 'firmografico.valor_faturamento_presumido', ''),
@@ -578,6 +598,7 @@ class PjResearchReportService
             'foundation_date' => $this->firstString([
                 (string) data_get($serasaPayload, 'response.dados.identificacao_completo.data_fundacao', ''),
                 (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.data_nascimento_fundacao', ''),
+                (string) data_get($serasaPayload, 'response.dados.dadosCadastrais.dataAbertura', ''),
                 (string) ($serasaCnpj['data_inicio_atividades'] ?? ''),
                 (string) ($businessIdentificacao['data_fundacao'] ?? ''),
             ], '-'),
@@ -793,19 +814,25 @@ class PjResearchReportService
         ]);
 
         return [
-            'controle_pendencias_credito' => (string) ($negativacoes['controle_pendencias_credito'] ?? '0'),
+            'controle_pendencias_credito' => $this->firstString([
+                (string) ($negativacoes['controle_pendencias_credito'] ?? ''),
+                (string) data_get($serasaPayload, 'response.dados.resumoConsulta.pendenciasFinanceiras.quantidadeTotal', ''),
+                '0',
+            ], '0'),
             'apontamentos' => is_array($negativacoes['apontamentos'] ?? null) ? count($negativacoes['apontamentos']) : 0,
             'ccf' => is_array($negativacoes['ccf_apontamentos'] ?? null) ? count($negativacoes['ccf_apontamentos']) : 0,
             'acoes_judiciais' => is_array($negativacoes['acoes_judiciais_apontamentos'] ?? null) ? count($negativacoes['acoes_judiciais_apontamentos']) : 0,
             'protestos_total' => $this->firstString([
                 (string) data_get($protestos, '0.total_protestos'),
                 (string) data_get($serasaPayload, 'response.dados.protesto_sintetico.quantidade_ocorrencia', ''),
+                (string) data_get($serasaPayload, 'response.dados.resumoConsulta.protestos.quantidadeTotal', ''),
                 (string) data_get($businessCreditPayload, 'data.resultado.protestos.total_protestos', ''),
                 '0',
             ], '0'),
             'protestos_valor' => $this->firstString([
                 (string) data_get($protestos, '0.valor_protestados_total'),
                 (string) data_get($serasaPayload, 'response.dados.protesto_sintetico.valor_total', ''),
+                (string) data_get($serasaPayload, 'response.dados.resumoConsulta.protestos.valorTotal', ''),
                 (string) data_get($businessCreditPayload, 'data.resultado.protestos.valor_total', ''),
                 '0,00',
             ], '0,00'),
@@ -1047,6 +1074,7 @@ class PjResearchReportService
                 (string) data_get($completeResult, 'situacao_cadastral.ds_situacao_cadastral', ''),
                 (string) data_get($basicResult, 'dados_cadastrais.status_empresa', ''),
                 (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.situacao_receita', ''),
+                (string) data_get($serasaPayload, 'response.dados.dadosCadastrais.situacaoCadastral', ''),
                 (string) ($serasaCnpj['situacao_cadastral'] ?? ''),
                 (string) data_get($serasaPayload, 'data.situacao', ''),
                 (string) data_get($businessCreditPayload, 'data.resultado.identificacao_completo.situacao_cnpj', ''),
@@ -1055,6 +1083,7 @@ class PjResearchReportService
                 (string) data_get($completeResult, 'dados_cadastrais.data_inicio_atividade', ''),
                 $this->dateValue(data_get($basicResult, 'dados_cadastrais.data_fundacao')),
                 (string) data_get($serasaPayload, 'response.dados.dados_receita_federal.data_nascimento_fundacao', ''),
+                (string) data_get($serasaPayload, 'response.dados.dadosCadastrais.dataAbertura', ''),
                 (string) ($serasaCnpj['data_inicio_atividades'] ?? ''),
                 (string) data_get($businessCreditPayload, 'data.resultado.identificacao_completo.data_fundacao', ''),
             ], '-'),

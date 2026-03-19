@@ -45,6 +45,10 @@ return [
                 ],
                 [
                     'provider' => 'bureau',
+                    'consultation_key' => 'spc_terceiros_pj',
+                ],
+                [
+                    'provider' => 'bureau',
                     'consultation_key' => 'spc_quod_pj',
                 ],
                 [
@@ -221,6 +225,23 @@ return [
                 'quod_restricao',
             ],
             'description' => 'Consulta Quod PJ com score, risco, probabilidade, dados cadastrais e indicadores financeiros.',
+        ],
+        'spc_terceiros_pj' => [
+            'title' => 'SPC Terceiros PJ',
+            'category' => 'consulta_cnpj',
+            'document_type' => 'cnpj',
+            'method' => 'POST',
+            'path' => '/api/v2/consulta/cnpj/credits',
+            'body' => [
+                'tipo' => 'spc-terceiros-pj',
+                'cnpj' => '{document}',
+                'homolog' => true,
+            ],
+            'tipo_fallbacks' => [
+                'spc-terceiros-pj',
+                'spc_terceiros_pj',
+            ],
+            'description' => 'Consulta SPC Terceiros PJ com score e pendências/protestos para consolidar dívidas empresariais.',
         ],
         'compliance_basic_pj' => [
             'title' => 'Compliance Basic PJ',
