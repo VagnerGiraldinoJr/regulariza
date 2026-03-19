@@ -17,12 +17,13 @@ class ApiBrasilResearchProvider implements ResearchProviderInterface
     public function consult(array $source, string $documentNumber): array
     {
         $consultationKey = (string) ($source['consultation_key'] ?? '');
+        $bodyOverrides = is_array($source['body_overrides'] ?? null) ? $source['body_overrides'] : [];
 
         if ($consultationKey === '') {
             throw new RuntimeException('Fonte de pesquisa sem consultation_key.');
         }
 
-        $result = $this->apiBrasilService->consultarCatalogo($consultationKey, $documentNumber);
+        $result = $this->apiBrasilService->consultarCatalogo($consultationKey, $documentNumber, $bodyOverrides);
         $result['provider'] = (string) ($source['provider'] ?? 'apibrasil');
         $result['provider_label'] = (string) ($source['provider_label'] ?? 'API Brasil');
         $result['provider_driver'] = 'apibrasil';

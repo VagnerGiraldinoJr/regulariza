@@ -28,7 +28,7 @@ class ApiBrasilService
         ];
     }
 
-    public function consultarCatalogo(string $consultationKey, string $documento): array
+    public function consultarCatalogo(string $consultationKey, string $documento, array $bodyOverrides = []): array
     {
         $catalog = (array) config('apibrasil_catalog.consultations', []);
         $definition = $catalog[$consultationKey] ?? null;
@@ -54,6 +54,9 @@ class ApiBrasilService
         $method = strtoupper((string) ($definition['method'] ?? 'GET'));
         $bodyTemplate = (array) ($definition['body'] ?? []);
         $payload = $this->resolveTemplate($bodyTemplate, $digits);
+        if ($bodyOverrides !== []) {
+            $payload = array_replace_recursive($payload, $bodyOverrides);
+        }
         if (array_key_exists('homolog', $payload)) {
             $payload['homolog'] = $this->resolvedHomologFlag();
         }

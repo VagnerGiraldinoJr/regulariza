@@ -61,7 +61,18 @@ class ResearchReportService
             $consultations = collect();
 
             foreach ($sources as $source) {
-                $result = $this->executeSource($source, $documentDigits);
+                $sourceForExecution = $source;
+                if (($source['consultation_key'] ?? '') === 'certidao_negativa_pj') {
+                    $resolvedUf = $this->resolveCertidaoUf($consultations);
+                    if ($resolvedUf !== null) {
+                        $sourceForExecution['body_overrides'] = array_replace(
+                            (array) ($sourceForExecution['body_overrides'] ?? []),
+                            ['uf' => $resolvedUf]
+                        );
+                    }
+                }
+
+                $result = $this->executeSource($sourceForExecution, $documentDigits);
                 $consultation = ApiBrasilConsultation::query()->create([
                     'order_id' => $order?->id,
                     'lead_id' => $order?->lead_id,
@@ -413,6 +424,39 @@ class ResearchReportService
 
                 if ($nested !== null) {
                     return $nested;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function resolveCertidaoUf(Collection $consultations): ?string
+    {
+        $paths = [
+            'data.resultado.dados_cadastrais.enderecos.estado',
+            'data.resultado.dados_contato.logradouros.0.logradouro_uf',
+            'data.dados_cadastrais.enderecos.estado',
+            'response.dados.dados_receita_federal.uf',
+            'data.dados_receita_federal.uf',
+            'response.data.retorno.uf',
+            'data.retorno.uf',
+        ];
+
+        foreach ($consultations as $consultation) {
+            if (! $consultation instanceof ApiBrasilConsultation || ! is_array($consultation->response_payload)) {
+                continue;
+            }
+
+            foreach ($paths as $path) {
+                $candidate = data_get($consultation->response_payload, $path);
+                if (! is_scalar($candidate)) {
+                    continue;
+                }
+
+                $uf = mb_strtoupper(trim((string) $candidate));
+                if (preg_match('/^[A-Z]{2}$/', $uf) === 1) {
+                    return $uf;
                 }
             }
         }
