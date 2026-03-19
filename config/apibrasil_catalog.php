@@ -122,9 +122,7 @@ return [
             'tipo_fallbacks' => [
                 'scr-bacen-score',
                 'scr-analitico-resumo-bacen',
-                'scr_analitico_resumo_bacen',
                 'scr-analitico-bacen',
-                'scr_analitico_bacen',
             ],
             'description' => 'Consulta SCR Bacen e score para pessoa física.',
         ],
