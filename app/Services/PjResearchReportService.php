@@ -73,12 +73,12 @@ class PjResearchReportService
         ], '-');
 
         $scoreValue = $this->firstScalar([
+            data_get($spcTerceirosPayload, 'response.dados.score.score'),
+            data_get($spcTerceirosPayload, 'response.data.data.spcTerceirosPJ.score.score'),
             data_get($scrPayload, 'data.score'),
             data_get($scrPayload, 'score'),
             data_get($quodPayload, 'response.dados.scores.ocorrencias.0.score'),
             data_get($quodPayload, 'response.data.dados.scores.ocorrencias.0.score'),
-            data_get($spcTerceirosPayload, 'response.dados.score.score'),
-            data_get($spcTerceirosPayload, 'response.data.data.spcTerceirosPJ.score.score'),
             data_get($bureauPayload, 'data.score'),
             data_get($bureauPayload, 'score'),
             data_get($bureauPayload, 'data.cnpj.score'),
@@ -119,12 +119,12 @@ class PjResearchReportService
         ], '-');
 
         $scoreProbability = $this->firstString([
+            (string) data_get($spcTerceirosPayload, 'response.dados.score.probabilidade'),
             (string) data_get($completeResult, 'score.probabilidade_pagamento'),
             (string) data_get($completeResult, 'score.descricao_probabilidade_pagamento'),
             (string) data_get($basicResult, 'score.probabilidade_pagamento'),
             (string) data_get($basicCreditPayload, 'data.resultado.score.probabilidade_pagamento'),
             (string) data_get($quodPayload, 'response.dados.scores.ocorrencias.0.probabilidade_inadimplencia'),
-            (string) data_get($spcTerceirosPayload, 'response.dados.score.probabilidade'),
             (string) data_get($bureauPayload, 'data.cnpj.scores.ocorrencias.0.probabilidade_inadimplencia'),
             (string) data_get($defineRiscoPayload, 'response.data.dados.resultado.score.probabilidade'),
             (string) data_get($limitePayload, 'response.data.dados.resultado.score.probabilidade'),

@@ -178,6 +178,66 @@ class PjResearchReportServiceTest extends TestCase
         $this->assertStringNotContainsString('Valor da consulta', $sourceError);
     }
 
+    public function test_build_prioritizes_spc_terceiros_score_and_probability_for_credit_section(): void
+    {
+        $client = User::factory()->make([
+            'name' => 'Empresa Score API',
+            'cpf_cnpj' => '12345678000199',
+        ]);
+
+        $order = new Order([
+            'protocolo' => 'REG-PJ-SCORE-001',
+        ]);
+        $order->id = 14;
+        $order->setRelation('user', $client);
+
+        $spcTerceiros = new ApiBrasilConsultation([
+            'consultation_key' => 'spc_terceiros_pj',
+            'consultation_title' => 'SPC Terceiros PJ',
+            'status' => 'success',
+            'http_status' => 200,
+            'response_payload' => [
+                'data' => [
+                    'data' => [
+                        'spcTerceirosPJ' => [
+                            'score' => [
+                                'score' => 358,
+                                'mensagem' => null,
+                                'probabilidade' => 64,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        $spcTerceiros->created_at = now();
+
+        $basicCredit = new ApiBrasilConsultation([
+            'consultation_key' => 'analise_credito_basic_pj',
+            'consultation_title' => 'Análise de Crédito Basic PJ',
+            'status' => 'success',
+            'http_status' => 200,
+            'response_payload' => [
+                'data' => [
+                    'resultado' => [
+                        'score' => [
+                            'numero_score' => 800,
+                            'probabilidade_pagamento' => '15',
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        $basicCredit->created_at = now();
+
+        $service = app(PjResearchReportService::class);
+        $report = $service->build($order, new Collection([$spcTerceiros, $basicCredit]));
+
+        $this->assertSame('358', data_get($report, 'credit.score'));
+        $this->assertSame('64', data_get($report, 'credit.probabilidade'));
+        $this->assertSame('CCC', data_get($report, 'credit.rating.sp'));
+    }
+
     private function acoesProcessosPayload(): array
     {
         return [
